@@ -197,6 +197,14 @@ Completed implementation of full Temporal Knowledge Graph (TKG) construction pip
 - `/home/kondraki/personal/geopol/src/knowledge_graph/test_integration.py`
 - Individual test files for each module
 
+## API Reference
+
+### Key Methods
+- **EntityNormalizer**: `resolve_actor(actor_code)` - Resolves CAMEO codes to canonical IDs
+- **RelationClassifier**: `classify_event(source, target, event_code, quad_class, timestamp)` - Returns Relation object
+- **TemporalIndex**: `edges_in_time_range(start, end)` - Returns edges within time window
+- **GraphPersistence**: `save(filepath, graph)` - Saves graph to file (note: parameters in this order)
+
 ## Implementation Details
 
 ### Module Architecture
