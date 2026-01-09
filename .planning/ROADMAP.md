@@ -43,7 +43,7 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 02-01: TKG construction from GDELT events with entity/relation extraction
+- [x] 02-01: TKG construction from GDELT events with entity/relation extraction (COMPLETE 2026-01-09)
 - [ ] 02-02: Vector embedding system for entities and temporal relations
 - [ ] 02-03: Graph query interface for pattern retrieval
 
@@ -76,8 +76,8 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Data Foundation | 0/3 | Not started | - |
-| 2. Knowledge Graph Engine | 0/3 | Not started | - |
+| 1. Data Foundation | 3/3 | Complete | 2026-01-09 |
+| 2. Knowledge Graph Engine | 1/3 | In progress | - |
 | 3. Hybrid Forecasting | 0/3 | Not started | - |
 | 4. Calibration & Evaluation | 0/2 | Not started | - |
 
