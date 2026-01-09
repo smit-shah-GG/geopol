@@ -11,9 +11,9 @@ import pytest
 import tempfile
 import sqlite3
 from datetime import datetime
-from graph_builder import TemporalKnowledgeGraph, create_graph
-from entity_normalization import create_normalizer
-from relation_classification import create_classifier
+from src.knowledge_graph.graph_builder import TemporalKnowledgeGraph, create_graph
+from src.knowledge_graph.entity_normalization import create_normalizer
+from src.knowledge_graph.relation_classification import create_classifier
 
 
 @pytest.fixture

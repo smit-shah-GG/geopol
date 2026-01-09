@@ -9,7 +9,7 @@ Tests verify:
 
 import pytest
 from datetime import datetime
-from relation_classification import (
+from src.knowledge_graph.relation_classification import (
     RelationClassifier, Relation, RelationType, TemporalGranularity,
     create_classifier
 )

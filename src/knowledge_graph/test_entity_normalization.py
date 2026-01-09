@@ -9,7 +9,7 @@ Tests verify:
 
 import pytest
 import time
-from entity_normalization import EntityNormalizer, Entity, create_normalizer
+from src.knowledge_graph.entity_normalization import EntityNormalizer, Entity, create_normalizer
 
 
 class TestEntityNormalization:

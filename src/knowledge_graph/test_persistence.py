@@ -12,7 +12,7 @@ import tempfile
 import networkx as nx
 from pathlib import Path
 from datetime import datetime
-from persistence import GraphPersistence, create_persistence
+from src.knowledge_graph.persistence import GraphPersistence, create_persistence
 
 
 @pytest.fixture

@@ -15,11 +15,11 @@ import sys
 from pathlib import Path
 from datetime import datetime, timedelta
 
-from entity_normalization import create_normalizer
-from relation_classification import create_classifier
-from graph_builder import create_graph
-from temporal_index import create_index
-from persistence import create_persistence
+from src.knowledge_graph.entity_normalization import create_normalizer
+from src.knowledge_graph.relation_classification import create_classifier
+from src.knowledge_graph.graph_builder import create_graph
+from src.knowledge_graph.temporal_index import create_index
+from src.knowledge_graph.persistence import create_persistence
 
 
 @pytest.fixture

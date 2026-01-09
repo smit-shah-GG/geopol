@@ -11,8 +11,8 @@ import pytest
 import networkx as nx
 from datetime import datetime, timedelta
 import time
-from temporal_index import TemporalIndex, create_index
-from relation_classification import RelationType
+from src.knowledge_graph.temporal_index import TemporalIndex, create_index
+from src.knowledge_graph.relation_classification import RelationType
 
 
 @pytest.fixture

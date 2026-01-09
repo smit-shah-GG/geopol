@@ -16,8 +16,8 @@ import sqlite3
 import networkx as nx
 from pathlib import Path
 
-from entity_normalization import EntityNormalizer
-from relation_classification import RelationClassifier
+from .entity_normalization import EntityNormalizer
+from .relation_classification import RelationClassifier
 
 logger = logging.getLogger(__name__)
 
