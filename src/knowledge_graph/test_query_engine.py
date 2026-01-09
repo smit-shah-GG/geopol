@@ -249,6 +249,46 @@ class TestQueryEngine:
         stats = engine.get_performance_stats()
         assert stats['cache']['size'] == 0
 
+    def test_entity_resolution_without_mappings(self):
+        """Test entity resolution works without entity_to_id mappings (UAT-001)."""
+        # Create graph with string node IDs
+        G = nx.MultiDiGraph()
+        G.add_node('USA', entity_type='country')
+        G.add_node('CHN', entity_type='country')
+        G.add_node('RUS', entity_type='country')
+
+        G.add_edge('USA', 'CHN', key=0, timestamp='2024-01-01T00:00:00Z',
+                   confidence=0.8, quad_class=4, relation_type='conflict',
+                   num_mentions=100)
+        G.add_edge('RUS', 'USA', key=0, timestamp='2024-01-02T00:00:00Z',
+                   confidence=0.7, quad_class=1, relation_type='diplomatic',
+                   num_mentions=50)
+
+        # Create engine WITHOUT entity_to_id mappings
+        engine = QueryEngine(graph=G, vector_store=None, embedding_model=None)
+
+        # Test entity pair query with string IDs
+        query = {
+            'query_type': 'entity_pair',
+            'entity1': 'USA',
+            'entity2': 'CHN',
+            'time_window': {'days': 30}
+        }
+
+        # Should not raise ValueError (regression test for UAT-001)
+        result = engine.execute_query(query)
+        assert result is not None
+
+        # Test entity relations query
+        query2 = {
+            'query_type': 'entity_relations',
+            'entity': 'USA',
+            'time_window': {'days': 30}
+        }
+
+        result2 = engine.execute_query(query2)
+        assert result2 is not None
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
