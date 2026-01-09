@@ -19,12 +19,12 @@ import tempfile
 import shutil
 from pathlib import Path
 
-from knowledge_graph.vector_store import (
+from src.knowledge_graph.vector_store import (
     VectorStore,
     QdrantConfig,
     setup_qdrant_for_embeddings
 )
-from knowledge_graph.embeddings import RotatEModel
+from src.knowledge_graph.embeddings import RotatEModel
 from qdrant_client.models import PointStruct
 
 

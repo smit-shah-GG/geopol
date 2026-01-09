@@ -43,8 +43,8 @@ from qdrant_client.models import (
     QuantizationSearchParams
 )
 
-from knowledge_graph.embeddings import RotatEModel
-from knowledge_graph.temporal_embeddings import TemporalRotatEModel, HyTETemporalExtension
+from src.knowledge_graph.embeddings import RotatEModel
+from src.knowledge_graph.temporal_embeddings import TemporalRotatEModel, HyTETemporalExtension
 
 
 @dataclass

@@ -25,7 +25,7 @@ import json
 import pickle
 from dataclasses import dataclass, asdict
 
-from knowledge_graph.embeddings import RotatEModel, clip_gradients
+from src.knowledge_graph.embeddings import RotatEModel, clip_gradients
 
 
 @dataclass

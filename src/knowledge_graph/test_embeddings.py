@@ -14,7 +14,7 @@ import pytest
 import torch
 import torch.nn as nn
 import math
-from knowledge_graph.embeddings import RotatEModel, clip_gradients
+from src.knowledge_graph.embeddings import RotatEModel, clip_gradients
 
 
 class TestRotatEModel:

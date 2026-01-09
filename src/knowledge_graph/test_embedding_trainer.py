@@ -17,7 +17,7 @@ import tempfile
 import shutil
 from pathlib import Path
 
-from knowledge_graph.embedding_trainer import (
+from src.knowledge_graph.embedding_trainer import (
     TemporalGraphDataset,
     create_entity_relation_mappings,
     collate_triples,
@@ -25,7 +25,7 @@ from knowledge_graph.embedding_trainer import (
     TrainingConfig,
     train_embeddings_from_graph
 )
-from knowledge_graph.embeddings import RotatEModel
+from src.knowledge_graph.embeddings import RotatEModel
 
 
 @pytest.fixture

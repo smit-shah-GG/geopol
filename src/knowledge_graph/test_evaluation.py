@@ -15,15 +15,15 @@ import tempfile
 import shutil
 from pathlib import Path
 
-from knowledge_graph.evaluation import (
+from src.knowledge_graph.evaluation import (
     EmbeddingEvaluator,
     EvaluationMetrics,
     visualize_embeddings_tsne,
     compare_models,
     save_evaluation_results
 )
-from knowledge_graph.embeddings import RotatEModel
-from knowledge_graph.temporal_embeddings import TemporalRotatEModel
+from src.knowledge_graph.embeddings import RotatEModel
+from src.knowledge_graph.temporal_embeddings import TemporalRotatEModel
 
 
 class TestEvaluationMetrics:

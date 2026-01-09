@@ -31,7 +31,7 @@ from typing import Dict, Tuple, Optional, List
 from datetime import datetime, timedelta
 import numpy as np
 
-from knowledge_graph.embeddings import RotatEModel
+from src.knowledge_graph.embeddings import RotatEModel
 
 
 class HyTETemporalExtension(nn.Module):

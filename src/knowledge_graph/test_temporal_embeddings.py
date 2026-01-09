@@ -15,12 +15,12 @@ import torch
 import numpy as np
 from datetime import datetime
 
-from knowledge_graph.temporal_embeddings import (
+from src.knowledge_graph.temporal_embeddings import (
     HyTETemporalExtension,
     TemporalRotatEModel,
     analyze_temporal_projection_quality
 )
-from knowledge_graph.embeddings import RotatEModel
+from src.knowledge_graph.embeddings import RotatEModel
 
 
 class TestHyTETemporalExtension:
