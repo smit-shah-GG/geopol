@@ -6,6 +6,10 @@
 
 ## Open Issues
 
+[None]
+
+## Resolved Issues
+
 ### UAT-001: Import paths are incorrect in embedding modules
 
 **Discovered:** 2026-01-09
@@ -28,6 +32,8 @@
 **Repro:**
 1. Try to import: `from src.knowledge_graph.embedding_trainer import EmbeddingTrainer`
 2. Fails with ModuleNotFoundError
+**Resolution:** Fixed in commit 77549cd - changed all imports to use `src.knowledge_graph` prefix
+**Verified:** All modules can be imported successfully, test suite collects 14 tests
 
 ### UAT-002: Missing required dependencies
 
@@ -39,10 +45,8 @@
 **Expected:** All dependencies installed and working
 **Actual:** Had to manually install torch (CPU version) and typing_extensions
 **Repro:** Fresh environment missing torch and typing_extensions
-
-## Resolved Issues
-
-[None yet]
+**Resolution:** Fixed in commit b4bbba7 - added typing_extensions>=4.0.0 and matplotlib>=3.7.0 to requirements.txt with clear CPU-only torch installation instructions
+**Verified:** Requirements.txt now documents all dependencies with installation commands
 
 ---
 
