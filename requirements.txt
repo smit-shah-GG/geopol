@@ -17,6 +17,9 @@ requests>=2.31.0
 # Database
 # Using built-in sqlite3, no additional package needed
 
+# Knowledge Graphs
+networkx>=3.0
+
 # Testing (optional, for development)
 pytest>=7.4.0
 pytest-cov>=4.1.0
