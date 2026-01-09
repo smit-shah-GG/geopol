@@ -423,10 +423,15 @@ class QueryEngine:
 
         return None
 
-    def _resolve_entity(self, entity_name: str) -> int:
-        """Resolve entity name to ID."""
-        if entity_name in self.entity_to_id:
+    def _resolve_entity(self, entity_name: str):
+        """Resolve entity name to ID or return entity name if using string IDs."""
+        # If we have entity mappings, use them
+        if self.entity_to_id and entity_name in self.entity_to_id:
             return self.entity_to_id[entity_name]
+        # If entity_to_id is None or empty but entity exists in graph, return the name itself
+        elif (not self.entity_to_id or entity_name not in self.entity_to_id) and self.graph and entity_name in self.graph.nodes():
+            return entity_name
+        # Handle numeric string IDs
         elif entity_name.isdigit():
             return int(entity_name)
         else:
