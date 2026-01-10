@@ -7,6 +7,7 @@ using Gemini's structured output capabilities to ensure consistent formatting.
 
 import json
 import uuid
+from datetime import datetime
 from typing import Dict, List, Optional
 
 from src.forecasting.gemini_client import GeminiClient
@@ -85,6 +86,11 @@ Be specific, grounded in current events, and maintain logical consistency."""
             json_text = response.text
             scenario_data = json.loads(json_text)
 
+            # Ensure metadata has context_count
+            if "metadata" not in scenario_data:
+                scenario_data["metadata"] = {}
+            scenario_data["metadata"]["context_count"] = len(context) if context else 0
+
             # Convert to Pydantic models
             return self._parse_scenario_tree(scenario_data)
 
@@ -142,12 +148,21 @@ Be specific, grounded in current events, and maintain logical consistency."""
         root_data = data.get("root_scenario", {})
         root_scenario = self._parse_scenario(root_data)
 
+        # Parse or create metadata with required fields
+        metadata = data.get("metadata", {})
+        if "generated_at" not in metadata:
+            metadata["generated_at"] = datetime.now().isoformat()
+        if "model" not in metadata:
+            metadata["model"] = getattr(self.client, "model", "gemini-1.5-flash")
+        if "context_count" not in metadata:
+            metadata["context_count"] = 0
+
         # Create tree
         tree = ScenarioTree(
             question=data.get("question", ""),
             root_scenario=root_scenario,
             scenarios={root_scenario.scenario_id: root_scenario},
-            metadata=data.get("metadata", {}),
+            metadata=metadata,
         )
 
         # Add additional scenarios - handle both array and dict formats
