@@ -23,6 +23,7 @@ from src.forecasting.models import (
     ValidationFeedback,
 )
 from src.forecasting.scenario_generator import ScenarioGenerator
+from src.forecasting.rag_pipeline import RAGPipeline
 
 
 @dataclass
@@ -74,6 +75,8 @@ class ReasoningOrchestrator:
         self,
         client: Optional[GeminiClient] = None,
         generator: Optional[ScenarioGenerator] = None,
+        rag_pipeline: Optional[RAGPipeline] = None,
+        enable_rag: bool = True,
     ):
         """
         Initialize the orchestrator.
@@ -81,12 +84,18 @@ class ReasoningOrchestrator:
         Args:
             client: Optional GeminiClient instance.
             generator: Optional ScenarioGenerator instance.
+            rag_pipeline: Optional RAGPipeline instance for historical grounding.
+            enable_rag: Whether to enable RAG-based historical grounding.
         """
         self.client = client or GeminiClient()
         self.generator = generator or ScenarioGenerator(client=self.client)
 
-        # Placeholder for future components
-        self.rag_pipeline = None  # Will be added in 03-02
+        # Initialize or create RAG pipeline
+        if enable_rag:
+            self.rag_pipeline = rag_pipeline or RAGPipeline()
+        else:
+            self.rag_pipeline = None
+
         self.graph_validator = None  # Will be added in 03-03
 
     def forecast(
@@ -168,37 +177,94 @@ class ReasoningOrchestrator:
         """
         Step 2: Validate scenarios against historical patterns.
 
-        This is a placeholder that generates mock feedback.
-        In 03-02 and 03-03, this will:
-        1. Use RAG pipeline to find similar historical events
-        2. Use graph validator to check pattern consistency
-        3. Generate real validation feedback
+        Uses RAG pipeline to find similar historical events and validate scenarios.
+        Falls back to mock validation if RAG is not available.
         """
         feedback = []
 
-        # Mock validation for now
         for scenario_id, scenario in state.initial_scenarios.scenarios.items():
-            # Simulate validation with mock scores
-            is_valid = scenario.probability > 0.3  # Simple mock rule
-            confidence = min(0.9, scenario.probability + 0.2)  # Mock confidence
+            if self.rag_pipeline and self.rag_pipeline.index:
+                # Use RAG pipeline for real validation
+                fb = self._validate_with_rag(scenario_id, scenario)
+            else:
+                # Fall back to mock validation
+                fb = self._validate_with_mock(scenario_id, scenario)
 
-            fb = ValidationFeedback(
-                scenario_id=scenario_id,
-                is_valid=is_valid,
-                confidence_score=confidence,
-                historical_patterns=self._find_mock_patterns(scenario),
-                contradictions=self._find_mock_contradictions(scenario),
-                suggestions=self._generate_mock_suggestions(scenario),
-            )
             feedback.append(fb)
 
         state.add_step_output("validate_scenarios", {
             "num_validated": len(feedback),
             "num_valid": sum(1 for f in feedback if f.is_valid),
             "avg_confidence": sum(f.confidence_score for f in feedback) / len(feedback) if feedback else 0,
+            "validation_method": "RAG" if self.rag_pipeline and self.rag_pipeline.index else "Mock"
         })
 
         return feedback
+
+    def _validate_with_rag(self, scenario_id: str, scenario: Scenario) -> ValidationFeedback:
+        """Validate scenario using RAG pipeline for historical grounding."""
+        # Extract entities from scenario
+        entities = [entity.name for entity in scenario.entities]
+
+        # Query historical context
+        context = self.rag_pipeline.query_historical_context(
+            scenario_description=scenario.description,
+            entities=entities,
+            lookback_days=365 * 2  # Look back 2 years
+        )
+
+        # Analyze retrieved patterns
+        historical_patterns = []
+        contradictions = []
+        suggestions = []
+
+        for pattern in context['retrieved_patterns'][:5]:  # Top 5 patterns
+            # Add pattern description
+            historical_patterns.append(pattern['summary'][:200])  # Truncate for brevity
+
+            # Check for contradictions based on pattern type
+            if pattern['type'] == 'escalation' and scenario.probability < 0.3:
+                contradictions.append("Low probability conflicts with historical escalation patterns")
+            elif pattern['type'] == 'bilateral_history':
+                if pattern['data'].get('cooperation_ratio', 0) > 0.7 and 'conflict' in scenario.description.lower():
+                    contradictions.append("Historical cooperation pattern contradicts conflict scenario")
+
+        # Add insights as suggestions
+        suggestions.extend(context['insights'][:2])  # Top 2 insights
+
+        # Calculate confidence based on pattern relevance scores
+        if context['retrieved_patterns']:
+            avg_relevance = sum(p['relevance_score'] for p in context['retrieved_patterns']) / len(context['retrieved_patterns'])
+            confidence = min(0.95, avg_relevance)
+        else:
+            confidence = 0.5
+
+        # Determine validity
+        is_valid = len(contradictions) == 0 and confidence > 0.4
+
+        return ValidationFeedback(
+            scenario_id=scenario_id,
+            is_valid=is_valid,
+            confidence_score=confidence,
+            historical_patterns=historical_patterns,
+            contradictions=contradictions,
+            suggestions=suggestions,
+        )
+
+    def _validate_with_mock(self, scenario_id: str, scenario: Scenario) -> ValidationFeedback:
+        """Fall back to mock validation when RAG is not available."""
+        # Simulate validation with mock scores
+        is_valid = scenario.probability > 0.3  # Simple mock rule
+        confidence = min(0.9, scenario.probability + 0.2)  # Mock confidence
+
+        return ValidationFeedback(
+            scenario_id=scenario_id,
+            is_valid=is_valid,
+            confidence_score=confidence,
+            historical_patterns=self._find_mock_patterns(scenario),
+            contradictions=self._find_mock_contradictions(scenario),
+            suggestions=self._generate_mock_suggestions(scenario),
+        )
 
     def _find_mock_patterns(self, scenario: Scenario) -> List[str]:
         """Generate mock historical patterns for testing."""
