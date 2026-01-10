@@ -317,8 +317,10 @@ class EnsemblePredictor:
         """
         Extract entities from LLM forecast for TKG query.
 
-        Simple extraction: takes first two entities from top scenario
-        and infers relation from question keywords.
+        Robust extraction that:
+        1. Tries to extract from top scenario entities
+        2. Falls back to parsing scenario description for capitalized names
+        3. Falls back to extracting from question text
 
         Returns:
             Tuple of (entity1, relation, entity2)
@@ -335,16 +337,32 @@ class EnsemblePredictor:
         # Get top scenario
         top_scenario = max(scenarios, key=lambda s: s.probability)
 
-        # Extract entities
+        # Method 1: Extract from structured entities
         entities = top_scenario.entities
+        entity1 = None
+        entity2 = None
+
         if len(entities) >= 2:
             entity1 = entities[0].name
             entity2 = entities[1].name
         elif len(entities) == 1:
             entity1 = entities[0].name
-            entity2 = None
-        else:
-            return None, None, None
+
+        # Method 2: If we don't have enough entities, parse scenario description
+        if entity1 is None or entity2 is None:
+            extracted = self._extract_entities_from_text(top_scenario.description)
+            if entity1 is None and extracted:
+                entity1 = extracted[0]
+            if entity2 is None and len(extracted) > 1:
+                entity2 = extracted[1]
+
+        # Method 3: Fall back to question text if still insufficient
+        if entity1 is None or entity2 is None:
+            question_entities = self._extract_entities_from_text(question)
+            if entity1 is None and question_entities:
+                entity1 = question_entities[0]
+            if entity2 is None and len(question_entities) > 1:
+                entity2 = question_entities[1]
 
         # Infer relation from question (simple heuristics)
         question_lower = question.lower()
@@ -364,6 +382,53 @@ class EnsemblePredictor:
             relation = "INTERACT"  # Generic relation
 
         return entity1, relation, entity2
+
+    def _extract_entities_from_text(self, text: str) -> List[str]:
+        """
+        Extract potential entity names from text.
+
+        Uses simple heuristics:
+        - Capitalized words (potential proper nouns)
+        - Multi-word capitalized phrases
+        - Known geopolitical entity patterns
+
+        Args:
+            text: Text to extract entities from
+
+        Returns:
+            List of potential entity names
+        """
+        import re
+
+        # Find sequences of capitalized words (potential entities)
+        # Match patterns like "United States", "NATO", "China", etc.
+        pattern = r'\b[A-Z][a-z]*(?:\s+[A-Z][a-z]*)*\b'
+        candidates = re.findall(pattern, text)
+
+        # Filter out common non-entities and deduplicate
+        stopwords = {'The', 'A', 'An', 'This', 'That', 'These', 'Those', 'Will', 'Would', 'Could', 'Should', 'If', 'When', 'Where', 'What', 'Who', 'How'}
+        entities = []
+        seen = set()
+
+        for candidate in candidates:
+            # Skip stopwords
+            if candidate in stopwords:
+                continue
+            # Skip if already seen (case-insensitive)
+            if candidate.lower() in seen:
+                continue
+            # Skip very short single words unless they're acronyms
+            if len(candidate) <= 2 and not candidate.isupper():
+                continue
+
+            entities.append(candidate)
+            seen.add(candidate.lower())
+
+            # Limit to first 5 entities
+            if len(entities) >= 5:
+                break
+
+        return entities
 
     def _combine_predictions(
         self,
