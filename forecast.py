@@ -8,7 +8,7 @@ Usage:
     python forecast.py "Will Iran develop nuclear weapons?" --output-format json
 
 Requirements:
-    - GEMINI_API_KEY environment variable must be set
+    - GEMINI_API_KEY environment variable (or .env file with GEMINI_API_KEY)
     - Optional: Pre-trained TKG model at checkpoints/tkg/
     - Optional: RAG index at data/rag_index/
 """
@@ -20,8 +20,13 @@ import sys
 from pathlib import Path
 from typing import Optional
 
+from dotenv import load_dotenv
+
 from src.forecasting.forecast_engine import ForecastEngine
 from src.forecasting.output_formatter import format_forecast
+
+# Load environment variables from .env file if it exists
+load_dotenv()
 
 
 def setup_logging(verbose: bool = False) -> None:
@@ -179,6 +184,7 @@ Examples:
 
 Environment Variables:
   GEMINI_API_KEY    Gemini API key (required)
+                    Can be set via export or .env file
         """,
     )
 
