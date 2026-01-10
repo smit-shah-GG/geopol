@@ -16,7 +16,7 @@ from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
 from google import genai
-from google.genai.types import GenerateContentResponse, GenerationConfig
+from google.genai.types import GenerateContentResponse
 from tenacity import (
     retry,
     retry_if_exception_type,
@@ -80,12 +80,13 @@ class GeminiClient:
     def _init_model(self) -> None:
         """Initialize the Gemini model with proper configuration."""
         # Model configuration for better structured outputs
-        self.generation_config = GenerationConfig(
-            temperature=0.7,
-            top_p=0.95,
-            top_k=40,
-            max_output_tokens=8192,
-        )
+        # Note: Create fresh config for each request to avoid attribute issues
+        self.default_generation_params = {
+            "temperature": 0.7,
+            "top_p": 0.95,
+            "top_k": 40,
+            "max_output_tokens": 8192,
+        }
 
     def _check_rate_limit(self) -> None:
         """
@@ -124,7 +125,7 @@ class GeminiClient:
         prompt: str,
         system_instruction: Optional[str] = None,
         response_schema: Optional[Dict[str, Any]] = None,
-        generation_config: Optional[GenerationConfig] = None,
+        generation_config: Optional[Dict[str, Any]] = None,
     ) -> GenerateContentResponse:
         """
         Generate content from Gemini with retry logic.
@@ -133,7 +134,7 @@ class GeminiClient:
             prompt: The user prompt to send to Gemini.
             system_instruction: Optional system instruction for the model.
             response_schema: Optional schema for structured JSON output.
-            generation_config: Optional custom generation configuration.
+            generation_config: Optional custom generation configuration dict.
 
         Returns:
             The response from Gemini API.
@@ -145,23 +146,29 @@ class GeminiClient:
         # Check rate limit before making request
         self._check_rate_limit()
 
-        # Use custom generation config if provided, else use default
-        config = generation_config or self.generation_config
+        # Build generation config as dict
+        if generation_config:
+            config = generation_config
+        else:
+            # Create config dict from default parameters
+            config = self.default_generation_params.copy()
 
-        # If response schema is provided, ensure JSON response
-        if response_schema:
-            config.response_mime_type = "application/json"
-            config.response_schema = response_schema
+            # If response schema is provided, ensure JSON response
+            if response_schema:
+                config["response_mime_type"] = "application/json"
+                config["response_schema"] = response_schema
 
-        # Build the request
-        contents = [prompt]
+        # Build the request - combine system instruction with prompt if provided
+        if system_instruction:
+            contents = [f"{system_instruction}\n\n{prompt}"]
+        else:
+            contents = [prompt]
 
         try:
             response = self.client.models.generate_content(
                 model=self.model_name,
                 contents=contents,
                 config=config,
-                system_instruction=system_instruction,
             )
             return response
         except Exception as e:
