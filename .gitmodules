@@ -1,0 +1,3 @@
+[submodule "src/forecasting/tkg_models/RE-GCN"]
+	path = src/forecasting/tkg_models/RE-GCN
+	url = https://github.com/Lee-zix/RE-GCN.git
