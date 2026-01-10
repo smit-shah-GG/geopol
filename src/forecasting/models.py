@@ -124,7 +124,7 @@ class ForecastOutput(BaseModel):
     selected_scenario_ids: List[str] = Field(default_factory=list, description="Most likely scenario IDs")
     reasoning_summary: str = Field(..., description="Summary of reasoning")
     evidence_sources: List[str] = Field(default_factory=list, description="Sources of evidence used")
-    timestamp: datetime = Field(default_factory_factory=datetime.now, description="When forecast was made")
+    timestamp: datetime = Field(default_factory=datetime.now, description="When forecast was made")
 
 
 # Schema definitions for Gemini structured output
