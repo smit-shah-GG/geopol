@@ -108,11 +108,15 @@ def mock_generator(mock_scenario_tree):
 
 def test_orchestrator_initialization(mock_gemini_client):
     """Test that orchestrator initializes correctly."""
-    orchestrator = ReasoningOrchestrator(client=mock_gemini_client)
+    orchestrator = ReasoningOrchestrator(
+        client=mock_gemini_client,
+        enable_rag=False,
+        enable_graph_validation=False
+    )
     assert orchestrator.client == mock_gemini_client
     assert orchestrator.generator is not None
-    assert orchestrator.rag_pipeline is None  # Placeholder for future
-    assert orchestrator.graph_validator is None  # Placeholder for future
+    assert orchestrator.rag_pipeline is None
+    assert orchestrator.graph_validator is None
 
 
 def test_reasoning_state():
@@ -146,6 +150,8 @@ def test_forecast_full_pipeline(mock_gemini_client, mock_generator):
     orchestrator = ReasoningOrchestrator(
         client=mock_gemini_client,
         generator=mock_generator,
+        enable_rag=False,
+        enable_graph_validation=False
     )
 
     # Execute forecast

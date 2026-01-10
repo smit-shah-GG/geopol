@@ -24,6 +24,7 @@ from src.forecasting.models import (
 )
 from src.forecasting.scenario_generator import ScenarioGenerator
 from src.forecasting.rag_pipeline import RAGPipeline
+from src.forecasting.graph_validator import GraphValidator
 
 
 @dataclass
@@ -76,7 +77,9 @@ class ReasoningOrchestrator:
         client: Optional[GeminiClient] = None,
         generator: Optional[ScenarioGenerator] = None,
         rag_pipeline: Optional[RAGPipeline] = None,
+        graph_validator: Optional[GraphValidator] = None,
         enable_rag: bool = True,
+        enable_graph_validation: bool = True,
     ):
         """
         Initialize the orchestrator.
@@ -85,7 +88,9 @@ class ReasoningOrchestrator:
             client: Optional GeminiClient instance.
             generator: Optional ScenarioGenerator instance.
             rag_pipeline: Optional RAGPipeline instance for historical grounding.
+            graph_validator: Optional GraphValidator instance for graph-based validation.
             enable_rag: Whether to enable RAG-based historical grounding.
+            enable_graph_validation: Whether to enable graph-based validation.
         """
         self.client = client or GeminiClient()
         self.generator = generator or ScenarioGenerator(client=self.client)
@@ -96,7 +101,11 @@ class ReasoningOrchestrator:
         else:
             self.rag_pipeline = None
 
-        self.graph_validator = None  # Will be added in 03-03
+        # Initialize or create graph validator
+        if enable_graph_validation:
+            self.graph_validator = graph_validator or GraphValidator()
+        else:
+            self.graph_validator = None
 
     def forecast(
         self,
@@ -177,14 +186,28 @@ class ReasoningOrchestrator:
         """
         Step 2: Validate scenarios against historical patterns.
 
-        Uses RAG pipeline to find similar historical events and validate scenarios.
-        Falls back to mock validation if RAG is not available.
+        Uses multiple validation methods:
+        1. Graph validation (TKG-based pattern matching)
+        2. RAG pipeline (historical text similarity)
+        3. Mock validation (fallback)
+
+        Graph and RAG validations are combined for final feedback.
         """
         feedback = []
 
         for scenario_id, scenario in state.initial_scenarios.scenarios.items():
-            if self.rag_pipeline and self.rag_pipeline.index:
-                # Use RAG pipeline for real validation
+            # Determine validation methods to use
+            use_graph = self.graph_validator is not None
+            use_rag = self.rag_pipeline and self.rag_pipeline.index
+
+            if use_graph and use_rag:
+                # Combine both validation methods
+                fb = self._validate_with_graph_and_rag(scenario_id, scenario)
+            elif use_graph:
+                # Graph validation only
+                fb = self.graph_validator.validate_scenario(scenario)
+            elif use_rag:
+                # RAG validation only
                 fb = self._validate_with_rag(scenario_id, scenario)
             else:
                 # Fall back to mock validation
@@ -192,14 +215,91 @@ class ReasoningOrchestrator:
 
             feedback.append(fb)
 
+        # Determine validation method(s) used
+        validation_methods = []
+        if self.graph_validator:
+            validation_methods.append("Graph")
+        if self.rag_pipeline and self.rag_pipeline.index:
+            validation_methods.append("RAG")
+        if not validation_methods:
+            validation_methods.append("Mock")
+
         state.add_step_output("validate_scenarios", {
             "num_validated": len(feedback),
             "num_valid": sum(1 for f in feedback if f.is_valid),
             "avg_confidence": sum(f.confidence_score for f in feedback) / len(feedback) if feedback else 0,
-            "validation_method": "RAG" if self.rag_pipeline and self.rag_pipeline.index else "Mock"
+            "validation_methods": validation_methods
         })
 
         return feedback
+
+    def _validate_with_graph_and_rag(
+        self,
+        scenario_id: str,
+        scenario: Scenario
+    ) -> ValidationFeedback:
+        """
+        Combine graph and RAG validation for comprehensive feedback.
+
+        Graph validation provides:
+        - Structural plausibility (entity relationships)
+        - Temporal consistency with recent events
+        - Concrete alternative suggestions
+
+        RAG validation provides:
+        - Historical text similarity
+        - Narrative coherence
+        - Broader context
+
+        Args:
+            scenario_id: Scenario identifier
+            scenario: Scenario object
+
+        Returns:
+            Combined ValidationFeedback
+        """
+        # Get graph validation
+        graph_feedback = self.graph_validator.validate_scenario(scenario)
+
+        # Get RAG validation
+        rag_feedback = self._validate_with_rag(scenario_id, scenario)
+
+        # Combine confidences (weighted average)
+        # Graph validation is more precise, so weight it higher
+        combined_confidence = (
+            0.6 * graph_feedback.confidence_score +
+            0.4 * rag_feedback.confidence_score
+        )
+
+        # Combine validity (both must be valid)
+        combined_validity = graph_feedback.is_valid and rag_feedback.is_valid
+
+        # Merge patterns (graph patterns first for concreteness)
+        combined_patterns = (
+            graph_feedback.historical_patterns +
+            rag_feedback.historical_patterns
+        )[:5]  # Limit to top 5
+
+        # Merge contradictions (prioritize graph contradictions)
+        combined_contradictions = (
+            graph_feedback.contradictions +
+            rag_feedback.contradictions
+        )
+
+        # Merge suggestions (graph suggestions are more actionable)
+        combined_suggestions = (
+            graph_feedback.suggestions +
+            rag_feedback.suggestions
+        )[:3]  # Limit to top 3
+
+        return ValidationFeedback(
+            scenario_id=scenario_id,
+            is_valid=combined_validity,
+            confidence_score=combined_confidence,
+            historical_patterns=combined_patterns,
+            contradictions=combined_contradictions,
+            suggestions=combined_suggestions,
+        )
 
     def _validate_with_rag(self, scenario_id: str, scenario: Scenario) -> ValidationFeedback:
         """Validate scenario using RAG pipeline for historical grounding."""
