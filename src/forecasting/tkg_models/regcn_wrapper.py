@@ -407,7 +407,7 @@ class REGCNWrapper:
         Args:
             path: Path to checkpoint file
         """
-        checkpoint = torch.load(path, map_location=self.device)
+        checkpoint = torch.load(path, map_location=self.device, weights_only=False)
 
         self.embedding_dim = checkpoint['embedding_dim']
         self.num_layers = checkpoint['num_layers']
