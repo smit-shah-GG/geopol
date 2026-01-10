@@ -150,11 +150,20 @@ Be specific, grounded in current events, and maintain logical consistency."""
             metadata=data.get("metadata", {}),
         )
 
-        # Add additional scenarios
-        for scenario_id, scenario_data in data.get("scenarios", {}).items():
-            if scenario_id != root_scenario.scenario_id:
+        # Add additional scenarios - handle both array and dict formats
+        scenarios_data = data.get("scenarios", [])
+        if isinstance(scenarios_data, dict):
+            # Legacy dict format
+            for scenario_id, scenario_data in scenarios_data.items():
+                if scenario_id != root_scenario.scenario_id:
+                    scenario = self._parse_scenario(scenario_data)
+                    tree.scenarios[scenario_id] = scenario
+        elif isinstance(scenarios_data, list):
+            # New array format from Gemini schema
+            for scenario_data in scenarios_data:
                 scenario = self._parse_scenario(scenario_data)
-                tree.scenarios[scenario_id] = scenario
+                if scenario.scenario_id != root_scenario.scenario_id:
+                    tree.scenarios[scenario.scenario_id] = scenario
 
         return tree
 

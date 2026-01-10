@@ -191,8 +191,8 @@ def get_scenario_tree_schema() -> Dict:
             "question": {"type": "string"},
             "root_scenario": scenario_schema,
             "scenarios": {
-                "type": "object",
-                "additionalProperties": scenario_schema
+                "type": "array",
+                "items": scenario_schema
             },
             "metadata": {"type": "object"}
         },
