@@ -68,3 +68,7 @@ htmlcov/
 metrics/
 output/
 results/
+
+# ChromaDB and test data
+test_chroma_db/
+chroma_db/
