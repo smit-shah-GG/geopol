@@ -143,7 +143,13 @@ def get_scenario_schema() -> Dict:
                         "name": {"type": "string"},
                         "type": {"type": "string"},
                         "role": {"type": "string"},
-                        "attributes": {"type": "object"}
+                        "attributes": {
+                            "type": "object",
+                            "properties": {
+                                "category": {"type": "string"},
+                                "confidence": {"type": "number"}
+                            }
+                        }
                     },
                     "required": ["name", "type", "role"]
                 }
@@ -194,7 +200,14 @@ def get_scenario_tree_schema() -> Dict:
                 "type": "array",
                 "items": scenario_schema
             },
-            "metadata": {"type": "object"}
+            "metadata": {
+                "type": "object",
+                "properties": {
+                    "generated_at": {"type": "string"},
+                    "model": {"type": "string"},
+                    "context_count": {"type": "integer"}
+                }
+            }
         },
         "required": ["question", "root_scenario"]
     }
