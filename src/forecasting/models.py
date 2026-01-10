@@ -6,7 +6,7 @@ and forecasting outputs from the Gemini LLM.
 """
 
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -17,7 +17,7 @@ class Entity(BaseModel):
     name: str = Field(..., description="Name of the entity")
     type: str = Field(..., description="Type: COUNTRY, ORGANIZATION, PERSON, etc.")
     role: str = Field(..., description="Role in the scenario: ACTOR, TARGET, MEDIATOR, etc.")
-    attributes: Dict[str, str] = Field(default_factory=dict, description="Additional attributes")
+    attributes: Dict[str, Any] = Field(default_factory=dict, description="Additional attributes")
 
 
 class TimelineEvent(BaseModel):
@@ -79,7 +79,7 @@ class ScenarioTree(BaseModel):
     question: str = Field(..., description="The forecasting question being answered")
     root_scenario: Scenario = Field(..., description="The root/initial scenario")
     scenarios: Dict[str, Scenario] = Field(default_factory=dict, description="All scenarios by ID")
-    metadata: Dict[str, str] = Field(default_factory=dict, description="Additional metadata")
+    metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
 
     def add_scenario(self, scenario: Scenario, parent_id: Optional[str] = None) -> None:
         """Add a scenario to the tree."""

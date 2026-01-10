@@ -153,7 +153,7 @@ Be specific, grounded in current events, and maintain logical consistency."""
         if "generated_at" not in metadata:
             metadata["generated_at"] = datetime.now().isoformat()
         if "model" not in metadata:
-            metadata["model"] = getattr(self.client, "model", "gemini-1.5-flash")
+            metadata["model"] = getattr(self.client, "model_name", "gemini-3-pro-preview")
         if "context_count" not in metadata:
             metadata["context_count"] = 0
 

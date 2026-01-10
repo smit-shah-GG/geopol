@@ -49,7 +49,23 @@
 
 ## Resolved Issues
 
-[None yet]
+### UAT-001: Gemini API rejects additionalProperties in JSON schema ✅
+**Resolved:** 2026-01-10
+**Fix:** Removed additionalProperties, converted to array format, added meaningful properties to preserve functionality
+
+### UAT-002: Entity extraction tests failing in ensemble ✅
+**Resolved:** 2026-01-10
+**Fix:** Fixed mock fixture to include scenarios in dict, enabling proper entity extraction
+
+### UAT-003: Environment variable not loading from .env automatically ✅
+**Resolved:** 2026-01-10
+**Fix:** Added python-dotenv and load_dotenv() call in forecast.py
+
+### Additional fixes applied:
+- **Temperature scaling formula:** Fixed inverted formula from c^(1/T) to c^T
+- **RAG validation test:** Fixed test to access nested validation_methods structure
+- **Type mismatch:** Changed Dict[str, str] to Dict[str, Any] for flexible types
+- **Model upgrade:** Updated to Gemini 3.0 Pro (gemini-3-pro-preview)
 
 ---
 

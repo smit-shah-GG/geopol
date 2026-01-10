@@ -36,14 +36,14 @@ class GeminiClient:
     Client for interacting with Gemini API with built-in rate limiting and retry logic.
 
     Attributes:
-        model_name: The Gemini model to use (default: gemini-2.0-flash-exp)
+        model_name: The Gemini model to use (default: gemini-3-pro-preview / Gemini 3.0 Pro)
         max_rpm: Maximum requests per minute (default: 5 for free tier)
     """
 
     def __init__(
         self,
         api_key: Optional[str] = None,
-        model_name: str = "models/gemini-2.0-flash-exp",
+        model_name: str = "models/gemini-3-pro-preview",  # Gemini 3.0 Pro
         max_rpm: int = 5,
     ):
         """

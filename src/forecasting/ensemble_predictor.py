@@ -492,7 +492,7 @@ class EnsemblePredictor:
         """
         Apply temperature scaling to calibrate confidence.
 
-        Formula: c' = c^(1/T)
+        Formula: c' = c^T
         - T < 1: Sharpen (increase confidence)
         - T = 1: No change
         - T > 1: Smooth (decrease confidence)
@@ -507,7 +507,7 @@ class EnsemblePredictor:
             return confidence
 
         # Apply power scaling
-        calibrated = confidence ** (1.0 / self.temperature)
+        calibrated = confidence ** self.temperature
 
         return calibrated
 

@@ -116,8 +116,12 @@ class TestRAGIntegration:
         # Mock GeminiClient
         mock_client = Mock()
 
-        # Create orchestrator without RAG
-        orchestrator = ReasoningOrchestrator(client=mock_client, enable_rag=False)
+        # Create orchestrator without RAG or Graph validation
+        orchestrator = ReasoningOrchestrator(
+            client=mock_client,
+            enable_rag=False,
+            enable_graph_validation=False
+        )
 
         # Create test scenario
         scenario = Scenario(
@@ -147,7 +151,7 @@ class TestRAGIntegration:
         assert feedback_list[0].scenario_id == 'test_2'
         assert feedback_list[0].is_valid == True  # probability > 0.3
         assert 'validate_scenarios' in state.step_outputs
-        assert state.step_outputs['validate_scenarios']['output']['validation_method'] == 'Mock'
+        assert 'Mock' in state.step_outputs['validate_scenarios']['output']['validation_methods']
 
     def test_index_graph_patterns(self):
         """Test indexing graph patterns."""

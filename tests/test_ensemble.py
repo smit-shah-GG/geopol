@@ -31,6 +31,16 @@ def mock_llm_orchestrator():
     orchestrator = Mock()
 
     # Default forecast
+    test_scenario = Scenario(
+        scenario_id="test",
+        description="Test scenario",
+        probability=0.7,
+        entities=[
+            Entity(name="Russia", type="COUNTRY", role="ACTOR"),
+            Entity(name="Ukraine", type="COUNTRY", role="TARGET"),
+        ],
+    )
+
     forecast = ForecastOutput(
         question="Test question",
         prediction="Test prediction",
@@ -38,16 +48,8 @@ def mock_llm_orchestrator():
         confidence=0.8,
         scenario_tree=ScenarioTree(
             question="Test question",
-            root_scenario=Scenario(
-                scenario_id="test",
-                description="Test scenario",
-                probability=0.7,
-                entities=[
-                    Entity(name="Russia", type="COUNTRY", role="ACTOR"),
-                    Entity(name="Ukraine", type="COUNTRY", role="TARGET"),
-                ],
-            ),
-            scenarios={},
+            root_scenario=test_scenario,
+            scenarios={"test": test_scenario},  # Include scenario in dict
         ),
         selected_scenario_ids=["test"],
         reasoning_summary="Test reasoning",
