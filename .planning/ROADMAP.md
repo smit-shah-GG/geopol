@@ -52,12 +52,13 @@ Plans:
 **Depends on**: Phase 2
 **Research**: Likely (algorithm selection)
 **Research topics**: CPU-optimized implementations of RE-GCN/TiRGN, smaller LLMs (7B max) for reasoning, ensemble combination strategies, prompt engineering for geopolitical reasoning
-**Plans**: 3 plans
+**Plans**: 4 plans
 
 Plans:
-- [ ] 03-01: TKG prediction algorithms (RE-GCN/TiRGN) implementation
-- [ ] 03-02: LLM reasoning component with RAG for scenario generation
-- [ ] 03-03: Ensemble layer combining TKG and LLM predictions
+- [x] 03-01: Gemini API integration with multi-step reasoning (COMPLETE 2026-01-10)
+- [ ] 03-02: RAG pipeline for historical grounding
+- [ ] 03-03: TKG algorithms (RE-GCN) integration
+- [ ] 03-04: Ensemble layer and CLI interface
 
 ### Phase 4: Calibration & Evaluation
 **Goal**: Transform raw predictions into calibrated probabilities with explainable reasoning paths
@@ -78,7 +79,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 |-------|----------------|--------|-----------|
 | 1. Data Foundation | 3/3 | Complete | 2026-01-09 |
 | 2. Knowledge Graph Engine | 3/3 | Complete | 2026-01-09 |
-| 3. Hybrid Forecasting | 0/3 | Not started | - |
+| 3. Hybrid Forecasting | 1/4 | In progress | - |
 | 4. Calibration & Evaluation | 0/2 | Not started | - |
 
 ## Technical Context
