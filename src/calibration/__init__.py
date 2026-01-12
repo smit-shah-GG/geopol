@@ -11,9 +11,13 @@ The calibration system transforms raw model predictions into calibrated probabil
 that accurately reflect true outcome likelihoods, enabling trustworthy confidence scores.
 """
 
-from src.calibration.prediction_store import PredictionStore, Prediction
+from src.calibration.explainer import CalibrationExplainer
+from src.calibration.isotonic_calibrator import IsotonicCalibrator
+from src.calibration.prediction_store import Prediction, PredictionStore
 
 __all__ = [
     "PredictionStore",
     "Prediction",
+    "IsotonicCalibrator",
+    "CalibrationExplainer",
 ]
