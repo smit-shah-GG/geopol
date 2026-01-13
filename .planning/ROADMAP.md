@@ -19,7 +19,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Data Foundation** - GDELT API integration with sampling strategy for conflicts/diplomatic events
 - [x] **Phase 2: Knowledge Graph Engine** - Temporal knowledge graph construction with vector embeddings
 - [x] **Phase 3: Hybrid Forecasting** - TKG algorithms (RE-GCN/TiRGN) combined with LLM reasoning
-- [ ] **Phase 4: Calibration & Evaluation** - Brier score optimization with explainable reasoning chains
+- [x] **Phase 4: Calibration & Evaluation** - Brier score optimization with explainable reasoning chains
 
 ## Phase Details
 
@@ -61,15 +61,17 @@ Plans:
 - [x] 03-03: TKG algorithms (RE-GCN) integration (COMPLETE 2026-01-10)
 - [x] 03-04: Ensemble layer and CLI interface (COMPLETE 2026-01-10)
 
-### Phase 4: Calibration & Evaluation
+### Phase 4: Calibration & Evaluation ✅
 **Goal**: Transform raw predictions into calibrated probabilities with explainable reasoning paths
 **Depends on**: Phase 3
-**Research**: Unlikely (established patterns from geopol.md reference)
-**Plans**: 2 plans
+**Research**: Completed
+**Status**: COMPLETE (2/2 plans executed)
+**Accomplishments**: Isotonic calibration, temperature scaling, Brier scoring, human baseline comparison
+**Plans**: 2 plans (all complete)
 
 Plans:
-- [ ] 04-01: Probability calibration with Brier score optimization
-- [ ] 04-02: Evaluation framework using 2023-2024 events with explainability metrics
+- [x] 04-01: Probability calibration with Brier score optimization (COMPLETE 2026-01-13)
+- [x] 04-02: Evaluation framework using 2023-2024 events with explainability metrics (COMPLETE 2026-01-13)
 
 ## Progress
 
@@ -81,7 +83,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | 1. Data Foundation | 3/3 | Complete | 2026-01-09 |
 | 2. Knowledge Graph Engine | 3/3 | Complete | 2026-01-09 |
 | 3. Hybrid Forecasting | 4/4 | Complete | 2026-01-10 |
-| 4. Calibration & Evaluation | 1/2 | In progress | - |
+| 4. Calibration & Evaluation | 2/2 | Complete | 2026-01-13 |
 
 ## Technical Context
 
