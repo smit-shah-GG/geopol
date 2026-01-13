@@ -290,6 +290,7 @@ Environment Variables:
         # Generate forecast
         if args.verbose:
             print(f"Forecasting: {args.question}", file=sys.stderr)
+            print("Starting forecast processing...", file=sys.stderr)
             print("", file=sys.stderr)
 
         forecast = engine.forecast(

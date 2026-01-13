@@ -146,7 +146,10 @@ class EnsemblePredictor:
             category = self._infer_category(question)
 
         # Get LLM prediction
+        import sys
+        print("  Calling LLM (Gemini API)...", file=sys.stderr)
         llm_pred = self._get_llm_prediction(question, context)
+        print(f"  LLM prediction received (p={llm_pred.probability:.2f})", file=sys.stderr)
 
         # Extract entities from LLM for TKG query if not provided
         if llm_pred.available and not all([entity1, relation, entity2]):
@@ -155,7 +158,9 @@ class EnsemblePredictor:
             )
 
         # Get TKG prediction
+        print("  Getting TKG prediction...", file=sys.stderr)
         tkg_pred = self._get_tkg_prediction(entity1, relation, entity2)
+        print(f"  TKG prediction: {'available' if tkg_pred.available else 'not available'}", file=sys.stderr)
 
         # Combine predictions with temperature scaling
         final_prob, final_conf, raw_conf, calibrated_conf, temp_used = self._combine_predictions(

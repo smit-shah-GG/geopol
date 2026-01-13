@@ -162,9 +162,18 @@ class ForecastEngine:
 
         # Step 1: Retrieve historical context (if RAG enabled)
         if self.rag_pipeline and use_cache:
+            if verbose:
+                import sys
+                print("Retrieving historical context from RAG...", file=sys.stderr)
             context = self._retrieve_historical_context(question, context or [])
+            if verbose:
+                print(f"  Retrieved {len(context)} context items", file=sys.stderr)
 
         # Step 2: Generate ensemble forecast
+        if verbose:
+            import sys
+            print("Generating ensemble forecast...", file=sys.stderr)
+
         ensemble_pred, forecast = self.ensemble_predictor.predict(
             question=question, context=context
         )
