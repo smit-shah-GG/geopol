@@ -14,10 +14,15 @@ from .brier_scorer import BrierScorer
 from .provisional_scorer import ProvisionalScorer
 from .calibration_metrics import CalibrationMetrics
 from .drift_detector import DriftDetector
+from .benchmark import Benchmark, HumanBaseline
+from .evaluator import Evaluator
 
 __all__ = [
     "BrierScorer",
     "ProvisionalScorer",
     "CalibrationMetrics",
     "DriftDetector",
+    "Benchmark",
+    "HumanBaseline",
+    "Evaluator",
 ]
