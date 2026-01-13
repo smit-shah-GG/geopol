@@ -20,6 +20,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 2: Knowledge Graph Engine** - Temporal knowledge graph construction with vector embeddings
 - [x] **Phase 3: Hybrid Forecasting** - TKG algorithms (RE-GCN/TiRGN) combined with LLM reasoning
 - [x] **Phase 4: Calibration & Evaluation** - Brier score optimization with explainable reasoning chains
+- [ ] **Phase 5: TKG Training** - TKG predictor training with RE-GCN implementation and GDELT data pipeline
 
 ## Phase Details
 
@@ -73,10 +74,28 @@ Plans:
 - [x] 04-01: Probability calibration with Brier score optimization (COMPLETE 2026-01-13)
 - [x] 04-02: Evaluation framework using 2023-2024 events with explainability metrics (COMPLETE 2026-01-13)
 
+### Phase 5: TKG Training
+**Goal**: Train the Temporal Knowledge Graph predictor with real GDELT data and implement RE-GCN for production use
+**Depends on**: Phase 4
+**Research**: Likely (RE-GCN architecture, DGL optional, training data requirements)
+**Research topics**: RE-GCN implementation without DGL, frequency baseline improvements, historical GDELT data collection, training pipeline architecture
+**Plans**: 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 5 to break down)
+
+**Details:**
+The TKG predictor is currently not trained, limiting the system to LLM-only predictions. This phase will:
+- Collect historical GDELT event data (30-90 days)
+- Build temporal knowledge graphs from event sequences
+- Implement RE-GCN or frequency-based predictor
+- Train on historical patterns with evaluation metrics
+- Integrate trained model into ensemble predictions
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4
+Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -84,6 +103,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | 2. Knowledge Graph Engine | 3/3 | Complete | 2026-01-09 |
 | 3. Hybrid Forecasting | 4/4 | Complete | 2026-01-10 |
 | 4. Calibration & Evaluation | 2/2 | Complete | 2026-01-13 |
+| 5. TKG Training | 0/? | Not started | - |
 
 ## Technical Context
 

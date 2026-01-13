@@ -9,12 +9,12 @@ See: .planning/PROJECT.md (updated 2026-01-09)
 
 ## Current Position
 
-Phase: 4 of 4 (Calibration & Evaluation)
-Plan: 2 of 2 in current phase
-Status: Phase Complete
-Last activity: 2026-01-13 — Completed 04-02-PLAN.md (Evaluation Framework)
+Phase: 5 of 5 (TKG Training)
+Plan: Not yet planned
+Status: Ready to plan
+Last activity: 2026-01-13 — Added Phase 5 for TKG training
 
-Progress: ▓▓▓▓▓▓▓▓▓▓▓▓ 100% (12/12 plans completed)
+Progress: ▓▓▓▓▓▓▓▓▓▓▓▓ 100% of executed plans (12/12 completed, Phase 5 pending)
 
 ## Performance Metrics
 
@@ -67,12 +67,16 @@ None yet.
 
 None yet.
 
+### Roadmap Evolution
+
+- Phase 5 added (2026-01-13): TKG predictor training with RE-GCN implementation and GDELT data pipeline
+
 ## Session Continuity
 
 Last session: 2026-01-13
 Stopped at: Completed 04-02-PLAN.md (Evaluation Framework)
 Resume file: None
-Next: Phase 4 Complete - All phases finished
+Next: Phase 5 - TKG predictor training and GDELT data pipeline
 
 ## Technical Debt / Future Work
 
