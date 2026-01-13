@@ -12,8 +12,12 @@ Provides:
 
 from .brier_scorer import BrierScorer
 from .provisional_scorer import ProvisionalScorer
+from .calibration_metrics import CalibrationMetrics
+from .drift_detector import DriftDetector
 
 __all__ = [
     "BrierScorer",
     "ProvisionalScorer",
+    "CalibrationMetrics",
+    "DriftDetector",
 ]
