@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-01-09)
 
 **Core value:** Explainability — every forecast must provide clear, traceable reasoning paths
-**Current focus:** Phase 3 — Hybrid Forecasting System
+**Current focus:** Phase 4 — Calibration & Evaluation
 
 ## Current Position
 
-Phase: 3 of 4 (Hybrid Forecasting System)
-Plan: 4 of 4 in current phase
-Status: Phase Complete
-Last activity: 2026-01-10 — Completed 03-04-PLAN.md (Phase 3 complete!)
+Phase: 4 of 4 (Calibration & Evaluation)
+Plan: 1 of 2 in current phase
+Status: In Progress
+Last activity: 2026-01-13 — Completed 04-01-PLAN.md (Baseline Calibration System)
 
-Progress: ▓▓▓▓▓▓▓▓▓▓ 83% (10/12 plans completed)
+Progress: ▓▓▓▓▓▓▓▓▓▓▓ 92% (11/12 plans completed)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 10
-- Average duration: 32 minutes
-- Total execution time: 5.3 hours
+- Total plans completed: 11
+- Average duration: 30 minutes
+- Total execution time: 5.8 hours
 
 **By Phase:**
 
@@ -30,10 +30,11 @@ Progress: ▓▓▓▓▓▓▓▓▓▓ 83% (10/12 plans completed)
 | 01-data-foundation | 3 | 30min | 10min |
 | 02-knowledge-graph | 3 | 180min | 60min |
 | 03-hybrid-forecasting | 4 | 95min | 24min |
+| 04-calibration-evaluation | 1 | 30min | 30min |
 
 **Recent Trend:**
-- Last 3 plans: 03-02 (15min), 03-03 (52min), 03-04 (14min)
-- Trend: Quick finish with CLI integration after complex TKG work
+- Last 3 plans: 03-03 (52min), 03-04 (14min), 04-01 (30min)
+- Trend: Steady pace with well-structured calibration system
 
 ## Accumulated Context
 
@@ -53,6 +54,10 @@ Recent decisions affecting current work:
 - Ensemble weights: 0.6 LLM, 0.4 TKG (configurable) (03-04)
 - Temperature scaling for confidence calibration (03-04)
 - CLI with JSON/text/summary output formats (03-04)
+- SQLite for lightweight prediction tracking (04-01)
+- Per-category calibration curves (conflict/diplomatic/economic) (04-01)
+- Isotonic + temperature scaling complementary approach (04-01)
+- Keyword-based category inference for simplicity (04-01)
 
 ### Deferred Issues
 
@@ -64,13 +69,15 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-01-10 19:00
-Stopped at: Completed Phase 3! Ready for Phase 4 (Calibration & Evaluation)
+Last session: 2026-01-13
+Stopped at: Completed 04-01-PLAN.md (Baseline Calibration System)
 Resume file: None
+Next: Execute 04-02-PLAN.md (Evaluation Framework)
 
 ## Technical Debt / Future Work
 
 1. **UAT-004:** Fix temporal index bisect operations (minor, non-blocking)
 2. **Scalability:** Partition graph for distributed processing > 1M events
-3. **Calibration:** Ground-truth confidence calibration when evaluation data available
-4. **DGL Optional:** RE-GCN works without DGL using frequency baseline (03-03)
+3. **DGL Optional:** RE-GCN works without DGL using frequency baseline (03-03)
+
+Note: Item #3 (Calibration) completed in 04-01. Ground-truth calibration now available via isotonic regression + temperature scaling.

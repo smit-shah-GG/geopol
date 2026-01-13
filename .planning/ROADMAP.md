@@ -80,8 +80,8 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 |-------|----------------|--------|-----------|
 | 1. Data Foundation | 3/3 | Complete | 2026-01-09 |
 | 2. Knowledge Graph Engine | 3/3 | Complete | 2026-01-09 |
-| 3. Hybrid Forecasting | 1/4 | In progress | - |
-| 4. Calibration & Evaluation | 0/2 | Not started | - |
+| 3. Hybrid Forecasting | 4/4 | Complete | 2026-01-10 |
+| 4. Calibration & Evaluation | 1/2 | In progress | - |
 
 ## Technical Context
 
