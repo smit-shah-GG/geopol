@@ -19,7 +19,6 @@ from typing import Dict, List, Optional, Tuple
 import matplotlib.pyplot as plt
 import numpy as np
 from netcal.metrics import ECE, ACE, MCE
-from netcal.presentation import ReliabilityDiagram
 
 logger = logging.getLogger(__name__)
 
@@ -173,20 +172,50 @@ class CalibrationMetrics:
         y_true = np.array([p["outcome"] for p in resolved])
         y_prob = np.array([p.get(prob_key, p["raw_probability"]) for p in resolved])
 
-        # netcal format
-        y_prob_binary = np.column_stack([1 - y_prob, y_prob])
-
-        # Create diagram
-        diagram = ReliabilityDiagram(bins=self.n_bins)
-
         # Set output path
         if output_path is None:
             output_dir = Path("./outputs")
             output_dir.mkdir(exist_ok=True)
             output_path = str(output_dir / "reliability_diagram.png")
 
-        # Generate plot
-        fig = diagram.plot(y_prob_binary, y_true, title_suffix=title or "")
+        # Create our own reliability diagram
+        fig, ax = plt.subplots(figsize=(8, 8))
+
+        # Calculate bin statistics
+        bin_edges = np.linspace(0, 1, self.n_bins + 1)
+        bin_centers = []
+        bin_accs = []
+        bin_counts = []
+
+        for i in range(self.n_bins):
+            bin_lower = bin_edges[i]
+            bin_upper = bin_edges[i + 1]
+
+            # Find predictions in bin
+            in_bin = (y_prob >= bin_lower) & (y_prob < bin_upper)
+            if i == self.n_bins - 1:  # Include upper boundary for last bin
+                in_bin = (y_prob >= bin_lower) & (y_prob <= bin_upper)
+
+            if np.sum(in_bin) > 0:
+                bin_centers.append((bin_lower + bin_upper) / 2)
+                bin_accs.append(np.mean(y_true[in_bin]))
+                bin_counts.append(np.sum(in_bin))
+
+        # Plot reliability curve
+        if bin_centers:
+            ax.plot(bin_centers, bin_accs, 'o-', label='Model', linewidth=2, markersize=8)
+
+        # Plot perfect calibration line
+        ax.plot([0, 1], [0, 1], 'k--', label='Perfect Calibration', linewidth=1.5)
+
+        # Formatting
+        ax.set_xlabel('Predicted Probability', fontsize=12)
+        ax.set_ylabel('Observed Frequency', fontsize=12)
+        ax.set_title(f'Reliability Diagram {title or ""}', fontsize=14)
+        ax.legend(fontsize=10)
+        ax.grid(True, alpha=0.3)
+        ax.set_xlim([0, 1])
+        ax.set_ylim([0, 1])
 
         # Save
         plt.savefig(output_path, dpi=150, bbox_inches="tight")

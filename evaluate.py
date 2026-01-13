@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env -S uv run python
 """
 Evaluation CLI for geopolitical forecasting system.
 
