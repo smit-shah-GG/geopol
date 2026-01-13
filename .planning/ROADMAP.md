@@ -77,12 +77,15 @@ Plans:
 ### Phase 5: TKG Training
 **Goal**: Train the Temporal Knowledge Graph predictor with real GDELT data and implement RE-GCN for production use
 **Depends on**: Phase 4
-**Research**: Likely (RE-GCN architecture, DGL optional, training data requirements)
-**Research topics**: RE-GCN implementation without DGL, frequency baseline improvements, historical GDELT data collection, training pipeline architecture
-**Plans**: 0 plans
+**Research**: Completed
+**Status**: In progress (1/4 plans executed)
+**Plans**: 4 plans
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 5 to break down)
+- [x] 05-01: GDELT data collection pipeline (COMPLETE 2026-01-13)
+- [ ] 05-02: TKG construction from events
+- [ ] 05-03: RE-GCN training implementation
+- [ ] 05-04: Integration and evaluation
 
 **Details:**
 The TKG predictor is currently not trained, limiting the system to LLM-only predictions. This phase will:
@@ -103,7 +106,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | 2. Knowledge Graph Engine | 3/3 | Complete | 2026-01-09 |
 | 3. Hybrid Forecasting | 4/4 | Complete | 2026-01-10 |
 | 4. Calibration & Evaluation | 2/2 | Complete | 2026-01-13 |
-| 5. TKG Training | 0/? | Not started | - |
+| 5. TKG Training | 1/4 | In progress | - |
 
 ## Technical Context
 

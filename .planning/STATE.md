@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-01-09)
 
 **Core value:** Explainability — every forecast must provide clear, traceable reasoning paths
-**Current focus:** Phase 4 — Calibration & Evaluation
+**Current focus:** Phase 5 — TKG Training
 
 ## Current Position
 
 Phase: 5 of 5 (TKG Training)
-Plan: Not yet planned
-Status: Ready to plan
-Last activity: 2026-01-13 — Added Phase 5 for TKG training
+Plan: 1 of 4 in current phase
+Status: In progress
+Last activity: 2026-01-13 — Completed 05-01-PLAN.md (GDELT Data Collection)
 
-Progress: ▓▓▓▓▓▓▓▓▓▓▓▓ 100% of executed plans (12/12 completed, Phase 5 pending)
+Progress: █████████████░░░ 81% (13/16 plans complete)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 12
-- Average duration: 28 minutes
-- Total execution time: 5.5 hours
+- Total plans completed: 13
+- Average duration: 27 minutes
+- Total execution time: 5.7 hours
 
 **By Phase:**
 
@@ -31,10 +31,11 @@ Progress: ▓▓▓▓▓▓▓▓▓▓▓▓ 100% of executed plans (12/12 com
 | 02-knowledge-graph | 3 | 180min | 60min |
 | 03-hybrid-forecasting | 4 | 95min | 24min |
 | 04-calibration-evaluation | 2 | 44min | 22min |
+| 05-tkg-training | 1/4 | 12min | 12min |
 
 **Recent Trend:**
-- Last 3 plans: 03-04 (14min), 04-01 (30min), 04-02 (14min)
-- Trend: Consistent pace, Phase 4 complete with full evaluation framework
+- Last 3 plans: 04-01 (30min), 04-02 (14min), 05-01 (12min)
+- Trend: Consistent pace, GDELT data pipeline established
 
 ## Accumulated Context
 
@@ -58,6 +59,9 @@ Recent decisions affecting current work:
 - Per-category calibration curves (conflict/diplomatic/economic) (04-01)
 - Isotonic + temperature scaling complementary approach (04-01)
 - Keyword-based category inference for simplicity (04-01)
+- All QuadClasses (1-4) included for comprehensive pattern learning (05-01)
+- Parquet format for efficient TKG data loading (05-01)
+- Composite relation format: EventCode_QuadClass (05-01)
 
 ### Deferred Issues
 
@@ -74,14 +78,14 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-01-13
-Stopped at: Completed 04-02-PLAN.md (Evaluation Framework)
+Stopped at: Completed 05-01-PLAN.md (GDELT Data Collection)
 Resume file: None
-Next: Phase 5 - TKG predictor training and GDELT data pipeline
+Next: 05-02-PLAN.md (TKG Construction)
 
 ## Technical Debt / Future Work
 
-1. **UAT-004:** Fix temporal index bisect operations (minor, non-blocking)
+1. **UAT-005:** Fix NetworkX shortest_path API (minor, non-blocking) — use `single_source_shortest_path` instead
 2. **Scalability:** Partition graph for distributed processing > 1M events
 3. **DGL Optional:** RE-GCN works without DGL using frequency baseline (03-03)
 
-Note: Item #3 (Calibration) completed in 04-01. Ground-truth calibration now available via isotonic regression + temperature scaling.
+Note: UAT-004 (temporal index bisect) resolved 2026-01-13. Ground-truth calibration available via isotonic regression + temperature scaling (04-01).
