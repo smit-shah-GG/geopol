@@ -43,10 +43,13 @@ class EnsemblePrediction:
 
     final_probability: float  # Ensemble probability
     final_confidence: float  # Calibrated confidence
+    raw_confidence: float  # Raw confidence before calibration
+    calibrated_confidence: float  # Confidence after temperature scaling
     llm_prediction: ComponentPrediction
     tkg_prediction: ComponentPrediction
     weights_used: Tuple[float, float]  # (llm_weight, tkg_weight)
-    temperature: float  # Temperature scaling factor
+    temperature: float  # Temperature scaling factor used
+    category: Optional[str] = None  # Event category for category-specific calibration
 
 
 class EnsemblePredictor:
@@ -73,6 +76,7 @@ class EnsemblePredictor:
         tkg_predictor: Optional[TKGPredictor] = None,
         alpha: float = 0.6,
         temperature: float = 1.0,
+        temperature_scaler=None,
     ):
         """
         Initialize ensemble predictor.
@@ -81,10 +85,12 @@ class EnsemblePredictor:
             llm_orchestrator: ReasoningOrchestrator instance
             tkg_predictor: TKGPredictor instance
             alpha: Weight for LLM (0.0-1.0), TKG gets (1-alpha)
-            temperature: Temperature for confidence calibration (>0)
+            temperature: Default temperature for confidence calibration (>0)
                         - T < 1: Sharpen (more confident)
                         - T = 1: No change
                         - T > 1: Smooth (less confident)
+            temperature_scaler: Optional TemperatureScaler instance for learned
+                               category-specific temperature scaling
 
         Raises:
             ValueError: If alpha not in [0, 1] or temperature <= 0
@@ -98,10 +104,12 @@ class EnsemblePredictor:
         self.tkg_predictor = tkg_predictor
         self.alpha = alpha
         self.temperature = temperature
+        self.temperature_scaler = temperature_scaler
 
         logger.info(
             f"Initialized ensemble with α={alpha:.2f} (LLM), "
-            f"β={1-alpha:.2f} (TKG), T={temperature:.2f}"
+            f"β={1-alpha:.2f} (TKG), T={temperature:.2f}, "
+            f"learned_scaling={'yes' if temperature_scaler else 'no'}"
         )
 
     def predict(
@@ -111,6 +119,7 @@ class EnsemblePredictor:
         entity1: Optional[str] = None,
         relation: Optional[str] = None,
         entity2: Optional[str] = None,
+        category: Optional[str] = None,
     ) -> Tuple[EnsemblePrediction, ForecastOutput]:
         """
         Generate ensemble forecast combining LLM and TKG predictions.
@@ -121,6 +130,8 @@ class EnsemblePredictor:
             entity1: Source entity for TKG query (extracted from LLM if None)
             relation: Relation type for TKG query (extracted from LLM if None)
             entity2: Target entity for TKG query (extracted from LLM if None)
+            category: Optional event category (conflict/diplomatic/economic) for
+                     category-specific temperature scaling. Auto-inferred if None.
 
         Returns:
             Tuple of:
@@ -130,6 +141,10 @@ class EnsemblePredictor:
         Note:
             If one component fails, falls back to other component with notification.
         """
+        # Infer category if not provided
+        if category is None:
+            category = self._infer_category(question)
+
         # Get LLM prediction
         llm_pred = self._get_llm_prediction(question, context)
 
@@ -142,17 +157,22 @@ class EnsemblePredictor:
         # Get TKG prediction
         tkg_pred = self._get_tkg_prediction(entity1, relation, entity2)
 
-        # Combine predictions
-        final_prob, final_conf = self._combine_predictions(llm_pred, tkg_pred)
+        # Combine predictions with temperature scaling
+        final_prob, final_conf, raw_conf, calibrated_conf, temp_used = self._combine_predictions(
+            llm_pred, tkg_pred, category
+        )
 
         # Create ensemble prediction metadata
         ensemble_pred = EnsemblePrediction(
             final_probability=final_prob,
             final_confidence=final_conf,
+            raw_confidence=raw_conf,
+            calibrated_confidence=calibrated_conf,
             llm_prediction=llm_pred,
             tkg_prediction=tkg_pred,
             weights_used=(self.alpha, 1 - self.alpha),
-            temperature=self.temperature,
+            temperature=temp_used,
+            category=category,
         )
 
         # Build full forecast output (use LLM's ForecastOutput as base)
@@ -311,6 +331,65 @@ class EnsemblePredictor:
                 error=str(e),
             )
 
+    def _infer_category(self, question: str) -> str:
+        """
+        Infer event category from question text.
+
+        Uses keyword matching to classify into:
+        - conflict: military, war, attack, escalation, etc.
+        - diplomatic: agreement, treaty, alliance, negotiation, etc.
+        - economic: trade, sanctions, GDP, inflation, etc.
+
+        Args:
+            question: Forecasting question
+
+        Returns:
+            Category string (conflict/diplomatic/economic), defaults to "conflict"
+        """
+        question_lower = question.lower()
+
+        # Conflict keywords
+        conflict_keywords = [
+            "conflict", "war", "military", "attack", "escalate", "escalation",
+            "hostilities", "combat", "strike", "invade", "invasion", "troops",
+            "battle", "violence", "militant", "armed", "offensive"
+        ]
+
+        # Diplomatic keywords
+        diplomatic_keywords = [
+            "diplomatic", "diplomacy", "agreement", "treaty", "alliance", "negotiate",
+            "negotiation", "summit", "talks", "dialogue", "recognition", "embassy",
+            "ambassador", "peace", "accord", "resolution", "mediate"
+        ]
+
+        # Economic keywords
+        economic_keywords = [
+            "economic", "economy", "trade", "sanction", "tariff", "gdp", "inflation",
+            "currency", "market", "export", "import", "investment", "financial",
+            "commercial", "business", "debt", "recession", "growth"
+        ]
+
+        # Count keyword matches
+        conflict_score = sum(1 for kw in conflict_keywords if kw in question_lower)
+        diplomatic_score = sum(1 for kw in diplomatic_keywords if kw in question_lower)
+        economic_score = sum(1 for kw in economic_keywords if kw in question_lower)
+
+        # Determine category (highest score wins)
+        if diplomatic_score > conflict_score and diplomatic_score > economic_score:
+            category = "diplomatic"
+        elif economic_score > conflict_score and economic_score > diplomatic_score:
+            category = "economic"
+        else:
+            # Default to conflict if tied or no strong matches
+            category = "conflict"
+
+        logger.debug(
+            f"Inferred category '{category}' from question "
+            f"(scores: conflict={conflict_score}, diplomatic={diplomatic_score}, economic={economic_score})"
+        )
+
+        return category
+
     def _extract_entities_from_llm(
         self, llm_pred: ComponentPrediction, question: str
     ) -> Tuple[Optional[str], Optional[str], Optional[str]]:
@@ -434,18 +513,25 @@ class EnsemblePredictor:
         self,
         llm_pred: ComponentPrediction,
         tkg_pred: ComponentPrediction,
-    ) -> Tuple[float, float]:
+        category: Optional[str] = None,
+    ) -> Tuple[float, float, float, float, float]:
         """
-        Combine LLM and TKG predictions using weighted voting.
+        Combine LLM and TKG predictions using weighted voting with temperature scaling.
 
         Implements:
         - Weighted average: P = α*P_LLM + (1-α)*P_TKG
         - Confidence combination: weighted by availability
-        - Temperature scaling for calibration
+        - Category-specific temperature scaling for calibration (if available)
         - Graceful degradation if one component unavailable
 
+        Args:
+            llm_pred: LLM component prediction
+            tkg_pred: TKG component prediction
+            category: Event category for category-specific temperature scaling
+
         Returns:
-            Tuple of (final_probability, final_confidence)
+            Tuple of (final_probability, final_confidence, raw_confidence,
+                     calibrated_confidence, temperature_used)
         """
         # Case 1: Both available - weighted average
         if llm_pred.available and tkg_pred.available:
@@ -479,14 +565,28 @@ class EnsemblePredictor:
                 f"TKG: {tkg_pred.error}"
             )
 
-        # Apply temperature scaling to confidence
-        calibrated_conf = self._apply_temperature_scaling(conf)
+        # Store raw confidence before temperature scaling
+        raw_conf = conf
+
+        # Apply temperature scaling to confidence (category-specific if available)
+        if self.temperature_scaler and category:
+            calibrated_conf = self.temperature_scaler.calibrate(conf, category)
+            temp_used = self.temperature_scaler.temperatures.get(category, self.temperature)
+            logger.debug(
+                f"Applied learned temperature scaling for {category}: "
+                f"T={temp_used:.3f}, raw_conf={raw_conf:.3f} -> cal_conf={calibrated_conf:.3f}"
+            )
+        else:
+            # Fallback to simple power-law temperature scaling
+            calibrated_conf = self._apply_temperature_scaling(conf)
+            temp_used = self.temperature
 
         # Ensure valid range
         prob = np.clip(prob, 0.0, 1.0)
+        raw_conf = np.clip(raw_conf, 0.0, 1.0)
         calibrated_conf = np.clip(calibrated_conf, 0.0, 1.0)
 
-        return float(prob), float(calibrated_conf)
+        return float(prob), float(calibrated_conf), float(raw_conf), float(calibrated_conf), float(temp_used)
 
     def _apply_temperature_scaling(self, confidence: float) -> float:
         """
@@ -516,7 +616,7 @@ class EnsemblePredictor:
         Build human-readable explanation of ensemble decision.
 
         Returns:
-            Explanation string showing component contributions
+            Explanation string showing component contributions and calibration
         """
         parts = []
 
@@ -536,12 +636,24 @@ class EnsemblePredictor:
         else:
             parts.append("Both components unavailable - returning uninformative prior")
 
-        # Final values
-        parts.append(
-            f"Final probability: {ensemble_pred.final_probability:.3f}, "
-            f"confidence: {ensemble_pred.final_confidence:.3f} "
-            f"(T={self.temperature:.2f})"
-        )
+        # Final values with calibration info
+        if abs(ensemble_pred.raw_confidence - ensemble_pred.calibrated_confidence) > 0.01:
+            # Significant calibration adjustment
+            adjustment_pct = (ensemble_pred.calibrated_confidence - ensemble_pred.raw_confidence) * 100
+            parts.append(
+                f"Final probability: {ensemble_pred.final_probability:.3f}, "
+                f"raw confidence: {ensemble_pred.raw_confidence:.3f}, "
+                f"calibrated confidence: {ensemble_pred.calibrated_confidence:.3f} "
+                f"({adjustment_pct:+.1f}%, T={ensemble_pred.temperature:.2f}, "
+                f"category={ensemble_pred.category})"
+            )
+        else:
+            # No significant adjustment
+            parts.append(
+                f"Final probability: {ensemble_pred.final_probability:.3f}, "
+                f"confidence: {ensemble_pred.final_confidence:.3f} "
+                f"(T={ensemble_pred.temperature:.2f})"
+            )
 
         return " ".join(parts)
 

@@ -14,10 +14,13 @@ that accurately reflect true outcome likelihoods, enabling trustworthy confidenc
 from src.calibration.explainer import CalibrationExplainer
 from src.calibration.isotonic_calibrator import IsotonicCalibrator
 from src.calibration.prediction_store import Prediction, PredictionStore
+from src.calibration.temperature_scaler import TemperatureScaler, probabilities_to_logits
 
 __all__ = [
     "PredictionStore",
     "Prediction",
     "IsotonicCalibrator",
     "CalibrationExplainer",
+    "TemperatureScaler",
+    "probabilities_to_logits",
 ]
