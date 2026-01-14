@@ -12,7 +12,7 @@ Verifies:
 import torch
 import numpy as np
 import pytest
-from rotate import RotatEModel, create_negative_samples
+from src.embeddings.rotate import RotatEModel, create_negative_samples
 
 
 class TestRotatEModel:

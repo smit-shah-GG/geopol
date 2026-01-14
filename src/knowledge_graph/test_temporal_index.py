@@ -74,6 +74,26 @@ class TestTemporalIndex:
         assert len(results) > 0
         # Should have edges from days 1, 2, 3
 
+    def test_edges_in_time_range_exact_timestamp_match(self, index):
+        """Test time-range query when search timestamp exactly matches an event.
+
+        Regression test for UAT-004: bisect operations must use type-consistent
+        sentinels to avoid TypeError when comparing string nodes with integers.
+        """
+        base_date = datetime(2024, 1, 1)
+        # Use exact timestamp that exists in the index
+        exact_timestamp = (base_date + timedelta(days=1)).isoformat() + 'Z'
+
+        # This should NOT raise TypeError: '<' not supported between 'str' and 'int'
+        results = index.edges_in_time_range(exact_timestamp, exact_timestamp)
+
+        # Should find the USA-CHN event on day 1
+        assert len(results) >= 1
+        # Verify we got valid results (not empty due to off-by-one)
+        for u, v, key in results:
+            assert isinstance(u, str)
+            assert isinstance(v, str)
+
     def test_time_range_query_performance(self, index):
         """Test that time-range queries are fast (< 10ms)."""
         base_date = datetime(2024, 1, 1)

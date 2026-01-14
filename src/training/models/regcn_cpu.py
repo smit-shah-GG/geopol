@@ -360,11 +360,12 @@ class REGCN(nn.Module):
 
         # GRU for temporal evolution
         # Takes aggregated embeddings, outputs evolved embeddings
+        # Not using batch_first for easier entity processing
         self.gru = nn.GRU(
             input_size=embedding_dim,
             hidden_size=embedding_dim,
             num_layers=1,
-            batch_first=True,
+            batch_first=False,  # Input: (seq_len, batch, input_size)
         )
 
         # ConvTransE decoder
@@ -440,8 +441,9 @@ class REGCN(nn.Module):
         # Start with initial embeddings
         h = self.entity_embeddings.weight  # (num_entities, embedding_dim)
 
-        # GRU hidden state (1, num_entities, embedding_dim)
-        gru_hidden = h.unsqueeze(0)
+        # GRU hidden state: (num_layers=1, num_entities_as_batch, hidden_size)
+        # Each entity is treated as a separate sequence element in the batch
+        gru_hidden = h.unsqueeze(0)  # (1, num_entities, embedding_dim)
 
         for edge_index, edge_type in snapshots:
             # Add inverse edges for bidirectional aggregation
@@ -455,12 +457,14 @@ class REGCN(nn.Module):
                 x = self.dropout(x)
 
             # GRU step: update hidden state based on aggregated info
-            # Input: (1, num_entities, embedding_dim) - treating entities as batch
-            gru_input = x.unsqueeze(0)
+            # With batch_first=False:
+            #   Input shape: (seq_len=1, batch=num_entities, input_size=embedding_dim)
+            #   Hidden shape: (num_layers=1, batch=num_entities, hidden_size=embedding_dim)
+            gru_input = x.unsqueeze(0)  # (1, num_entities, embedding_dim)
             _, gru_hidden = self.gru(gru_input, gru_hidden)
 
             # Evolved embeddings for next timestep
-            h = gru_hidden.squeeze(0)
+            h = gru_hidden.squeeze(0)  # (num_entities, embedding_dim)
 
         return h
 

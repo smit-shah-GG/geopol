@@ -3,9 +3,25 @@
 **Tested:** 2026-01-09
 **Source:** .planning/phases/02-knowledge-graph-engine/02-01-SUMMARY.md
 **Tester:** User via /gsd:verify-work
-**Last Updated:** 2026-01-09 (added UAT-004)
+**Last Updated:** 2026-01-13 (resolved UAT-004, added UAT-005)
 
 ## Open Issues
+
+### UAT-005: NetworkX shortest_path API incompatibility
+
+**Discovered:** 2026-01-13
+**Phase/Plan:** 02-01
+**Severity:** Minor (non-blocking)
+**Feature:** Shortest path queries
+**Description:** The `shortest_path` method uses `cutoff` parameter which doesn't exist in `nx.shortest_path`
+**Location:** `src/knowledge_graph/temporal_index.py:233`
+**Expected:** `nx.shortest_path(G, source, target, cutoff=k)` should limit path length
+**Actual:** `TypeError: shortest_path() got an unexpected keyword argument 'cutoff'`
+**Impact:** `shortest_path` method unusable; not currently used in critical path
+**Fix:** Use `nx.single_source_shortest_path(G, source, cutoff=k)` then filter for target
+**Status:** Deferred - Non-blocking, can be fixed in future maintenance
+
+## Resolved Issues
 
 ### UAT-004: Temporal index bisect operations mix types incorrectly
 
@@ -17,15 +33,9 @@
 **Location:** `src/knowledge_graph/temporal_index.py` lines 90-91
 **Expected:** Binary search should work with consistent types for comparison
 **Actual:** TypeError: '<' not supported between instances of 'str' and 'int'
-**Impact:** Method fails when called directly, but core functionality works with manual filtering
-**Workaround:** Use manual list comprehension filtering instead of bisect operations
-**Repro:**
-1. Create a temporal index from a graph
-2. Call `index.edges_in_time_range('2024-01-15T00:00:00Z', '2024-01-17T00:00:00Z')`
-3. Fails with TypeError at bisect_left operation
-**Status:** Deferred - Non-blocking, can be fixed in future maintenance
-
-## Resolved Issues
+**Root Cause:** Type hint claimed `List[Tuple[str, int, int, int]]` but actual data was `List[Tuple[str, str, str, int]]`. Bisect search used integer placeholders `(start_date, 0, 0, 0)` that couldn't compare with string node names when timestamps collided.
+**Fix:** Changed bisect sentinels to type-consistent values: `(start_date, '', '', 0)` and `(end_date, '~', '~', 2**31)`. Fixed type hint. Added regression test `test_edges_in_time_range_exact_timestamp_match`.
+**Resolved:** 2026-01-13
 
 ### UAT-001: Import paths are incorrect throughout the codebase
 

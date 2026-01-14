@@ -1,11 +1,10 @@
 """
 Vector embedding module for temporal knowledge graphs.
 
-Implements RotatE and HyTE embedding models for entity/relation representation.
+Implements RotatE embedding model for entity/relation representation.
+HyTE and trainer modules planned for Phase 5.
 """
 
 from .rotate import RotatEModel
-from .hyte import HyTEModel
-from .trainer import EmbeddingTrainer
 
-__all__ = ["RotatEModel", "HyTEModel", "EmbeddingTrainer"]
+__all__ = ["RotatEModel"]

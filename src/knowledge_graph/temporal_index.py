@@ -35,7 +35,8 @@ class TemporalIndex:
             graph: NetworkX MultiDiGraph to index
         """
         self.graph = graph
-        self.timestamp_index: List[Tuple[str, int, int, int]] = []  # (timestamp, u, v, key)
+        # (timestamp, source_node, target_node, edge_key) - nodes are strings, key is int
+        self.timestamp_index: List[Tuple[str, str, str, int]] = []
         self.actor_pair_index: Dict[Tuple[int, int], List[Tuple[int, str]]] = {}  # (u, v) -> [(key, timestamp)]
         self.quadclass_views: Dict[int, List[Tuple[int, int, int]]] = {1: [], 2: [], 3: [], 4: []}
 
@@ -73,7 +74,7 @@ class TemporalIndex:
             f"{len(self.actor_pair_index)} actor pairs"
         )
 
-    def edges_in_time_range(self, start_date: str, end_date: str) -> List[Tuple[int, int, int]]:
+    def edges_in_time_range(self, start_date: str, end_date: str) -> List[Tuple[str, str, int]]:
         """
         Get edges within time range using binary search.
 
@@ -84,11 +85,12 @@ class TemporalIndex:
             end_date: ISO format end (YYYY-MM-DDT23:59:59Z)
 
         Returns:
-            List of (u, v, key) tuples
+            List of (source, target, key) tuples
         """
-        # Binary search for range
-        left_idx = bisect_left(self.timestamp_index, (start_date, 0, 0, 0))
-        right_idx = bisect_right(self.timestamp_index, (end_date, 2**31, 2**31, 2**31))
+        # Binary search for range using type-consistent sentinels
+        # '' sorts before any node name; '~' (ASCII 126) sorts after alphanumeric names
+        left_idx = bisect_left(self.timestamp_index, (start_date, '', '', 0))
+        right_idx = bisect_right(self.timestamp_index, (end_date, '~', '~', 2**31))
 
         results = []
         for i in range(left_idx, min(right_idx, len(self.timestamp_index))):
