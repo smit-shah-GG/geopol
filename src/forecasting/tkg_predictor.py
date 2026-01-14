@@ -46,13 +46,17 @@ class TKGPredictor:
         trained: Whether model has been fitted
     """
 
+    # Default path for pretrained model checkpoint
+    DEFAULT_MODEL_PATH = Path("models/tkg/regcn_trained.pt")
+
     def __init__(
         self,
         model: Optional[REGCNWrapper] = None,
         adapter: Optional[DataAdapter] = None,
         history_length: int = 30,
         decay_rate: float = 0.95,
-        embedding_dim: int = 200
+        embedding_dim: int = 200,
+        auto_load: bool = True,
     ):
         """
         Initialize TKG predictor.
@@ -63,6 +67,8 @@ class TKGPredictor:
             history_length: Number of recent days to use for training
             decay_rate: Temporal decay per day (0.95 = 5% decay per day)
             embedding_dim: Dimension for embeddings (default: 200)
+            auto_load: If True, automatically load pretrained model from
+                      models/tkg/regcn_trained.pt if it exists
         """
         self.model = model or REGCNWrapper(embedding_dim=embedding_dim)
         self.adapter = adapter or DataAdapter()
@@ -72,6 +78,124 @@ class TKGPredictor:
 
         logger.info(f"Initialized TKG predictor with {history_length}-day history "
                    f"and {decay_rate} daily decay rate")
+
+        # Auto-load pretrained model if available
+        if auto_load and model is None:
+            self._try_load_pretrained()
+
+    def _try_load_pretrained(self) -> bool:
+        """
+        Attempt to load pretrained model from default path.
+
+        Returns:
+            True if model was loaded, False otherwise
+        """
+        if self.DEFAULT_MODEL_PATH.exists():
+            try:
+                self.load_pretrained(self.DEFAULT_MODEL_PATH)
+                return True
+            except Exception as e:
+                logger.warning(f"Failed to load pretrained model: {e}")
+        return False
+
+    def load_pretrained(self, checkpoint_path: Path) -> None:
+        """
+        Load pretrained RE-GCN model from checkpoint.
+
+        The checkpoint should contain:
+        - model_state_dict: Model weights
+        - model_config: num_entities, num_relations, embedding_dim, num_layers
+        - entity_to_id: Entity string to ID mapping
+        - relation_to_id: Relation string to ID mapping
+
+        Args:
+            checkpoint_path: Path to checkpoint file (.pt)
+
+        Raises:
+            FileNotFoundError: If checkpoint file doesn't exist
+            RuntimeError: If checkpoint is incompatible
+        """
+        import torch
+
+        checkpoint_path = Path(checkpoint_path)
+        if not checkpoint_path.exists():
+            raise FileNotFoundError(f"Checkpoint not found: {checkpoint_path}")
+
+        logger.info(f"Loading pretrained model from {checkpoint_path}")
+
+        checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
+
+        # Extract model config
+        config = checkpoint.get("model_config", {})
+        num_entities = config.get("num_entities", checkpoint.get("num_entities", 0))
+        num_relations = config.get("num_relations", checkpoint.get("num_relations", 0))
+        embedding_dim = config.get("embedding_dim", checkpoint.get("embedding_dim", 200))
+        num_layers = config.get("num_layers", checkpoint.get("num_layers", 2))
+
+        if num_entities == 0 or num_relations == 0:
+            raise RuntimeError("Checkpoint missing entity/relation counts")
+
+        # Restore adapter mappings
+        entity_to_id = checkpoint.get("entity_to_id")
+        relation_to_id = checkpoint.get("relation_to_id")
+
+        if entity_to_id and relation_to_id:
+            self.adapter.entity_to_id = entity_to_id
+            self.adapter.id_to_entity = {v: k for k, v in entity_to_id.items()}
+            self.adapter.relation_to_id = relation_to_id
+            self.adapter.id_to_relation = {v: k for k, v in relation_to_id.items()}
+            logger.info(f"Restored mappings: {len(entity_to_id)} entities, "
+                       f"{len(relation_to_id)} relations")
+
+        # Initialize model with correct dimensions
+        self.model = REGCNWrapper(
+            data_adapter=self.adapter,
+            embedding_dim=embedding_dim,
+            num_layers=num_layers,
+        )
+        self.model.num_entities = num_entities
+        self.model.num_relations = num_relations
+
+        # Load model weights
+        if "model_state_dict" in checkpoint:
+            try:
+                from src.training.models.regcn_cpu import REGCN
+
+                self.model.model = REGCN(
+                    num_entities=num_entities,
+                    num_relations=num_relations,
+                    embedding_dim=embedding_dim,
+                    num_layers=num_layers,
+                )
+                self.model.model.load_state_dict(checkpoint["model_state_dict"])
+                self.model.model.eval()
+                self.model.use_baseline = False
+                logger.info("Loaded RE-GCN model weights")
+            except Exception as e:
+                logger.warning(f"Could not load RE-GCN weights: {e}")
+                self.model.use_baseline = True
+
+        # Restore baseline statistics if available
+        if "relation_frequency" in checkpoint:
+            self.model.relation_frequency = checkpoint["relation_frequency"]
+        if "entity_frequency" in checkpoint:
+            self.model.entity_frequency = checkpoint["entity_frequency"]
+        if "triple_frequency" in checkpoint:
+            self.model.triple_frequency = checkpoint["triple_frequency"]
+
+        # Mark as trained
+        self.trained = True
+
+        # Log training info from checkpoint
+        epoch = checkpoint.get("epoch", "unknown")
+        metrics = checkpoint.get("metrics", {})
+        mrr = metrics.get("mrr", metrics.get("best_metric", "N/A"))
+
+        logger.info(f"Pretrained model loaded successfully")
+        logger.info(f"  Trained for: {epoch} epochs")
+        logger.info(f"  MRR: {mrr}")
+        logger.info(f"  Entities: {num_entities:,}")
+        logger.info(f"  Relations: {num_relations}")
 
     def fit(self, graph: nx.MultiDiGraph, recent_days: Optional[int] = None) -> None:
         """
