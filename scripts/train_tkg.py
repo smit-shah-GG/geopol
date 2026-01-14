@@ -16,6 +16,7 @@ Usage:
 
 import argparse
 import logging
+import os
 import sys
 import time
 from datetime import datetime
@@ -45,6 +46,15 @@ logging.basicConfig(
     handlers=[logging.StreamHandler()],
 )
 logger = logging.getLogger(__name__)
+
+# Optimize CPU parallelism
+_num_threads = torch.get_num_threads()
+_cpu_count = len(os.sched_getaffinity(0)) if hasattr(os, 'sched_getaffinity') else os.cpu_count()
+if _cpu_count and _num_threads < _cpu_count:
+    torch.set_num_threads(_cpu_count)
+    logger.info(f"Set PyTorch threads: {_num_threads} -> {_cpu_count}")
+else:
+    logger.info(f"PyTorch using {_num_threads} threads")
 
 # Default paths
 DATA_PATH = Path("data/gdelt/processed/events.parquet")
@@ -316,7 +326,12 @@ def train_regcn(
         epoch_loss = 0.0
         num_batches = 0
 
+        total_batches = (num_triples + batch_size - 1) // batch_size
+        batch_times = []
+
         for batch_start in range(0, num_triples, batch_size):
+            batch_time_start = time.time()
+
             batch_end = min(batch_start + batch_size, num_triples)
             batch_triples = triples_shuffled[batch_start:batch_end]
 
@@ -349,6 +364,22 @@ def train_regcn(
 
             epoch_loss += loss.item()
             num_batches += 1
+
+            # Batch timing
+            batch_elapsed = time.time() - batch_time_start
+            batch_times.append(batch_elapsed)
+
+            # Log progress every 50 batches
+            if num_batches % 50 == 0 or num_batches == 1:
+                avg_batch_time = sum(batch_times[-50:]) / len(batch_times[-50:])
+                remaining_batches = total_batches - num_batches
+                eta_seconds = remaining_batches * avg_batch_time
+                logger.info(
+                    f"  Batch {num_batches:4d}/{total_batches} | "
+                    f"Loss: {loss.item():.4f} | "
+                    f"Batch: {batch_elapsed:.2f}s | "
+                    f"ETA: {eta_seconds/60:.1f}min"
+                )
 
         avg_loss = epoch_loss / max(num_batches, 1)
         final_loss = avg_loss
