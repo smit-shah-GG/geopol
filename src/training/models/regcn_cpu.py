@@ -109,6 +109,10 @@ class RelationalGraphConv(nn.Module):
         """
         Forward pass through relational graph convolution.
 
+        Uses chunked scatter operations instead of looping over relation types.
+        This reduces iteration count from O(num_relations) to O(num_edges/chunk_size),
+        typically 500x fewer iterations.
+
         Args:
             x: Node features (num_nodes, in_features)
             edge_index: Edge indices (2, num_edges) - [source, target] pairs
@@ -122,32 +126,44 @@ class RelationalGraphConv(nn.Module):
         # (num_relations, in_features, out_features)
         rel_weight = torch.einsum("rb,bio->rio", self.coeff, self.weight)
 
+        source_idx = edge_index[0]
+        target_idx = edge_index[1]
+        num_edges = edge_index.size(1)
+
+        # Gather all source features at once
+        src_feats = x[source_idx]  # (num_edges, in_features)
+
         # Initialize output
         out = torch.zeros(num_nodes, self.out_features, device=x.device)
 
-        # Aggregate messages per relation type
-        source_idx = edge_index[0]
-        target_idx = edge_index[1]
+        # Process in chunks to manage memory
+        # Each chunk expands weights: (chunk, in, out) ~ chunk * D^2 * 4 bytes
+        # With D=200: chunk * 160KB, so chunk=2000 uses ~320MB
+        chunk_size = 2000
 
-        for r in range(self.num_relations):
-            mask = edge_type == r
-            if not mask.any():
-                continue
+        for chunk_start in range(0, num_edges, chunk_size):
+            chunk_end = min(chunk_start + chunk_size, num_edges)
 
-            # Get edges for this relation
-            src = source_idx[mask]
-            tgt = target_idx[mask]
+            chunk_src = src_feats[chunk_start:chunk_end]  # (chunk, in)
+            chunk_type = edge_type[chunk_start:chunk_end]  # (chunk,)
+            chunk_tgt = target_idx[chunk_start:chunk_end]  # (chunk,)
 
-            # Transform source features
-            src_feats = x[src]  # (num_edges_r, in_features)
-            msg = src_feats @ rel_weight[r]  # (num_edges_r, out_features)
+            # Gather per-edge weight matrices based on relation type
+            chunk_weights = rel_weight[chunk_type]  # (chunk, in, out)
 
-            # Aggregate to targets (mean aggregation)
-            out.index_add_(0, tgt, msg)
+            # Batched matrix multiply: (chunk, 1, in) @ (chunk, in, out) -> (chunk, 1, out)
+            chunk_msg = torch.bmm(
+                chunk_src.unsqueeze(1), chunk_weights
+            ).squeeze(1)  # (chunk, out)
+
+            # Scatter-add to output
+            out.index_add_(0, chunk_tgt, chunk_msg)
 
         # Normalize by in-degree
         in_degree = torch.zeros(num_nodes, device=x.device)
-        in_degree.index_add_(0, target_idx, torch.ones_like(target_idx, dtype=torch.float))
+        in_degree.index_add_(
+            0, target_idx, torch.ones_like(target_idx, dtype=torch.float)
+        )
         in_degree = in_degree.clamp(min=1)
         out = out / in_degree.unsqueeze(1)
 
