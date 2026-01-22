@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-01-09)
 
 **Core value:** Explainability — every forecast must provide clear, traceable reasoning paths
-**Current focus:** Phase 5 — TKG Training
+**Current focus:** Project Complete
 
 ## Current Position
 
 Phase: 5 of 5 (TKG Training)
-Plan: 2 of 4 in current phase
-Status: In progress
-Last activity: 2026-01-13 — Completed 05-02-PLAN.md (RE-GCN Implementation)
+Plan: 4 of 4 in current phase
+Status: **PROJECT COMPLETE**
+Last activity: 2026-01-23 — Completed 05-04-PLAN.md (Periodic Retraining)
 
-Progress: ██████████████░░ 88% (14/16 plans complete)
+Progress: ████████████████ 100% (16/16 plans complete)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 13
-- Average duration: 27 minutes
-- Total execution time: 5.7 hours
+- Total plans completed: 16
+- Average duration: 25 minutes
+- Total execution time: 6.6 hours
 
 **By Phase:**
 
@@ -31,18 +31,18 @@ Progress: ██████████████░░ 88% (14/16 plans comp
 | 02-knowledge-graph | 3 | 180min | 60min |
 | 03-hybrid-forecasting | 4 | 95min | 24min |
 | 04-calibration-evaluation | 2 | 44min | 22min |
-| 05-tkg-training | 2/4 | 21min | 10.5min |
+| 05-tkg-training | 4 | 64min | 16min |
 
 **Recent Trend:**
-- Last 3 plans: 04-02 (14min), 05-01 (12min), 05-02 (9min)
-- Trend: Accelerating, RE-GCN implementation complete
+- Last 3 plans: 05-02 (9min), 05-03 (25min), 05-04 (18min)
+- Trend: All phases complete
 
 ## Accumulated Context
 
 ### Decisions
 
 Decisions are logged in PROJECT.md Key Decisions table.
-Recent decisions affecting current work:
+Key decisions made throughout project:
 
 - Python selected as implementation language
 - Focus on conflicts and diplomatic events (QuadClass 1 & 4)
@@ -62,25 +62,29 @@ Recent decisions affecting current work:
 - All QuadClasses (1-4) included for comprehensive pattern learning (05-01)
 - Parquet format for efficient TKG data loading (05-01)
 - Composite relation format: EventCode_QuadClass (05-01)
+- JAX/jraph training for memory efficiency (05-03)
+- Weekly retraining schedule (configurable to monthly) (05-04)
+- Time-based retraining over performance-triggered (05-04)
 
 ### Deferred Issues
 
-None yet.
+None.
 
 ### Blockers/Concerns
 
-None yet.
+None.
 
 ### Roadmap Evolution
 
 - Phase 5 added (2026-01-13): TKG predictor training with RE-GCN implementation and GDELT data pipeline
+- Project completed (2026-01-23): All 5 phases delivered
 
 ## Session Continuity
 
-Last session: 2026-01-13
-Stopped at: Completed 05-02-PLAN.md (RE-GCN Implementation)
+Last session: 2026-01-23
+Stopped at: Project complete
 Resume file: None
-Next: 05-03-PLAN.md (Training Pipeline)
+Next: None (project complete)
 
 ## Technical Debt / Future Work
 
@@ -89,3 +93,21 @@ Next: 05-03-PLAN.md (Training Pipeline)
 3. **DGL Optional:** RE-GCN works without DGL using frequency baseline (03-03)
 
 Note: UAT-004 (temporal index bisect) resolved 2026-01-13. Ground-truth calibration available via isotonic regression + temperature scaling (04-01).
+
+## Project Deliverables
+
+The geopolitical forecasting system is fully operational:
+
+1. **Data Foundation (Phase 1):** GDELT event ingestion and processing
+2. **Knowledge Graph (Phase 2):** Entity resolution, relationship extraction, temporal graph
+3. **Hybrid Forecasting (Phase 3):** LLM reasoning + TKG link prediction ensemble
+4. **Calibration & Evaluation (Phase 4):** Isotonic regression, temperature scaling, performance tracking
+5. **TKG Training (Phase 5):** RE-GCN model trained on GDELT, periodic retraining automation
+
+**Key artifacts:**
+- `forecast.py` — Main CLI for running forecasts
+- `src/forecasting/` — Ensemble forecaster, TKG predictor, LLM integration
+- `src/graph/` — Knowledge graph construction and querying
+- `src/training/` — Data collection, model training, retraining scheduler
+- `models/tkg/regcn_trained.pt` — Trained TKG model checkpoint
+- `config/retraining.yaml` — Retraining schedule configuration
