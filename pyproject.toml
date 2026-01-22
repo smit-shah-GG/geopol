@@ -42,6 +42,10 @@ dependencies = [
     "sqlalchemy>=2.0.0",
     # Calibration metrics
     "netcal>=1.3.5",
+    "jax[cuda12]>=0.6.2",
+    "flax>=0.10.7",
+    "optax>=0.2.6",
+    "jraph>=0.0.6.dev0",
 ]
 
 [project.optional-dependencies]

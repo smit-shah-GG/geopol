@@ -140,8 +140,8 @@ class RelationalGraphConv(nn.Module):
         # Process in chunks to manage memory
         # Each chunk expands weights: (chunk, in, out) ~ chunk * D^2 * 4 bytes
         # With D=200: chunk * 160KB, so chunk=2000 uses ~320MB (CPU)
-        # GPU can handle larger chunks efficiently (8000 uses ~1.3GB)
-        chunk_size = 8000 if x.device.type == "cuda" else 2000
+        # GPU: 4000 uses ~640MB per chunk (reduced from 8000 for 12GB cards)
+        chunk_size = 4000 if x.device.type == "cuda" else 2000
 
         for chunk_start in range(0, num_edges, chunk_size):
             chunk_end = min(chunk_start + chunk_size, num_edges)

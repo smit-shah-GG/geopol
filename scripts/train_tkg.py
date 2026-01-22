@@ -62,12 +62,15 @@ MODEL_DIR = Path("models/tkg")
 LOG_DIR = Path("logs/training")
 
 
-def load_training_data(data_path: Path) -> tuple:
+def load_training_data(data_path: Path, max_events: int = 0, num_days: int = 30) -> tuple:
     """
     Load GDELT events and prepare for TKG training.
 
     Args:
         data_path: Path to processed events parquet file
+        max_events: Maximum events to use (0 = unlimited). For faster training,
+                   use 100000-200000 events to get meaningful results in ~10 min.
+        num_days: Number of recent days to include (default 30)
 
     Returns:
         Tuple of (snapshots, entity_to_id, relation_to_id, train_triples, val_triples)
@@ -80,14 +83,19 @@ def load_training_data(data_path: Path) -> tuple:
     logger.info(f"Loaded {len(df):,} events")
     logger.info(f"Raw date range: {df['timestamp'].min()} to {df['timestamp'].max()}")
 
-    # Filter to last 30 days of data only (data collection target range)
-    # The parquet may contain artifacts from earlier dates
+    # Filter to recent data only
     max_date = df["timestamp"].max()
-    cutoff_date = max_date - pd.Timedelta(days=30)
+    cutoff_date = max_date - pd.Timedelta(days=num_days)
     df = df[df["timestamp"] >= cutoff_date].copy()
 
-    logger.info(f"After filtering to last 30 days: {len(df):,} events")
+    logger.info(f"After filtering to last {num_days} days: {len(df):,} events")
     logger.info(f"Date range: {df['timestamp'].min()} to {df['timestamp'].max()}")
+
+    # Sample events if max_events specified (for faster training)
+    if max_events > 0 and len(df) > max_events:
+        logger.info(f"Sampling {max_events:,} events from {len(df):,} for faster training")
+        df = df.sample(n=max_events, random_state=42).sort_values("timestamp")
+        logger.info(f"Sampled to {len(df):,} events")
 
     # Convert timestamp to integer days for snapshotting
     # The create_graph_snapshots function expects integer timestamps
@@ -229,6 +237,8 @@ def train_regcn(
     checkpoint_interval: int = 10,
     dry_run: bool = False,
     device_str: str = "auto",
+    max_events: int = 0,
+    num_days: int = 30,
 ) -> dict:
     """
     Train RE-GCN model on GDELT data.
@@ -245,6 +255,8 @@ def train_regcn(
         checkpoint_interval: Save checkpoint every N epochs
         dry_run: If True, initialize model but skip training
         device_str: Device to use ("auto", "cuda", "cpu")
+        max_events: Maximum events to use (0 = unlimited)
+        num_days: Number of recent days to include
 
     Returns:
         Dictionary with training summary
@@ -267,7 +279,7 @@ def train_regcn(
 
     # Load data
     snapshots, entity_to_id, relation_to_id, train_triples, val_triples = load_training_data(
-        DATA_PATH
+        DATA_PATH, max_events=max_events, num_days=num_days
     )
 
     num_entities = len(entity_to_id)
@@ -546,6 +558,18 @@ def parse_args() -> argparse.Namespace:
         choices=["auto", "cuda", "cpu"],
         help="Device to use (auto detects CUDA availability)",
     )
+    parser.add_argument(
+        "--max-events",
+        type=int,
+        default=0,
+        help="Maximum events to use (0 = unlimited). Use 100000-200000 for fast training.",
+    )
+    parser.add_argument(
+        "--num-days",
+        type=int,
+        default=30,
+        help="Number of recent days to include in training data",
+    )
 
     return parser.parse_args()
 
@@ -566,6 +590,8 @@ def main():
     logger.info(f"  Num Layers:      {args.num_layers}")
     logger.info(f"  Dropout:         {args.dropout}")
     logger.info(f"  Device:          {args.device}")
+    logger.info(f"  Max Events:      {args.max_events if args.max_events > 0 else 'unlimited'}")
+    logger.info(f"  Num Days:        {args.num_days}")
     logger.info(f"  Dry Run:         {args.dry_run}")
 
     try:
@@ -580,6 +606,8 @@ def main():
             checkpoint_interval=args.checkpoint_interval,
             dry_run=args.dry_run,
             device_str=args.device,
+            max_events=args.max_events,
+            num_days=args.num_days,
         )
 
         logger.info("\n" + "=" * 70)
