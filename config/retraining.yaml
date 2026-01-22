@@ -1,0 +1,54 @@
+# TKG Retraining Configuration
+#
+# Schedule settings for periodic model retraining to keep the TKG predictor
+# current with evolving world events. Uses time-based scheduling (weekly/monthly)
+# rather than performance-triggered retraining for simplicity and consistency.
+
+schedule:
+  # Retraining frequency: "weekly" or "monthly"
+  frequency: weekly
+
+  # For weekly: day of week (0=Sunday, 1=Monday, ..., 6=Saturday)
+  day_of_week: 0
+
+  # For monthly: day of month (1-28 recommended for consistency)
+  day_of_month: 1
+
+  # Hour to run retraining (24-hour format, in local time)
+  # 2 AM recommended to minimize impact on system usage
+  hour: 2
+
+data:
+  # Number of days of GDELT data to use for retraining
+  # 30 days provides sufficient recent patterns without excessive data
+  data_window: 30
+
+  # Maximum events to sample (0 = unlimited)
+  # Use 500000-1000000 for reasonable training time on CPU
+  max_events: 1000000
+
+model:
+  # Training hyperparameters (matched to original training)
+  epochs: 50
+  batch_size: 1024
+  embedding_dim: 200
+  num_layers: 2
+  learning_rate: 0.001
+
+versioning:
+  # Number of old model versions to keep for rollback
+  backup_count: 3
+
+  # Model directory path
+  model_dir: models/tkg
+
+  # Log directory path
+  log_dir: logs/retraining
+
+validation:
+  # Minimum MRR improvement required to replace current model
+  # Set to 0 to always accept new model regardless of performance
+  min_improvement: 0.0
+
+  # Number of validation samples for comparison
+  validation_samples: 1000
