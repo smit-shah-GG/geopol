@@ -29,7 +29,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import torch
 
-from src.training.models.regcn_cpu import REGCN
+from src.training.models.regcn import REGCN
 from src.training.progress_monitor import ProgressMonitor
 from src.training.train_utils import (
     compute_hits_at_k,
@@ -228,6 +228,7 @@ def train_regcn(
     margin: float = 1.0,
     checkpoint_interval: int = 10,
     dry_run: bool = False,
+    device_str: str = "auto",
 ) -> dict:
     """
     Train RE-GCN model on GDELT data.
@@ -243,12 +244,22 @@ def train_regcn(
         margin: Margin for ranking loss
         checkpoint_interval: Save checkpoint every N epochs
         dry_run: If True, initialize model but skip training
+        device_str: Device to use ("auto", "cuda", "cpu")
 
     Returns:
         Dictionary with training summary
     """
-    device = torch.device("cpu")
-    logger.info(f"Using device: {device}")
+    # Device selection
+    if device_str == "auto":
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    else:
+        device = torch.device(device_str)
+
+    if device.type == "cuda":
+        logger.info(f"Using device: {device} ({torch.cuda.get_device_name(0)})")
+        logger.info(f"CUDA memory: {torch.cuda.get_device_properties(0).total_memory / 1e9:.1f} GB")
+    else:
+        logger.info(f"Using device: {device}")
 
     # Create output directories
     MODEL_DIR.mkdir(parents=True, exist_ok=True)
@@ -528,6 +539,13 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Initialize model without training (for verification)",
     )
+    parser.add_argument(
+        "--device",
+        type=str,
+        default="auto",
+        choices=["auto", "cuda", "cpu"],
+        help="Device to use (auto detects CUDA availability)",
+    )
 
     return parser.parse_args()
 
@@ -547,6 +565,7 @@ def main():
     logger.info(f"  Embedding Dim:   {args.embedding_dim}")
     logger.info(f"  Num Layers:      {args.num_layers}")
     logger.info(f"  Dropout:         {args.dropout}")
+    logger.info(f"  Device:          {args.device}")
     logger.info(f"  Dry Run:         {args.dry_run}")
 
     try:
@@ -560,6 +579,7 @@ def main():
             num_negatives=args.num_negatives,
             checkpoint_interval=args.checkpoint_interval,
             dry_run=args.dry_run,
+            device_str=args.device,
         )
 
         logger.info("\n" + "=" * 70)

@@ -159,7 +159,7 @@ class TKGPredictor:
         # Load model weights
         if "model_state_dict" in checkpoint:
             try:
-                from src.training.models.regcn_cpu import REGCN
+                from src.training.models.regcn import REGCN
 
                 self.model.model = REGCN(
                     num_entities=num_entities,

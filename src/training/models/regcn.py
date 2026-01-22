@@ -1,10 +1,11 @@
 """
-CPU-optimized RE-GCN implementation without DGL dependency.
+RE-GCN implementation without DGL dependency.
 
 Implements the core RE-GCN architecture using pure PyTorch:
 - Recurrent evolution of entity embeddings through graph snapshots
-- R-GCN style aggregation using sparse matrix operations
+- R-GCN style aggregation with chunked batched matrix operations
 - ConvTransE decoder for link prediction scoring
+- Auto-adjusts chunk sizes for CPU vs GPU memory characteristics
 
 Reference:
     Li et al. (2021). Temporal Knowledge Graph Reasoning Based on
@@ -138,8 +139,9 @@ class RelationalGraphConv(nn.Module):
 
         # Process in chunks to manage memory
         # Each chunk expands weights: (chunk, in, out) ~ chunk * D^2 * 4 bytes
-        # With D=200: chunk * 160KB, so chunk=2000 uses ~320MB
-        chunk_size = 2000
+        # With D=200: chunk * 160KB, so chunk=2000 uses ~320MB (CPU)
+        # GPU can handle larger chunks efficiently (8000 uses ~1.3GB)
+        chunk_size = 8000 if x.device.type == "cuda" else 2000
 
         for chunk_start in range(0, num_edges, chunk_size):
             chunk_end = min(chunk_start + chunk_size, num_edges)

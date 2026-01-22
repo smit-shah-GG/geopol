@@ -1,16 +1,17 @@
 """
 Training Pipeline for RotatE Embeddings
 
-Implements efficient training loop for CPU environments with:
+Implements efficient training loop with:
 - Batched data loading from NetworkX temporal graphs
 - Adam optimizer with exponential learning rate decay
 - Early stopping based on validation loss
 - Checkpointing every N epochs
 - Comprehensive training statistics
+- Auto-detection of CUDA for GPU acceleration
 
 Target Performance:
     - 100K facts train in < 10 minutes for 500 epochs
-    - Throughput > 10K triples/second on 8-core CPU
+    - Throughput > 10K triples/second on 8-core CPU (faster on GPU)
 """
 
 import torch
@@ -60,7 +61,7 @@ class TrainingConfig:
     validation_split: float = 0.1  # Fraction of data for validation
 
     # Device
-    device: str = 'cpu'  # Force CPU for this implementation
+    device: str = 'auto'  # 'auto', 'cuda', or 'cpu' - auto detects CUDA
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for serialization."""
@@ -208,8 +209,14 @@ class EmbeddingTrainer:
         self.model = model
         self.config = config
 
+        # Resolve device
+        if config.device == 'auto':
+            self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        else:
+            self.device = config.device
+
         # Move model to device
-        self.model = self.model.to(config.device)
+        self.model = self.model.to(self.device)
 
         # Initialize optimizer
         self.optimizer = optim.Adam(
@@ -330,9 +337,9 @@ class EmbeddingTrainer:
 
         for head_batch, relation_batch, tail_batch in train_loader:
             # Move to device
-            head_batch = head_batch.to(self.config.device)
-            relation_batch = relation_batch.to(self.config.device)
-            tail_batch = tail_batch.to(self.config.device)
+            head_batch = head_batch.to(self.device)
+            relation_batch = relation_batch.to(self.device)
+            tail_batch = tail_batch.to(self.device)
 
             # Forward pass
             loss, stats = self.model.margin_ranking_loss(
@@ -382,9 +389,9 @@ class EmbeddingTrainer:
         with torch.no_grad():
             for head_batch, relation_batch, tail_batch in val_loader:
                 # Move to device
-                head_batch = head_batch.to(self.config.device)
-                relation_batch = relation_batch.to(self.config.device)
-                tail_batch = tail_batch.to(self.config.device)
+                head_batch = head_batch.to(self.device)
+                relation_batch = relation_batch.to(self.device)
+                tail_batch = tail_batch.to(self.device)
 
                 # Forward pass only
                 loss, stats = self.model.margin_ranking_loss(
@@ -452,7 +459,7 @@ class EmbeddingTrainer:
         Args:
             checkpoint_path: Path to checkpoint file
         """
-        checkpoint = torch.load(checkpoint_path, map_location=self.config.device)
+        checkpoint = torch.load(checkpoint_path, map_location=self.device)
 
         self.model.load_state_dict(checkpoint['model_state_dict'])
         self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])

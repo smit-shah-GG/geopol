@@ -41,7 +41,7 @@ class REGCNWrapper:
     - Entity prediction: (subject, relation, ?) -> object candidates
     - Scoring quadruples for validation
 
-    Uses CPU-optimized RE-GCN implementation from src.training.models.regcn_cpu.
+    Uses RE-GCN implementation from src.training.models.regcn.
     Falls back to frequency-based baseline if import fails.
 
     Attributes:
@@ -50,7 +50,7 @@ class REGCNWrapper:
         num_entities: Total number of entities
         num_relations: Total number of relation types
         use_baseline: Whether using baseline instead of RE-GCN
-        device: torch device (CPU)
+        device: torch device (auto-detects CUDA)
         snapshots: Cached graph snapshots for prediction
     """
 
@@ -60,7 +60,8 @@ class REGCNWrapper:
         embedding_dim: int = 200,
         num_layers: int = 2,
         dropout: float = 0.2,
-        model_path: Optional[Path] = None
+        model_path: Optional[Path] = None,
+        device: str = "auto",
     ):
         """
         Initialize RE-GCN wrapper.
@@ -72,6 +73,7 @@ class REGCNWrapper:
             num_layers: Number of GCN layers (default: 2)
             dropout: Dropout rate (default: 0.2)
             model_path: Path to pre-trained model checkpoint (optional)
+            device: Device to use ("auto", "cuda", "cpu"). Auto detects CUDA.
         """
         self.data_adapter = data_adapter
         self.embedding_dim = embedding_dim
@@ -80,7 +82,11 @@ class REGCNWrapper:
         self.model_path = model_path
 
         self.model: Optional[nn.Module] = None
-        self.device = torch.device('cpu')
+        # Device selection
+        if device == "auto":
+            self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        else:
+            self.device = torch.device(device)
         self.use_baseline = False
 
         # Cached snapshots for model inference
@@ -105,14 +111,14 @@ class REGCNWrapper:
 
     def _initialize_model(self) -> None:
         """
-        Initialize RE-GCN model using CPU implementation.
+        Initialize RE-GCN model.
 
-        Attempts to import our regcn_cpu module. Falls back to
+        Attempts to import our regcn module. Falls back to
         frequency-based baseline if import fails.
         """
         try:
-            from src.training.models.regcn_cpu import REGCN
-            logger.info("CPU RE-GCN implementation available")
+            from src.training.models.regcn import REGCN
+            logger.info(f"RE-GCN implementation available (device: {self.device})")
 
             if self.num_entities > 0 and self.num_relations > 0:
                 self.model = REGCN(
@@ -130,7 +136,7 @@ class REGCNWrapper:
                 self.use_baseline = False
 
         except ImportError as e:
-            logger.warning(f"CPU RE-GCN not available: {e}")
+            logger.warning(f"RE-GCN not available: {e}")
             logger.info("Falling back to frequency-based baseline model")
             self.use_baseline = True
 
@@ -152,7 +158,7 @@ class REGCNWrapper:
             return False
 
         try:
-            from src.training.models.regcn_cpu import REGCN
+            from src.training.models.regcn import REGCN
             self.model = REGCN(
                 num_entities=self.num_entities,
                 num_relations=self.num_relations,
@@ -699,7 +705,7 @@ class REGCNWrapper:
         # Load RE-GCN model state if available
         if not self.use_baseline and 'model_state_dict' in checkpoint:
             try:
-                from src.training.models.regcn_cpu import REGCN
+                from src.training.models.regcn import REGCN
                 self.model = REGCN(
                     num_entities=self.num_entities,
                     num_relations=self.num_relations,
