@@ -2,19 +2,19 @@
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-01-09)
+See: .planning/PROJECT.md (updated 2026-01-23)
 
 **Core value:** Explainability — every forecast must provide clear, traceable reasoning paths
-**Current focus:** Project Complete
+**Current focus:** v1.0 Shipped — Planning next milestone
 
 ## Current Position
 
-Phase: 5 of 5 (TKG Training)
-Plan: 4 of 4 in current phase
-Status: **PROJECT COMPLETE**
-Last activity: 2026-01-23 — Completed 05-04-PLAN.md (Periodic Retraining)
+Phase: v1.0 complete
+Plan: N/A
+Status: **MILESTONE SHIPPED**
+Last activity: 2026-01-23 — v1.0 milestone archived
 
-Progress: ████████████████ 100% (16/16 plans complete)
+Progress: v1.0 ████████████████ 100% (5 phases, 16 plans)
 
 ## Performance Metrics
 
@@ -82,32 +82,24 @@ None.
 ## Session Continuity
 
 Last session: 2026-01-23
-Stopped at: Project complete
+Stopped at: v1.0 milestone shipped
 Resume file: None
-Next: None (project complete)
+Next: `/gsd:new-milestone` when ready for v1.1
 
-## Technical Debt / Future Work
+## Technical Debt (Carried to v1.1)
 
-1. **UAT-005:** Fix NetworkX shortest_path API (minor, non-blocking) — use `single_source_shortest_path` instead
-2. **Scalability:** Partition graph for distributed processing > 1M events
-3. **DGL Optional:** RE-GCN works without DGL using frequency baseline (03-03)
+1. **UAT-005:** Fix NetworkX shortest_path API (minor) — use `single_source_shortest_path`
+2. **Bootstrap script:** Production script for Phase 1 → Phase 2 → Phase 3 connection
+3. **Scalability:** Graph partitioning for >1M events
 
-Note: UAT-004 (temporal index bisect) resolved 2026-01-13. Ground-truth calibration available via isotonic regression + temperature scaling (04-01).
+## v1.0 Deliverables
 
-## Project Deliverables
-
-The geopolitical forecasting system is fully operational:
-
-1. **Data Foundation (Phase 1):** GDELT event ingestion and processing
-2. **Knowledge Graph (Phase 2):** Entity resolution, relationship extraction, temporal graph
-3. **Hybrid Forecasting (Phase 3):** LLM reasoning + TKG link prediction ensemble
-4. **Calibration & Evaluation (Phase 4):** Isotonic regression, temperature scaling, performance tracking
-5. **TKG Training (Phase 5):** RE-GCN model trained on GDELT, periodic retraining automation
+See `.planning/MILESTONES.md` for full details.
 
 **Key artifacts:**
 - `forecast.py` — Main CLI for running forecasts
 - `src/forecasting/` — Ensemble forecaster, TKG predictor, LLM integration
-- `src/graph/` — Knowledge graph construction and querying
+- `src/knowledge_graph/` — Knowledge graph construction and querying
 - `src/training/` — Data collection, model training, retraining scheduler
 - `models/tkg/regcn_trained.pt` — Trained TKG model checkpoint
 - `config/retraining.yaml` — Retraining schedule configuration

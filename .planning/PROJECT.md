@@ -12,16 +12,16 @@ Explainability — every forecast must provide clear, traceable reasoning paths 
 
 ### Validated
 
-(None yet — ship to validate)
+- Event data ingestion from GDELT API with custom enrichment pipeline — v1.0
+- Temporal knowledge graph construction from event streams — v1.0
+- Hybrid model ensemble combining TKG algorithms (RE-GCN/TiRGN) with LLM reasoning — v1.0
+- Explainable reasoning chain generation for each prediction — v1.0
+- Probability calibration system with Brier score optimization — v1.0
+- Evaluation framework against historical events — v1.0
 
 ### Active
 
-- [ ] Event data ingestion from GDELT API with custom enrichment pipeline
-- [ ] Temporal knowledge graph construction from event streams
-- [ ] Hybrid model ensemble combining TKG algorithms (RE-GCN/TiRGN) with LLM reasoning
-- [ ] Explainable reasoning chain generation for each prediction
-- [ ] Probability calibration system with Brier score optimization
-- [ ] Evaluation framework against historical events
+(None — v1.0 complete, define new requirements for next milestone)
 
 ### Out of Scope
 
@@ -54,10 +54,37 @@ This is a greenfield implementation starting from first principles rather than e
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Hybrid intelligence over pure ML | Combines strengths of multiple approaches for robustness | — Pending |
-| Mixed data approach (APIs + custom) | Balances development speed with unique value creation | — Pending |
-| Explainability as core value | Trust and interpretability matter more than raw accuracy | — Pending |
-| Batch processing over real-time | Reduces complexity and compute requirements significantly | — Pending |
+| Hybrid intelligence over pure ML | Combines strengths of multiple approaches for robustness | Good |
+| Mixed data approach (APIs + custom) | Balances development speed with unique value creation | Good |
+| Explainability as core value | Trust and interpretability matter more than raw accuracy | Good |
+| Batch processing over real-time | Reduces complexity and compute requirements significantly | Good |
+| Python for implementation | Scientific computing ecosystem | Good |
+| RE-GCN over TiRGN | More mature implementation available | Good |
+| 60/40 LLM/TKG ensemble weighting | Balance reasoning with pattern matching | Good |
+| JAX/jraph for TKG training | Memory efficiency on CPU | Good |
+| Weekly retraining schedule | Captures evolving geopolitical patterns | Good |
+
+## Current State
+
+**Version:** v1.0 (shipped 2026-01-23)
+
+**Tech Stack:**
+- Python 3.11+ with uv package management
+- PyTorch (CPU-only) for inference
+- JAX/jraph for training
+- NetworkX for graph operations
+- SQLite for event and prediction storage
+- Gemini API via google-genai SDK
+
+**Codebase:**
+- 89 source files
+- 37,414 lines of Python
+- 5 phases, 16 plans delivered
+
+**Known Issues:**
+- UAT-005: NetworkX shortest_path API (use single_source_shortest_path)
+- Missing production bootstrap script for graph+RAG indexing
+- Scalability: Graph partitioning needed for >1M events
 
 ---
-*Last updated: 2026-01-09 after initialization*
+*Last updated: 2026-01-23 after v1.0 milestone*
