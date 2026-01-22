@@ -71,4 +71,7 @@ results/
 
 # ChromaDB and test data
 test_chroma_db/
-chroma_db/models/
+chroma_db/
+
+# Trained models
+models/
