@@ -20,7 +20,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 2: Knowledge Graph Engine** - Temporal knowledge graph construction with vector embeddings
 - [x] **Phase 3: Hybrid Forecasting** - TKG algorithms (RE-GCN/TiRGN) combined with LLM reasoning
 - [x] **Phase 4: Calibration & Evaluation** - Brier score optimization with explainable reasoning chains
-- [ ] **Phase 5: TKG Training** - TKG predictor training with RE-GCN implementation and GDELT data pipeline
+- [x] **Phase 5: TKG Training** - TKG predictor training with RE-GCN implementation and GDELT data pipeline
 
 ## Phase Details
 
@@ -74,26 +74,19 @@ Plans:
 - [x] 04-01: Probability calibration with Brier score optimization (COMPLETE 2026-01-13)
 - [x] 04-02: Evaluation framework using 2023-2024 events with explainability metrics (COMPLETE 2026-01-13)
 
-### Phase 5: TKG Training
+### Phase 5: TKG Training ✅
 **Goal**: Train the Temporal Knowledge Graph predictor with real GDELT data and implement RE-GCN for production use
 **Depends on**: Phase 4
 **Research**: Completed
-**Status**: In progress (2/4 plans executed)
-**Plans**: 4 plans
+**Status**: COMPLETE (4/4 plans executed)
+**Accomplishments**: GDELT collection pipeline, RE-GCN implementation, training pipeline, periodic retraining scheduler
+**Plans**: 4 plans (all complete)
 
 Plans:
 - [x] 05-01: GDELT data collection pipeline (COMPLETE 2026-01-13)
 - [x] 05-02: RE-GCN implementation (COMPLETE 2026-01-13)
-- [ ] 05-03: Training pipeline
-- [ ] 05-04: Integration and evaluation
-
-**Details:**
-The TKG predictor is currently not trained, limiting the system to LLM-only predictions. This phase will:
-- Collect historical GDELT event data (30-90 days)
-- Build temporal knowledge graphs from event sequences
-- Implement RE-GCN or frequency-based predictor
-- Train on historical patterns with evaluation metrics
-- Integrate trained model into ensemble predictions
+- [x] 05-03: Training pipeline (COMPLETE 2026-01-23)
+- [x] 05-04: Integration and evaluation (COMPLETE 2026-01-23)
 
 ## Progress
 
@@ -106,7 +99,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | 2. Knowledge Graph Engine | 3/3 | Complete | 2026-01-09 |
 | 3. Hybrid Forecasting | 4/4 | Complete | 2026-01-10 |
 | 4. Calibration & Evaluation | 2/2 | Complete | 2026-01-13 |
-| 5. TKG Training | 2/4 | In progress | - |
+| 5. TKG Training | 4/4 | Complete | 2026-01-23 |
 
 ## Technical Context
 
