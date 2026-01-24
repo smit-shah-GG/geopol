@@ -49,6 +49,112 @@ class TKGPredictor:
     # Default path for pretrained model checkpoint
     DEFAULT_MODEL_PATH = Path("models/tkg/regcn_trained.pt")
 
+    # Mapping from semantic relation labels to CAMEO codes
+    # CAMEO QuadClass: Q1=Verbal Coop, Q2=Material Coop, Q3=Verbal Conflict, Q4=Material Conflict
+    # Ordered by frequency in training data (most common first)
+    SEMANTIC_TO_CAMEO = {
+        "CONFLICT": [
+            "190_Q4",   # Use of conventional military force (72,921)
+            "173_Q4",   # Arrest/detention (61,251)
+            "111_Q3",   # Criticize (46,595)
+            "112_Q3",   # Accuse (39,187)
+            "130_Q3",   # Threaten (32,886)
+            "120_Q3",   # Reject (31,600)
+        ],
+        "COOPERATION": [
+            "10_Q1",    # Make statement (149,076)
+            "42_Q1",    # Make visit (129,128)
+            "43_Q1",    # Host visit (120,717)
+            "40_Q1",    # Consult (115,699)
+            "51_Q1",    # Praise/endorse (110,491)
+            "20_Q1",    # Appeal (99,629)
+        ],
+        "SANCTION": [
+            "163_Q4",   # Impose embargo/sanctions
+            "162_Q4",   # Restrict economic activity
+            "161_Q4",   # Halt negotiations
+        ],
+        "DIPLOMATIC": [
+            "36_Q1",    # Express intent to meet/negotiate
+            "30_Q1",    # Express intent to cooperate
+            "46_Q1",    # Engage in diplomatic exchange
+        ],
+        "INTERACT": [
+            "10_Q1",    # Make statement (most generic)
+        ],
+    }
+
+    # Entity name aliases (normalized names → GDELT actor names)
+    # GDELT uses uppercase actor names from news articles
+    ENTITY_ALIASES = {
+        # Countries - full name → GDELT name
+        "russian federation": "RUSSIA",
+        "russia": "RUSSIA",
+        "united states": "UNITED STATES",
+        "united states of america": "UNITED STATES",
+        "usa": "UNITED STATES",
+        "u.s.": "UNITED STATES",
+        "u.s.a.": "UNITED STATES",
+        "america": "UNITED STATES",
+        "people's republic of china": "CHINA",
+        "peoples republic of china": "CHINA",  # Without apostrophe
+        "people's republic of china (prc)": "CHINA",
+        "peoples republic of china (prc)": "CHINA",
+        "prc": "CHINA",
+        "china": "CHINA",
+        "mainland china": "CHINA",
+        "beijing": "CHINA",  # Often used as metonym
+        "united kingdom": "UNITED KINGDOM",
+        "uk": "UNITED KINGDOM",
+        "great britain": "UNITED KINGDOM",
+        "britain": "UNITED KINGDOM",
+        "ukraine": "UKRAINE",
+        "iran": "IRAN",
+        "islamic republic of iran": "IRAN",
+        "israel": "ISRAEL",
+        "north korea": "NORTH KOREA",
+        "dprk": "NORTH KOREA",
+        "democratic people's republic of korea": "NORTH KOREA",
+        "democratic peoples republic of korea": "NORTH KOREA",
+        "south korea": "SOUTH KOREA",
+        "republic of korea": "SOUTH KOREA",
+        "rok": "SOUTH KOREA",
+        "taiwan": "TAIWAN",
+        "republic of china": "TAIWAN",
+        "taiwan (roc)": "TAIWAN",
+        "roc": "TAIWAN",
+        "germany": "GERMANY",
+        "france": "FRANCE",
+        "japan": "JAPAN",
+        "india": "INDIA",
+        "pakistan": "PAKISTAN",
+        "turkey": "TURKEY",
+        "saudi arabia": "SAUDI ARABIA",
+        "poland": "POLAND",
+        "european union": "EUROPEAN UNION",
+        "european union (eu)": "EUROPEAN UNION",
+        "eu": "EUROPEAN UNION",
+        # Organizations
+        "nato": "NATO",
+        "north atlantic treaty organization": "NATO",
+        "united nations": "UNITED NATIONS",
+        "un": "UNITED NATIONS",
+        "european central bank": "EUROPEAN CENTRAL BANK",
+        "ecb": "EUROPEAN CENTRAL BANK",
+        "imf": "INTERNATIONAL MONETARY FUND",
+        "international monetary fund": "INTERNATIONAL MONETARY FUND",
+        "world bank": "WORLD BANK",
+        "opec": "OPEC",
+        # Leaders (common references)
+        "putin": "PUTIN",
+        "vladimir putin": "PUTIN",
+        "xi jinping": "XI JINPING",
+        "biden": "BIDEN",
+        "joe biden": "BIDEN",
+        "zelensky": "ZELENSKY",
+        "volodymyr zelensky": "ZELENSKY",
+    }
+
     def __init__(
         self,
         model: Optional[REGCNWrapper] = None,
@@ -480,41 +586,154 @@ class TKGPredictor:
 
         return predictions
 
+    # Minimum fuzzy match score (0-100) to accept a match
+    # Higher = stricter matching, fewer false positives
+    FUZZY_MATCH_THRESHOLD = 85
+
     def _entity_to_id(self, entity: str) -> int:
         """
         Map entity string to ID.
 
+        Resolution order:
+        1. Exact match
+        2. Uppercase match (GDELT convention)
+        3. Strip parenthetical suffix and retry
+        4. Static alias lookup
+        5. Fuzzy string matching (fallback)
+
         Args:
-            entity: Entity string
+            entity: Entity string (name or alias)
 
         Returns:
             Entity ID
 
         Raises:
-            ValueError: If entity not found
+            ValueError: If entity not found (even with fuzzy matching)
         """
+        import re
+
+        # Try exact match first
         entity_id = self.adapter.entity_to_id.get(entity)
-        if entity_id is None:
-            raise ValueError(f"Entity not found: {entity}")
-        return entity_id
+        if entity_id is not None:
+            return entity_id
+
+        # Try uppercase (GDELT uses uppercase)
+        entity_upper = entity.upper()
+        entity_id = self.adapter.entity_to_id.get(entity_upper)
+        if entity_id is not None:
+            return entity_id
+
+        # Strip parenthetical suffix (e.g., "Taiwan (ROC)" → "Taiwan")
+        entity_stripped = re.sub(r'\s*\([^)]*\)\s*$', '', entity).strip()
+        if entity_stripped != entity:
+            entity_id = self.adapter.entity_to_id.get(entity_stripped.upper())
+            if entity_id is not None:
+                logger.debug(f"Matched '{entity}' after stripping parenthetical to '{entity_stripped.upper()}'")
+                return entity_id
+
+        # Try alias lookup (case-insensitive) - try both original and stripped
+        for variant in [entity.lower(), entity_stripped.lower()]:
+            if variant in self.ENTITY_ALIASES:
+                gdelt_name = self.ENTITY_ALIASES[variant]
+                entity_id = self.adapter.entity_to_id.get(gdelt_name)
+                if entity_id is not None:
+                    logger.debug(f"Mapped entity '{entity}' via alias to '{gdelt_name}'")
+                    return entity_id
+
+        # Fuzzy matching fallback
+        match = self._fuzzy_match_entity(entity_stripped or entity)
+        if match is not None:
+            matched_name, score = match
+            entity_id = self.adapter.entity_to_id.get(matched_name)
+            if entity_id is not None:
+                logger.info(f"Fuzzy matched '{entity}' to '{matched_name}' (score={score:.0f})")
+                return entity_id
+
+        raise ValueError(f"Entity not found: {entity}")
+
+    def _fuzzy_match_entity(self, entity: str) -> Optional[Tuple[str, float]]:
+        """
+        Find closest matching entity using fuzzy string matching.
+
+        Uses WRatio scorer which combines multiple matching strategies
+        and penalizes length differences.
+
+        Args:
+            entity: Query entity string
+
+        Returns:
+            Tuple of (matched_entity_name, score) or None if no good match
+        """
+        from rapidfuzz import process, fuzz
+
+        if not self.adapter.entity_to_id:
+            return None
+
+        # Get all entity names
+        entity_names = list(self.adapter.entity_to_id.keys())
+        query = entity.upper()
+
+        # Find best match using WRatio (weighted ratio - handles partial matches better)
+        result = process.extractOne(
+            query,
+            entity_names,
+            scorer=fuzz.WRatio,
+            score_cutoff=self.FUZZY_MATCH_THRESHOLD,
+        )
+
+        if result is None:
+            return None
+
+        matched_name, score, _ = result
+
+        # Additional check: reject if length ratio is too different
+        # This prevents "EU" matching "EUROPEAN UNION" with high score
+        len_ratio = len(query) / len(matched_name) if matched_name else 0
+        if len_ratio < 0.4 or len_ratio > 2.5:
+            logger.debug(f"Rejected fuzzy match '{entity}' -> '{matched_name}' (len_ratio={len_ratio:.2f})")
+            return None
+
+        return matched_name, score
 
     def _relation_to_id(self, relation: str) -> int:
         """
         Map relation string to ID.
 
+        Supports both exact CAMEO codes (e.g., '190_Q4') and semantic labels
+        (e.g., 'CONFLICT'). Semantic labels are mapped to the most frequent
+        CAMEO code in that category.
+
         Args:
-            relation: Relation type
+            relation: Relation type (CAMEO code or semantic label)
 
         Returns:
             Relation ID
 
         Raises:
-            ValueError: If relation not found
+            ValueError: If relation not found and not a known semantic label
         """
+        # Try exact lookup first
         relation_id = self.adapter.relation_to_id.get(relation)
-        if relation_id is None:
-            raise ValueError(f"Relation type not found: {relation}")
-        return relation_id
+        if relation_id is not None:
+            return relation_id
+
+        # Check if it's a semantic label
+        semantic_upper = relation.upper()
+        if semantic_upper in self.SEMANTIC_TO_CAMEO:
+            cameo_codes = self.SEMANTIC_TO_CAMEO[semantic_upper]
+            # Try each CAMEO code in order (most frequent first)
+            for cameo_code in cameo_codes:
+                cameo_id = self.adapter.relation_to_id.get(cameo_code)
+                if cameo_id is not None:
+                    logger.debug(f"Mapped semantic '{relation}' to CAMEO '{cameo_code}'")
+                    return cameo_id
+            # None of the mapped CAMEO codes exist in the model
+            raise ValueError(
+                f"Semantic label '{relation}' mapped to CAMEO codes {cameo_codes}, "
+                f"but none exist in trained model"
+            )
+
+        raise ValueError(f"Relation type not found: {relation}")
 
     def validate_scenario_event(
         self,

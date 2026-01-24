@@ -46,6 +46,7 @@ dependencies = [
     "flax>=0.10.7",
     "optax>=0.2.6",
     "jraph>=0.0.6.dev0",
+    "rapidfuzz>=3.14.3",
 ]
 
 [project.optional-dependencies]
