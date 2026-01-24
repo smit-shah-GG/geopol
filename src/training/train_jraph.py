@@ -287,23 +287,33 @@ def save_checkpoint(
     """Save model checkpoint."""
     path.parent.mkdir(parents=True, exist_ok=True)
 
-    # Extract state from model
-    graphdef, state = nnx.split(model)
+    # Extract state from model using nnx.split
+    _, state = nnx.split(model)
 
-    # Convert state to flat dict for serialization
+    # Flatten state using JAX tree utilities
+    # tree_flatten_with_path returns list of (KeyPath, leaf) pairs
+    # The leaves are already raw JAX arrays (tree goes down through .value)
+    leaves_with_paths, _ = jax.tree_util.tree_flatten_with_path(state)
+
     flat_state = {}
+    for key_path, leaf in leaves_with_paths:
+        # leaf is already a JAX array, check it has shape (is array-like)
+        if hasattr(leaf, 'shape') and len(leaf.shape) > 0:
+            # Convert KeyPath to a valid npz key
+            path_str = jax.tree_util.keystr(key_path)
+            # Sanitize for npz: replace problematic chars with underscores
+            safe_key = (
+                path_str.replace('[', '_')
+                .replace(']', '')
+                .replace("'", '')
+                .replace('.', '_')
+            )
+            flat_state[safe_key] = np.array(leaf)
 
-    def flatten_state(prefix: str, obj):
-        if hasattr(obj, 'value'):
-            flat_state[prefix] = np.array(obj.value)
-        elif hasattr(obj, '__dict__'):
-            for k, v in obj.__dict__.items():
-                flatten_state(f"{prefix}.{k}" if prefix else k, v)
-        elif isinstance(obj, (list, tuple)):
-            for i, item in enumerate(obj):
-                flatten_state(f"{prefix}[{i}]", item)
-
-    flatten_state("", state)
+    if not flat_state:
+        logger.warning("No model weights extracted! State structure may have changed.")
+    else:
+        logger.info(f"Extracted {len(flat_state)} weight arrays for checkpoint")
 
     checkpoint = {
         "epoch": epoch,
@@ -316,6 +326,8 @@ def save_checkpoint(
             "embedding_dim": model.embedding_dim,
             "num_layers": model.num_layers,
         },
+        # Store the key mapping so we can reconstruct state on load
+        "weight_keys": list(flat_state.keys()),
     }
 
     # Save metadata as JSON
@@ -326,7 +338,80 @@ def save_checkpoint(
     # Save state using numpy
     np.savez(path, **flat_state)
 
-    logger.info(f"Saved checkpoint to {path}")
+    logger.info(f"Saved checkpoint to {path} ({len(flat_state)} arrays)")
+
+
+def load_checkpoint(
+    path: Path,
+) -> Tuple[REGCNJraph, Dict[str, int], Dict[str, int], Dict]:
+    """
+    Load model from checkpoint.
+
+    Args:
+        path: Path to checkpoint .npz file
+
+    Returns:
+        (model, entity_to_id, relation_to_id, metadata)
+    """
+    # Load metadata
+    meta_path = path.with_suffix(".json")
+    with open(meta_path, "r") as f:
+        metadata = json.load(f)
+
+    config = metadata["config"]
+    entity_to_id = metadata["entity_to_id"]
+    relation_to_id = metadata["relation_to_id"]
+
+    # Create model with same architecture
+    model = create_model(
+        num_entities=config["num_entities"],
+        num_relations=config["num_relations"],
+        embedding_dim=config["embedding_dim"],
+        num_layers=config["num_layers"],
+    )
+
+    # Load weights
+    npz_path = path.with_suffix(".npz")
+    with np.load(npz_path) as data:
+        saved_arrays = {k: data[k] for k in data.files}
+
+    if not saved_arrays:
+        logger.warning(f"Checkpoint {path} contains no weight arrays!")
+        return model, entity_to_id, relation_to_id, metadata
+
+    logger.info(f"Loaded {len(saved_arrays)} weight arrays from {path}")
+
+    # Get current model state structure
+    graphdef, state = nnx.split(model)
+    leaves_with_paths, treedef = jax.tree_util.tree_flatten_with_path(state)
+
+    # Build mapping from sanitized key to original leaf index
+    # Leaves are already JAX arrays (tree goes through .value)
+    updated_leaves = []
+    for key_path, leaf in leaves_with_paths:
+        if hasattr(leaf, 'shape') and len(leaf.shape) > 0:
+            path_str = jax.tree_util.keystr(key_path)
+            safe_key = (
+                path_str.replace('[', '_')
+                .replace(']', '')
+                .replace("'", '')
+                .replace('.', '_')
+            )
+            if safe_key in saved_arrays:
+                # Replace with loaded array
+                updated_leaves.append(jnp.array(saved_arrays[safe_key]))
+            else:
+                logger.warning(f"Weight key '{safe_key}' not found in checkpoint")
+                updated_leaves.append(leaf)
+        else:
+            updated_leaves.append(leaf)
+
+    # Reconstruct state tree and merge back into model
+    new_state = jax.tree_util.tree_unflatten(treedef, updated_leaves)
+    nnx.update(model, new_state)
+
+    logger.info(f"Model weights restored from checkpoint")
+    return model, entity_to_id, relation_to_id, metadata
 
 
 def train_regcn_jraph(
