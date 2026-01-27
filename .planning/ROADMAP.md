@@ -72,7 +72,7 @@ Plans:
 **Plans**: 1 plan
 
 Plans:
-- [ ] 06-01: Fix NetworkX API call and update tests
+- [x] 06-01: Fix NetworkX API call and update tests
 
 #### Phase 7: Bootstrap Pipeline
 **Goal**: A single command takes the system from zero data to fully operational (ingested events, built graph, indexed RAG store)
@@ -114,6 +114,6 @@ Plans:
 | 3. Hybrid Forecasting | v1.0 | 4/4 | Complete | 2026-01-17 |
 | 4. Calibration | v1.0 | 2/2 | Complete | 2026-01-19 |
 | 5. TKG Training | v1.0 | 4/4 | Complete | 2026-01-23 |
-| 6. NetworkX Fix | v1.1 | 0/1 | Not started | - |
+| 6. NetworkX Fix | v1.1 | 1/1 | Complete | 2026-01-28 |
 | 7. Bootstrap Pipeline | v1.1 | 0/2 | Not started | - |
 | 8. Graph Partitioning | v1.1 | 0/2 | Not started | - |

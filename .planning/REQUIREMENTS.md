@@ -9,7 +9,7 @@ Requirements for tech debt remediation. Each maps to roadmap phases.
 
 ### Bug Fixes
 
-- [ ] **BUG-01**: Graph query path uses correct NetworkX API (`single_source_shortest_path` instead of `shortest_path`) so entity relationship queries return valid results without API errors
+- [x] **BUG-01**: Graph query path uses correct NetworkX API (`single_source_shortest_path` instead of `shortest_path`) so entity relationship queries return valid results without API errors
 
 ### Infrastructure
 
@@ -44,7 +44,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| BUG-01 | Phase 6 | Pending |
+| BUG-01 | Phase 6 | Complete |
 | INFRA-01 | Phase 7 | Pending |
 | INFRA-02 | Phase 7 | Pending |
 | SCALE-01 | Phase 8 | Pending |
