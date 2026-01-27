@@ -69,10 +69,10 @@ Plans:
 **Success Criteria** (what must be TRUE):
   1. Running entity relationship queries against the knowledge graph returns path results without raising NetworkX API exceptions
   2. `single_source_shortest_path` is used in all graph traversal code paths that previously called `shortest_path` incorrectly
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 06-01: Fix NetworkX API and verify graph queries
+- [ ] 06-01: Fix NetworkX API call and update tests
 
 #### Phase 7: Bootstrap Pipeline
 **Goal**: A single command takes the system from zero data to fully operational (ingested events, built graph, indexed RAG store)
