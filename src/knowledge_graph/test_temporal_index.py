@@ -151,12 +151,38 @@ class TestTemporalIndex:
         assert len(top_out) <= 3
         # USA and RUS should be top (both have 2 out-edges)
 
-    def test_shortest_path(self, index):
-        """Test shortest path query."""
-        # There might be a path USA -> RUS if we check connectivity
-        # For sample data, likely no path
-        path = index.shortest_path('USA', 'RUS', max_length=2)
-        # Path may be None for disconnected nodes
+    def test_shortest_path_connected(self, index):
+        """Test shortest_path returns valid path for directly connected nodes."""
+        # USA -> CHN is a direct edge in the sample graph
+        path = index.shortest_path('USA', 'CHN', max_length=5)
+        assert path is not None
+        assert path[0] == 'USA'
+        assert path[-1] == 'CHN'
+        assert len(path) == 2  # Direct edge: 1 hop
+
+    def test_shortest_path_disconnected(self, index):
+        """Test shortest_path returns None for nodes with no connecting path."""
+        # NATO has no outgoing edges in sample data; no path NATO -> CHN
+        path = index.shortest_path('NATO', 'CHN', max_length=5)
+        assert path is None
+
+    def test_shortest_path_cutoff_exceeded(self):
+        """Test shortest_path returns None when shortest path exceeds max_length.
+
+        Uses a local graph to avoid perturbing the shared sample fixture.
+        This is the core regression test for BUG-01 / UAT-005: the old code
+        passed cutoff to nx.shortest_path which does not accept it, causing
+        TypeError. The fix uses nx.single_source_shortest_path(cutoff=...).
+        """
+        graph = nx.MultiDiGraph()
+        graph.add_edge('X', 'Y')
+        graph.add_edge('Y', 'Z')
+        idx = TemporalIndex(graph)
+
+        # Path X -> Z exists and is 2 hops
+        assert idx.shortest_path('X', 'Z', max_length=5) == ['X', 'Y', 'Z']
+        # But with max_length=1, the 2-hop path is beyond cutoff
+        assert idx.shortest_path('X', 'Z', max_length=1) is None
 
     def test_k_hop_neighbors(self, index):
         """Test k-hop neighbors."""
