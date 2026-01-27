@@ -221,19 +221,23 @@ class TemporalIndex:
         """
         Find shortest path between actors.
 
+        Uses single_source_shortest_path with cutoff to bound search depth.
+        nx.shortest_path does not accept a cutoff parameter; using it was BUG-01.
+
         Args:
             source: Source actor
             target: Target actor
-            max_length: Maximum path length to consider
+            max_length: Maximum path length (hop count) to consider
 
         Returns:
-            Shortest path or None if no path exists
+            Shortest path as list of nodes, or None if no path exists
+            within max_length hops
         """
         try:
-            path = nx.shortest_path(self.graph, source, target, cutoff=max_length)
-            return path
-        except nx.NetworkXNoPath:
+            paths = nx.single_source_shortest_path(self.graph, source, cutoff=max_length)
+        except nx.NodeNotFound:
             return None
+        return paths.get(target)
 
     def k_hop_neighbors(self, node: int, k: int = 2) -> Set:
         """
