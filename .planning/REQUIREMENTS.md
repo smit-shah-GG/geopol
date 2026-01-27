@@ -44,17 +44,17 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| BUG-01 | — | Pending |
-| INFRA-01 | — | Pending |
-| INFRA-02 | — | Pending |
-| SCALE-01 | — | Pending |
-| SCALE-02 | — | Pending |
+| BUG-01 | Phase 6 | Pending |
+| INFRA-01 | Phase 7 | Pending |
+| INFRA-02 | Phase 7 | Pending |
+| SCALE-01 | Phase 8 | Pending |
+| SCALE-02 | Phase 8 | Pending |
 
 **Coverage:**
 - v1.1 requirements: 5 total
-- Mapped to phases: 0
-- Unmapped: 5 ⚠️
+- Mapped to phases: 5
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-01-28*
-*Last updated: 2026-01-28 after initial definition*
+*Last updated: 2026-01-28 after roadmap creation*

@@ -5,14 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-01-28)
 
 **Core value:** Explainability — every forecast must provide clear, traceable reasoning paths
-**Current focus:** v1.1 Tech Debt Remediation
+**Current focus:** v1.1 Tech Debt Remediation — Phase 6 (NetworkX API Fix)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 6 of 8 (NetworkX API Fix)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-01-28 — Milestone v1.1 started
+Status: Ready to plan
+Last activity: 2026-01-28 — Roadmap created for v1.1
 
 Progress: v1.1 ░░░░░░░░░░ 0%
 
@@ -35,36 +35,18 @@ Progress: v1.1 ░░░░░░░░░░ 0%
 
 **Recent Trend:**
 - Last 3 plans: 05-02 (9min), 05-03 (25min), 05-04 (18min)
-- Trend: All phases complete
+- Trend: Stable
 
 ## Accumulated Context
 
 ### Decisions
 
 Decisions are logged in PROJECT.md Key Decisions table.
-Key decisions made throughout project:
+Key decisions affecting current work:
 
-- Python selected as implementation language
-- Focus on conflicts and diplomatic events (QuadClass 1 & 4)
-- Evaluation on recent 2023-2024 events
-- Using uv for Python package management (user-specified)
-- Using google-genai SDK instead of deprecated google-generativeai
-- RE-GCN chosen over TiRGN for mature implementation (03-03)
-- CPU-only PyTorch for production compatibility (03-03)
-- 60/40 graph/RAG confidence weighting (03-03)
-- Ensemble weights: 0.6 LLM, 0.4 TKG (configurable) (03-04)
-- Temperature scaling for confidence calibration (03-04)
-- CLI with JSON/text/summary output formats (03-04)
-- SQLite for lightweight prediction tracking (04-01)
-- Per-category calibration curves (conflict/diplomatic/economic) (04-01)
-- Isotonic + temperature scaling complementary approach (04-01)
-- Keyword-based category inference for simplicity (04-01)
-- All QuadClasses (1-4) included for comprehensive pattern learning (05-01)
-- Parquet format for efficient TKG data loading (05-01)
-- Composite relation format: EventCode_QuadClass (05-01)
-- JAX/jraph training for memory efficiency (05-03)
-- Weekly retraining schedule (configurable to monthly) (05-04)
-- Time-based retraining over performance-triggered (05-04)
+- NetworkX `shortest_path` misuse identified as UAT-005 (v1.0 post-ship)
+- JAX/jraph for training, PyTorch CPU-only for inference
+- SQLite for event and prediction storage
 
 ### Deferred Issues
 
@@ -74,26 +56,9 @@ None.
 
 None.
 
-### Roadmap Evolution
-
-- Phase 5 added (2026-01-13): TKG predictor training with RE-GCN implementation and GDELT data pipeline
-- Project completed (2026-01-23): All 5 phases delivered
-
 ## Session Continuity
 
 Last session: 2026-01-28
-Stopped at: v1.1 milestone initialized, defining requirements
+Stopped at: v1.1 roadmap created, ready to plan Phase 6
 Resume file: None
-Next: Define requirements → create roadmap
-
-## v1.0 Deliverables
-
-See `.planning/MILESTONES.md` for full details.
-
-**Key artifacts:**
-- `forecast.py` — Main CLI for running forecasts
-- `src/forecasting/` — Ensemble forecaster, TKG predictor, LLM integration
-- `src/knowledge_graph/` — Knowledge graph construction and querying
-- `src/training/` — Data collection, model training, retraining scheduler
-- `models/tkg/regcn_trained.pt` — Trained TKG model checkpoint
-- `config/retraining.yaml` — Retraining schedule configuration
+Next: `/gsd:plan-phase 6`
