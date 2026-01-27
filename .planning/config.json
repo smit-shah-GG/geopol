@@ -15,5 +15,10 @@
     "always_confirm_destructive": true,
     "always_confirm_external_services": true
   },
-    "model_profile": "quality"
+  "model_profile": "quality",
+  "workflow": {
+    "research": true,
+    "plan_check": true,
+    "verifier": false
+  }
 }
