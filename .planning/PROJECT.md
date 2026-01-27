@@ -21,7 +21,18 @@ Explainability — every forecast must provide clear, traceable reasoning paths 
 
 ### Active
 
-(None — v1.0 complete, define new requirements for next milestone)
+- [ ] Fix NetworkX shortest_path API to use single_source_shortest_path — v1.1
+- [ ] Production bootstrap script connecting data ingestion → graph build → RAG indexing — v1.1
+- [ ] Graph partitioning for scalability beyond 1M events — v1.1
+
+## Current Milestone: v1.1 Tech Debt Remediation
+
+**Goal:** Stabilize v1.0 foundation by resolving all known technical debt before adding new features.
+
+**Target:**
+- Fix NetworkX API misuse (UAT-005)
+- Production bootstrap pipeline (end-to-end data → graph → index)
+- Graph partitioning for >1M event scalability
 
 ### Out of Scope
 
@@ -87,4 +98,4 @@ This is a greenfield implementation starting from first principles rather than e
 - Scalability: Graph partitioning needed for >1M events
 
 ---
-*Last updated: 2026-01-23 after v1.0 milestone*
+*Last updated: 2026-01-28 after v1.1 milestone start*

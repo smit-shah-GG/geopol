@@ -2,19 +2,19 @@
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-01-23)
+See: .planning/PROJECT.md (updated 2026-01-28)
 
 **Core value:** Explainability — every forecast must provide clear, traceable reasoning paths
-**Current focus:** v1.0 Shipped — Planning next milestone
+**Current focus:** v1.1 Tech Debt Remediation
 
 ## Current Position
 
-Phase: v1.0 complete
-Plan: N/A
-Status: **MILESTONE SHIPPED**
-Last activity: 2026-01-23 — v1.0 milestone archived
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-01-28 — Milestone v1.1 started
 
-Progress: v1.0 ████████████████ 100% (5 phases, 16 plans)
+Progress: v1.1 ░░░░░░░░░░ 0%
 
 ## Performance Metrics
 
@@ -81,16 +81,10 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-01-23
-Stopped at: v1.0 milestone shipped
+Last session: 2026-01-28
+Stopped at: v1.1 milestone initialized, defining requirements
 Resume file: None
-Next: `/gsd:new-milestone` when ready for v1.1
-
-## Technical Debt (Carried to v1.1)
-
-1. **UAT-005:** Fix NetworkX shortest_path API (minor) — use `single_source_shortest_path`
-2. **Bootstrap script:** Production script for Phase 1 → Phase 2 → Phase 3 connection
-3. **Scalability:** Graph partitioning for >1M events
+Next: Define requirements → create roadmap
 
 ## v1.0 Deliverables
 
