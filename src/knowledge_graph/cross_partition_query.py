@@ -75,7 +75,8 @@ class QueryRouter:
         Execute k-hop neighborhood query across partitions.
 
         Correctness guarantee: Returns same result as single-graph query
-        by querying all partitions containing the entity and merging.
+        by building a merged view of all relevant partitions and executing
+        k-hop traversal on the merged graph.
 
         For boundary entities, the home partition is queried first to
         reduce duplicate work on replicas.
@@ -92,63 +93,109 @@ class QueryRouter:
         Returns:
             TraversalResult with merged k-hop subgraph from all partitions.
         """
-        # Step 1: Get partitions containing entity
-        partitions = self.index.get_entity_partitions(entity_id)
+        # Step 1: For k-hop queries, we must consider ALL partitions since
+        # edges are partitioned by time, not entity. A k-hop neighborhood
+        # can span any number of time windows.
+        all_partitions = self.manager.list_partitions()
 
-        if not partitions:
-            logger.debug(f"Entity {entity_id} not found in any partition")
+        if not all_partitions:
+            logger.debug("No partitions registered")
             return TraversalResult()
 
         # Step 2: Filter by time window if specified
         if time_start or time_end:
-            partitions = self._filter_partitions_by_time(
-                partitions, time_start, time_end
+            all_partitions = self._filter_partitions_by_time(
+                all_partitions, time_start, time_end
             )
-            if not partitions:
+            if not all_partitions:
                 logger.debug(f"No partitions in time range for entity {entity_id}")
                 return TraversalResult()
 
         # Step 3: Prioritize home partition for boundary entities
-        partitions = self._prioritize_home_partition(entity_id, partitions)
+        partitions = self._prioritize_home_partition(entity_id, all_partitions)
 
         logger.debug(
-            f"Querying {len(partitions)} partitions for entity {entity_id}, k={k}"
+            f"Building merged view from {len(partitions)} partitions for entity {entity_id}, k={k}"
         )
 
-        # Step 4: Scatter - submit parallel queries to each partition
-        futures = {}
-        for partition_id in partitions:
-            future = self._executor.submit(
-                self._query_single_partition,
-                partition_id,
-                entity_id,
-                k,
-                time_start,
-                time_end,
-                min_confidence,
-                quad_class,
-                max_results
-            )
-            futures[future] = partition_id
+        # Step 4: Build merged graph from all partitions
+        # This ensures k-hop traversal sees ALL edges, regardless of which
+        # time partition they're in.
+        merged_graph = self._build_merged_graph(partitions)
 
-        # Step 5: Gather - collect results and merge
-        merged_result = TraversalResult()
-        merged_result.metadata['query_type'] = 'k_hop_neighborhood'
-        merged_result.metadata['k'] = k
-        merged_result.metadata['root_entity'] = entity_id
-        merged_result.metadata['partitions_queried'] = partitions
+        # Check if entity exists in merged graph
+        if entity_id not in merged_graph and str(entity_id) not in merged_graph:
+            logger.debug(f"Entity {entity_id} not in merged graph")
+            return TraversalResult()
 
-        seen_edges: Set[Tuple[Any, Any, Any]] = set()  # (u, v, key) for dedup
+        # Use string entity_id if needed
+        query_entity = entity_id if entity_id in merged_graph else str(entity_id)
 
-        for future in as_completed(futures):
-            partition_id = futures[future]
+        # Step 5: Execute k-hop on merged graph
+        from .graph_traversal import GraphTraversal
+        traversal = GraphTraversal(merged_graph)
+        result = traversal.k_hop_neighborhood(
+            entity_id=query_entity,
+            k=k,
+            time_start=time_start,
+            time_end=time_end,
+            min_confidence=min_confidence,
+            quad_class=quad_class,
+            max_results=max_results
+        )
+
+        result.metadata['partitions_queried'] = partitions
+
+        return result
+
+    def _build_merged_graph(
+        self,
+        partition_ids: List[str]
+    ) -> 'nx.MultiDiGraph':
+        """
+        Build a merged graph view from multiple partitions.
+
+        Loads all specified partitions and combines them into a single
+        graph for k-hop traversal. This is necessary because k-hop
+        traversal needs to see ALL edges, regardless of which time
+        partition they belong to.
+
+        Args:
+            partition_ids: Partitions to merge.
+
+        Returns:
+            NetworkX MultiDiGraph containing all nodes and edges.
+        """
+        import networkx as nx
+
+        merged = nx.MultiDiGraph()
+
+        for partition_id in partition_ids:
             try:
-                partial_result = future.result()
-                self._merge_result(merged_result, partial_result, seen_edges)
-            except Exception as e:
-                logger.error(f"Error querying partition {partition_id}: {e}")
+                partition = self.manager.load_partition(partition_id)
 
-        return merged_result
+                # Add all nodes with their attributes
+                for node, data in partition.nodes(data=True):
+                    if node not in merged:
+                        merged.add_node(node, **data)
+
+                # Add all edges
+                for u, v, key, data in partition.edges(keys=True, data=True):
+                    # Check for duplicate edge
+                    if not merged.has_edge(u, v, key=key):
+                        merged.add_edge(u, v, key=key, **data)
+
+            except FileNotFoundError:
+                logger.warning(f"Partition {partition_id} not found, skipping")
+            except Exception as e:
+                logger.error(f"Error loading partition {partition_id}: {e}")
+
+        logger.debug(
+            f"Merged {len(partition_ids)} partitions: "
+            f"{merged.number_of_nodes()} nodes, {merged.number_of_edges()} edges"
+        )
+
+        return merged
 
     def _filter_partitions_by_time(
         self,
