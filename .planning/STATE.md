@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-01-28)
 ## Current Position
 
 Phase: 7 of 8 (Bootstrap Pipeline)
-Plan: 1 of 1 (complete)
+Plan: 2 of 2 (complete)
 Status: Phase 7 complete
-Last activity: 2026-01-30 — Completed 07-01-PLAN.md
+Last activity: 2026-01-30 — Completed 07-02-PLAN.md
 
 Progress: v1.1 ██░░░░░░░░ 20%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 18
-- Average duration: 23 minutes
-- Total execution time: 6.7 hours
+- Total plans completed: 19
+- Average duration: 22 minutes
+- Total execution time: 6.8 hours
 
 **By Phase:**
 
@@ -33,10 +33,10 @@ Progress: v1.1 ██░░░░░░░░ 20%
 | 04-calibration-evaluation | 2 | 44min | 22min |
 | 05-tkg-training | 4 | 64min | 16min |
 | 06-networkx-fix | 1 | 2min | 2min |
-| 07-bootstrap-pipeline | 1 | 4min | 4min |
+| 07-bootstrap-pipeline | 2 | 12min | 6min |
 
 **Recent Trend:**
-- Last 3 plans: 05-04 (18min), 06-01 (2min), 07-01 (4min)
+- Last 3 plans: 06-01 (2min), 07-01 (4min), 07-02 (8min)
 - Trend: Fast (targeted implementations)
 
 ## Accumulated Context
@@ -51,6 +51,8 @@ Key decisions affecting current work:
 - SQLite for event and prediction storage
 - Parquet->SQLite bridge in ProcessEventsStage (not separate stage)
 - Atomic state writes using tempfile + os.replace pattern
+- Dual idempotency: checkpoint status AND output validation for skip decisions
+- Output validators use lazy imports and return (bool, str) tuples
 
 ### Deferred Issues
 
@@ -63,6 +65,6 @@ None.
 ## Session Continuity
 
 Last session: 2026-01-30
-Stopped at: Completed 07-01-PLAN.md (Phase 7 complete)
+Stopped at: Completed 07-02-PLAN.md (Phase 7 complete)
 Resume file: None
 Next: Phase 8 planning
