@@ -75,47 +75,69 @@ The distinction: if a decision is being made or approved, be aggressive. If it's
 
 ## Repository Purpose
 
-This repository combines technical documentation with implementation of AI-powered geopolitical forecasting systems. The repository contains:
-1. A comprehensive technical reference document (`geopol.md`) that explores the architecture, algorithms, and systems used in modern geopolitical AI forecasting platforms
-2. Implementation code for geopolitical forecasting components (under development)
+This repository implements an AI-powered geopolitical forecasting system combining Temporal Knowledge Graphs with LLM reasoning. The repository contains:
+1. A comprehensive technical reference document (`geopol.md`) covering algorithms and architectures
+2. Production implementation of the forecasting engine (v1.0 shipped, v1.1 in progress)
 
-**Status**: Hybrid documentation and development repository. Both reference material and working code will be maintained to production standards.
+**Status**: Active development. v1.0 MVP complete (Phases 1-5). v1.1 Tech Debt Remediation in progress (Phases 6-8).
 
 ## Repository Structure
 
 ```
 /
-├── geopol.md          # Main technical document (19KB)
-├── CLAUDE.md          # This file - guidance for Claude Code
-└── .claude/
-    └── settings.local.json  # Claude Code configuration
+├── src/
+│   ├── bootstrap/         # System initialization pipeline (Phase 7)
+│   │   ├── checkpoint.py  # Atomic state persistence, dual idempotency
+│   │   ├── orchestrator.py# Stage execution with skip logic
+│   │   ├── stages.py      # 5 pipeline stages wrapping existing components
+│   │   └── validation.py  # Output validators for each stage
+│   ├── training/          # TKG training pipeline (Phase 5)
+│   ├── knowledge_graph/   # Graph construction and persistence (Phase 2)
+│   ├── forecasting/       # Hybrid LLM + TKG prediction (Phase 3)
+│   ├── calibration/       # Probability calibration (Phase 4)
+│   └── database/          # Event storage layer (Phase 1)
+├── scripts/
+│   ├── bootstrap.py       # Single-command system initialization
+│   ├── train_tkg_jax.py   # JAX/jraph RE-GCN training
+│   └── retrain_tkg.py     # Automated retraining
+├── tests/                 # pytest suite
+├── data/                  # Runtime data (gitignored)
+├── geopol.md              # Technical reference document
+├── CLAUDE.md              # This file
+└── .planning/             # GSD workflow state
 ```
 
 ## Working with This Repository
 
 ### Common Development Tasks
 
-For implementation work on geopolitical forecasting systems:
-
-1. **Build System** (to be defined based on language choice):
+1. **Install Dependencies** (using uv):
    ```bash
-   # Python: pip install -r requirements.txt
-   # Rust: cargo build --release
-   # TypeScript: npm install && npm run build
+   uv sync
    ```
 
-2. **Testing** (enforce 100% path coverage):
+2. **Bootstrap System** (zero-to-operational):
    ```bash
-   # Python: pytest --cov=. --cov-report=term-missing
-   # Rust: cargo test && cargo tarpaulin --out Html
-   # TypeScript: npm test -- --coverage
+   uv run python scripts/bootstrap.py           # Full pipeline
+   uv run python scripts/bootstrap.py --dry-run # Preview stages
+   uv run python scripts/bootstrap.py --force-stage collect  # Re-run specific stage
    ```
 
-3. **Performance Profiling**:
+3. **Testing** (enforce path coverage):
    ```bash
-   # Python: python -m cProfile -o profile.stats main.py
-   # Rust: cargo flamegraph
-   # Node: node --prof main.js && node --prof-process isolate-*.log
+   uv run pytest tests/ -v
+   uv run pytest tests/ --cov=src --cov-report=term-missing
+   ```
+
+4. **TKG Training**:
+   ```bash
+   uv run python scripts/train_tkg_jax.py --epochs 100
+   uv run python scripts/retrain_tkg.py          # Scheduled retraining
+   ```
+
+5. **Performance Profiling**:
+   ```bash
+   uv run python -m cProfile -o profile.stats scripts/bootstrap.py
    ```
 
 ### Documentation Tasks
@@ -164,4 +186,6 @@ When asked about geopolitical AI systems, the document provides detailed coverag
 - **Main Branch**: master
 - **Author**: smit-shah-GG (Smit Shah)
 - **Created**: January 8, 2026
-- **Primary Language**: Markdown documentation
+- **Primary Language**: Python 3.10+
+- **v1.0 Shipped**: 2026-01-23
+- **Current Milestone**: v1.1 Tech Debt Remediation

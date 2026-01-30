@@ -23,9 +23,28 @@ cp .env.example .env
 # Edit .env with your settings
 ```
 
-3. Run the data pipeline:
+3. Bootstrap the system (single command, zero-to-operational):
 ```bash
-python run_pipeline.py --date 2026-01-09
+uv run python scripts/bootstrap.py
+```
+
+The bootstrap pipeline executes 5 stages in sequence:
+1. **collect** - Fetch GDELT events (30 days by default)
+2. **process** - Transform to TKG format + load into SQLite
+3. **graph** - Build temporal knowledge graph
+4. **persist** - Save graph to GraphML
+5. **index** - Index patterns in RAG store
+
+Bootstrap supports checkpoint/resume - if interrupted, re-running skips completed stages:
+```bash
+# Check what would run without executing
+uv run python scripts/bootstrap.py --dry-run
+
+# Force re-run of a specific stage
+uv run python scripts/bootstrap.py --force-stage collect
+
+# Customize collection period
+uv run python scripts/bootstrap.py --n-days 60
 ```
 
 ## Architecture
@@ -42,13 +61,18 @@ python run_pipeline.py --date 2026-01-09
 
 ### Phase 3: Hybrid Forecasting
 - TKG-based prediction algorithms
-- LLM reasoning chains
-- Probability generation
+- LLM reasoning chains (Gemini integration)
+- RAG-augmented probability generation
 
 ### Phase 4: Calibration & Evaluation
-- Brier score calibration
-- Benchmark evaluation
-- Performance metrics
+- Isotonic and temperature scaling calibration
+- Brier score evaluation framework
+- Benchmark against historical events
+
+### Phase 5: TKG Training
+- GDELT data collection and preprocessing for training
+- JAX/jraph RE-GCN model training
+- Automated retraining scheduler
 
 ## Core Principles
 
@@ -64,6 +88,11 @@ python run_pipeline.py --date 2026-01-09
 
 - **Language**: Python 3.10+
 - **Data Access**: gdeltdoc, gdeltPyR
-- **Processing**: pandas, dask
-- **Storage**: SQLite (development), PostgreSQL (production-ready)
-- **Scheduling**: schedule (batch processing)
+- **Processing**: pandas, dask, pyarrow
+- **Knowledge Graphs**: NetworkX (graph operations), GraphML (persistence)
+- **TKG Training**: JAX, Flax, jraph (RE-GCN implementation)
+- **LLM Integration**: Google GenAI (Gemini)
+- **RAG Pipeline**: LlamaIndex, ChromaDB (vector store)
+- **Calibration**: scikit-learn (isotonic regression), netcal
+- **Storage**: SQLite (events), GraphML (knowledge graph), ChromaDB (RAG index)
+- **Infrastructure**: Atomic checkpoint/resume bootstrap pipeline
