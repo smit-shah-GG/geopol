@@ -1,5 +1,32 @@
 # Project Milestones: Explainable Geopolitical Forecasting Engine
 
+## v1.1 Tech Debt Remediation (Shipped: 2026-01-30)
+
+**Delivered:** Stabilized v1.0 foundation by fixing NetworkX API bug, adding single-command bootstrap pipeline with checkpoint/resume, and implementing graph partitioning for >1M event scalability.
+
+**Phases completed:** 6-8 (5 plans total)
+
+**Key accomplishments:**
+
+- Fixed NetworkX API misuse (UAT-005) — replaced broken shortest_path with single_source_shortest_path
+- Bootstrap pipeline with 5-stage orchestrator for zero-to-operational system initialization
+- Dual idempotency (checkpoint + output validation) for robust resume after interruption
+- Temporal-first graph partitioning with SQLite index and LRU cache
+- Cross-partition query correctness (100%) via merged graph approach for k-hop traversal
+
+**Stats:**
+
+- 20 source files created/modified
+- 40,257 lines of Python (up from 37,414)
+- 3 phases, 5 plans, ~12 tasks
+- 2 days from milestone start to ship (2026-01-28 → 2026-01-30)
+
+**Git range:** `feat(06-01)` → `feat(08-02)`
+
+**What's next:** v1.2 for performance profiling, multi-source data ingestion (ACLED, ICEWS), or web dashboard.
+
+---
+
 ## v1.0 MVP (Shipped: 2026-01-23)
 
 **Delivered:** Fully functional explainable geopolitical forecasting engine combining GDELT data ingestion, temporal knowledge graphs, and hybrid LLM+TKG ensemble prediction with probability calibration.

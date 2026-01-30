@@ -18,21 +18,19 @@ Explainability — every forecast must provide clear, traceable reasoning paths 
 - Explainable reasoning chain generation for each prediction — v1.0
 - Probability calibration system with Brier score optimization — v1.0
 - Evaluation framework against historical events — v1.0
+- Fix NetworkX shortest_path API to use single_source_shortest_path — v1.1
+- Production bootstrap script connecting data ingestion → graph build → RAG indexing — v1.1
+- Graph partitioning for scalability beyond 1M events — v1.1
 
 ### Active
 
-- [ ] Fix NetworkX shortest_path API to use single_source_shortest_path — v1.1
-- [ ] Production bootstrap script connecting data ingestion → graph build → RAG indexing — v1.1
-- [ ] Graph partitioning for scalability beyond 1M events — v1.1
+(None — milestone complete, define new requirements with `/gsd:new-milestone`)
 
-## Current Milestone: v1.1 Tech Debt Remediation
+## Current Milestone: v1.1 Complete
 
-**Goal:** Stabilize v1.0 foundation by resolving all known technical debt before adding new features.
+**v1.1 Tech Debt Remediation shipped 2026-01-30.**
 
-**Target:**
-- Fix NetworkX API misuse (UAT-005)
-- Production bootstrap pipeline (end-to-end data → graph → index)
-- Graph partitioning for >1M event scalability
+Next milestone not yet defined. Use `/gsd:new-milestone` to start v1.2 planning.
 
 ### Out of Scope
 
@@ -77,25 +75,23 @@ This is a greenfield implementation starting from first principles rather than e
 
 ## Current State
 
-**Version:** v1.0 (shipped 2026-01-23)
+**Version:** v1.1 (shipped 2026-01-30)
 
 **Tech Stack:**
 - Python 3.11+ with uv package management
 - PyTorch (CPU-only) for inference
 - JAX/jraph for training
 - NetworkX for graph operations
-- SQLite for event and prediction storage
+- SQLite for event, prediction, and partition index storage
 - Gemini API via google-genai SDK
 
 **Codebase:**
-- 89 source files
-- 37,414 lines of Python
-- 5 phases, 16 plans delivered
+- ~100 source files
+- 40,257 lines of Python
+- 8 phases, 21 plans delivered across 2 milestones
 
 **Known Issues:**
-- UAT-005: NetworkX shortest_path API (use single_source_shortest_path)
-- Missing production bootstrap script for graph+RAG indexing
-- Scalability: Graph partitioning needed for >1M events
+- datetime.utcnow() deprecated in Python 3.12+ (minor, in bootstrap code)
 
 ---
-*Last updated: 2026-01-28 after v1.1 milestone start*
+*Last updated: 2026-01-30 after v1.1 milestone complete*

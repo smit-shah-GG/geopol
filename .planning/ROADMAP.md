@@ -3,7 +3,7 @@
 ## Milestones
 
 - **v1.0 MVP** — Phases 1-5 (shipped 2026-01-23)
-- **v1.1 Tech Debt Remediation** — Phases 6-8 (in progress)
+- **v1.1 Tech Debt Remediation** — Phases 6-8 (shipped 2026-01-30)
 
 ## Phases
 
@@ -58,54 +58,35 @@ Plans:
 
 </details>
 
-### v1.1 Tech Debt Remediation (In Progress)
+<details>
+<summary>v1.1 Tech Debt Remediation (Phases 6-8) - SHIPPED 2026-01-30</summary>
 
-**Milestone Goal:** Stabilize v1.0 foundation by resolving all known technical debt before adding new features.
-
-#### Phase 6: NetworkX API Fix
+### Phase 6: NetworkX API Fix
 **Goal**: Graph entity queries return valid results without API errors
-**Depends on**: Phase 5 (v1.0 complete)
-**Requirements**: BUG-01
-**Success Criteria** (what must be TRUE):
-  1. Running entity relationship queries against the knowledge graph returns path results without raising NetworkX API exceptions
-  2. `single_source_shortest_path` is used in all graph traversal code paths that previously called `shortest_path` incorrectly
 **Plans**: 1 plan
 
 Plans:
 - [x] 06-01: Fix NetworkX API call and update tests
 
-#### Phase 7: Bootstrap Pipeline
-**Goal**: A single command takes the system from zero data to fully operational (ingested events, built graph, indexed RAG store)
-**Depends on**: Phase 6
-**Requirements**: INFRA-01, INFRA-02
-**Success Criteria** (what must be TRUE):
-  1. Running the bootstrap script with no prior data completes the full pipeline (GDELT ingestion, knowledge graph construction, RAG index build) and the system is ready to accept forecast queries
-  2. Running the bootstrap script a second time skips already-completed stages and finishes in significantly less time than a fresh run
-  3. If the bootstrap script is interrupted mid-execution and re-run, it resumes from the last successful checkpoint without re-processing completed stages
-  4. The bootstrap script reports progress for each stage (stage name, status, errors if any) to stdout
+### Phase 7: Bootstrap Pipeline
+**Goal**: A single command takes the system from zero data to fully operational
 **Plans**: 2 plans
 
 Plans:
 - [x] 07-01: Bootstrap orchestration module with stage definitions
 - [x] 07-02: Checkpoint/resume and dual idempotency
 
-#### Phase 8: Graph Partitioning
-**Goal**: Knowledge graph scales beyond 1M events through partitioning while preserving query correctness across partition boundaries
-**Depends on**: Phase 7
-**Requirements**: SCALE-01, SCALE-02
-**Success Criteria** (what must be TRUE):
-  1. Loading a knowledge graph with >1M events completes without running out of memory on the target hardware (CPU-only, standard research workstation)
-  2. Entity relationship queries spanning multiple graph partitions return the same results as they would on a single unpartitioned graph
-  3. Query performance on a partitioned 1M+ event graph is within 2x of query performance on a 100K event unpartitioned graph (no catastrophic degradation)
+### Phase 8: Graph Partitioning
+**Goal**: Knowledge graph scales beyond 1M events through partitioning
 **Plans**: 2 plans
 
 Plans:
-- [x] 08-01-PLAN.md — Partition index (SQLite) and partition manager (temporal-first partitioning, LRU cache)
-- [x] 08-02-PLAN.md — Boundary resolver, scatter-gather query router, PartitionedTemporalGraph interface
+- [x] 08-01: Partition index (SQLite) and partition manager (temporal-first partitioning, LRU cache)
+- [x] 08-02: Boundary resolver, scatter-gather query router, PartitionedTemporalGraph interface
+
+</details>
 
 ## Progress
-
-**Execution Order:** 6 → 7 → 8
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -117,3 +98,5 @@ Plans:
 | 6. NetworkX Fix | v1.1 | 1/1 | Complete | 2026-01-28 |
 | 7. Bootstrap Pipeline | v1.1 | 2/2 | Complete | 2026-01-30 |
 | 8. Graph Partitioning | v1.1 | 2/2 | Complete | 2026-01-30 |
+
+**Total:** 8 phases, 21 plans complete across 2 milestones

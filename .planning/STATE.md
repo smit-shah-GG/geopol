@@ -2,19 +2,19 @@
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-01-28)
+See: .planning/PROJECT.md (updated 2026-01-30)
 
 **Core value:** Explainability — every forecast must provide clear, traceable reasoning paths
-**Current focus:** v1.1 Tech Debt Remediation — Phase 8 Complete
+**Current focus:** v1.1 Complete — ready to plan v1.2
 
 ## Current Position
 
 Phase: 8 of 8 (Graph Partitioning)
 Plan: 2 of 2 in current phase
-Status: Phase complete
-Last activity: 2026-01-30 — Completed 08-02-PLAN.md
+Status: v1.1 Milestone complete
+Last activity: 2026-01-30 — v1.1 Tech Debt Remediation shipped
 
-Progress: v1.1 ████████░░ 100%
+Progress: v1.1 ████████████ 100%
 
 ## Performance Metrics
 
@@ -45,22 +45,18 @@ Progress: v1.1 ████████░░ 100%
 ### Decisions
 
 Decisions are logged in PROJECT.md Key Decisions table.
-Key decisions affecting current work:
+Key decisions affecting future work:
 
-- NetworkX `shortest_path` misuse identified as UAT-005 (v1.0 post-ship)
-- JAX/jraph for training, PyTorch CPU-only for inference
-- SQLite for event and prediction storage
-- Parquet->SQLite bridge in ProcessEventsStage (not separate stage)
+- Temporal-first graph partitioning (edges bucketed by time windows)
+- Merged graph approach for k-hop: edges span time partitions, must build unified view
+- SQLite for partition index persistence
+- LRU cache with gc.collect() on eviction for memory fragmentation mitigation
 - Atomic state writes using tempfile + os.replace pattern
 - Dual idempotency: checkpoint status AND output validation for skip decisions
-- Output validators use lazy imports and return (bool, str) tuples
-- Temporal-first graph partitioning (edges bucketed by time windows)
-- LRU cache with gc.collect() on eviction for memory fragmentation mitigation
-- Merged graph approach for k-hop: edges span time partitions, must build unified view
 
 ### Deferred Issues
 
-None.
+- datetime.utcnow() deprecated warning (Python 3.12+)
 
 ### Blockers/Concerns
 
@@ -69,6 +65,6 @@ None.
 ## Session Continuity
 
 Last session: 2026-01-30
-Stopped at: Completed 08-02-PLAN.md (Phase 8 complete)
+Stopped at: v1.1 milestone complete
 Resume file: None
-Next: v1.1 Milestone complete — ready for /gsd:complete-milestone
+Next: `/gsd:new-milestone` to start v1.2 planning
