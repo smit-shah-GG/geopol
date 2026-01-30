@@ -24,13 +24,29 @@ Explainability — every forecast must provide clear, traceable reasoning paths 
 
 ### Active
 
-(None — milestone complete, define new requirements with `/gsd:new-milestone`)
+- Deep token-space integration projecting TKG embeddings into LLM token space (TGL-LLM architecture)
+- Adaptive ensemble weighting based on context quality assessment
+- TKG algorithm upgrade from RE-GCN to state-of-art (HisMatch or similar)
+- Gradual migration path with parallel Gemini/Llama systems for validation
+- Benchmark framework comparing v2.0 against v1.1 baseline
 
-## Current Milestone: v1.1 Complete
+## Current Milestone: v2.0 Hybrid Architecture
 
-**v1.1 Tech Debt Remediation shipped 2026-01-30.**
+**Goal:** Replace post-hoc weighted voting with deep graph-language integration where TKG embeddings are projected directly into the LLM's token space, achieving 40-60% accuracy improvement over v1.1.
 
-Next milestone not yet defined. Use `/gsd:new-milestone` to start v1.2 planning.
+**Target features:**
+- TGL-LLM style adapter architecture (RGCN → GRU → learned adapter → Llama2-7B)
+- Self-hosted Llama2-7B inference (4-bit quantized for RTX 3060 12GB)
+- Context-quality-aware adaptive weighting (when deep integration unavailable)
+- TKG algorithm upgrade (RE-GCN → HisMatch for ~6% MRR gain)
+- A/B comparison framework (v1.1 Gemini vs v2.0 Llama-TGL)
+
+**Constraints:**
+- RTX 3060 12GB VRAM — adapter training feasible, full fine-tuning not feasible
+- Frozen Llama backbone — only adapter layers trained
+- Must validate gains before deprecating Gemini path
+
+**Success criteria:** Any measurable accuracy improvement over v1.1 baseline.
 
 ### Out of Scope
 
@@ -69,7 +85,7 @@ This is a greenfield implementation starting from first principles rather than e
 | Batch processing over real-time | Reduces complexity and compute requirements significantly | Good |
 | Python for implementation | Scientific computing ecosystem | Good |
 | RE-GCN over TiRGN | More mature implementation available | Good |
-| 60/40 LLM/TKG ensemble weighting | Balance reasoning with pattern matching | Good |
+| 60/40 LLM/TKG ensemble weighting | Balance reasoning with pattern matching | ⚠️ Revisit — v2.0 targets deep integration |
 | JAX/jraph for TKG training | Memory efficiency on CPU | Good |
 | Weekly retraining schedule | Captures evolving geopolitical patterns | Good |
 
@@ -94,4 +110,4 @@ This is a greenfield implementation starting from first principles rather than e
 - datetime.utcnow() deprecated in Python 3.12+ (minor, in bootstrap code)
 
 ---
-*Last updated: 2026-01-30 after v1.1 milestone complete*
+*Last updated: 2026-01-31 after v2.0 milestone started*

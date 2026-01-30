@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-01-30)
 
 **Core value:** Explainability — every forecast must provide clear, traceable reasoning paths
-**Current focus:** v1.1 Complete — ready to plan v1.2
+**Current focus:** v2.0 Hybrid Architecture — Deep Token-Space Integration
 
 ## Current Position
 
-Phase: 8 of 8 (Graph Partitioning)
-Plan: 2 of 2 in current phase
-Status: v1.1 Milestone complete
-Last activity: 2026-01-30 — v1.1 Tech Debt Remediation shipped
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-01-31 — Milestone v2.0 started
 
-Progress: v1.1 ████████████ 100%
+Progress: v2.0 ░░░░░░░░░░░░ 0%
 
 ## Performance Metrics
 
@@ -64,7 +64,7 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-01-30
-Stopped at: v1.1 milestone complete
+Last session: 2026-01-31
+Stopped at: v2.0 milestone definition (research phase)
 Resume file: None
-Next: `/gsd:new-milestone` to start v1.2 planning
+Next: Complete research, define requirements, create roadmap
