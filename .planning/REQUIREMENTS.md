@@ -79,35 +79,35 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DEEP-01 | TBD | Pending |
-| DEEP-02 | TBD | Pending |
-| DEEP-03 | TBD | Pending |
-| DEEP-04 | TBD | Pending |
-| DEEP-05 | TBD | Pending |
-| DEEP-06 | TBD | Pending |
-| DEEP-07 | TBD | Pending |
-| DEEP-08 | TBD | Pending |
-| TKG-01 | TBD | Pending |
-| TKG-02 | TBD | Pending |
-| TKG-03 | TBD | Pending |
-| TKG-04 | TBD | Pending |
-| VAL-01 | TBD | Pending |
-| VAL-02 | TBD | Pending |
-| VAL-03 | TBD | Pending |
-| VAL-04 | TBD | Pending |
-| VAL-05 | TBD | Pending |
-| VAL-06 | TBD | Pending |
-| DASH-01 | TBD | Pending |
-| DASH-02 | TBD | Pending |
-| DASH-03 | TBD | Pending |
-| MIG-01 | TBD | Pending |
-| MIG-02 | TBD | Pending |
+| DEEP-01 | Phase 10 | Pending |
+| DEEP-02 | Phase 11 | Pending |
+| DEEP-03 | Phase 10 | Pending |
+| DEEP-04 | Phase 10 | Pending |
+| DEEP-05 | Phase 9 | Pending |
+| DEEP-06 | Phase 12 | Pending |
+| DEEP-07 | Phase 12 | Pending |
+| DEEP-08 | Phase 12 | Pending |
+| TKG-01 | Phase 10 | Pending |
+| TKG-02 | Phase 14 | Pending |
+| TKG-03 | Phase 10 | Pending |
+| TKG-04 | Phase 10 | Pending |
+| VAL-01 | Phase 13 | Pending |
+| VAL-02 | Phase 13 | Pending |
+| VAL-03 | Phase 13 | Pending |
+| VAL-04 | Phase 13 | Pending |
+| VAL-05 | Phase 13 | Pending |
+| VAL-06 | Phase 13 | Pending |
+| DASH-01 | Phase 14 | Pending |
+| DASH-02 | Phase 14 | Pending |
+| DASH-03 | Phase 14 | Pending |
+| MIG-01 | Phase 9 | Pending |
+| MIG-02 | Phase 14 | Pending |
 
 **Coverage:**
 - v2.0 requirements: 23 total
-- Mapped to phases: 0 (pending roadmap)
-- Unmapped: 23
+- Mapped to phases: 23
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-01-31*
-*Last updated: 2026-01-31 after initial definition*
+*Roadmap traceability updated: 2026-01-31*

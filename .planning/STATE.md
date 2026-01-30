@@ -2,19 +2,19 @@
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-01-30)
+See: .planning/PROJECT.md (updated 2026-01-31)
 
 **Core value:** Explainability — every forecast must provide clear, traceable reasoning paths
-**Current focus:** v2.0 Hybrid Architecture — Deep Token-Space Integration
+**Current focus:** v2.0 Hybrid Architecture — Phase 9: Environment Setup & Data Preparation
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-01-31 — Milestone v2.0 started
+Phase: 9 of 14 (Environment Setup & Data Preparation)
+Plan: 0 of 2 in current phase
+Status: Ready to plan
+Last activity: 2026-01-31 — Roadmap created for v2.0 milestone
 
-Progress: v2.0 ░░░░░░░░░░░░ 0%
+Progress: v2.0 [░░░░░░░░░░░░] 0%
 
 ## Performance Metrics
 
@@ -45,14 +45,18 @@ Progress: v2.0 ░░░░░░░░░░░░ 0%
 ### Decisions
 
 Decisions are logged in PROJECT.md Key Decisions table.
-Key decisions affecting future work:
+Key decisions affecting current work:
 
-- Temporal-first graph partitioning (edges bucketed by time windows)
-- Merged graph approach for k-hop: edges span time partitions, must build unified view
-- SQLite for partition index persistence
-- LRU cache with gc.collect() on eviction for memory fragmentation mitigation
-- Atomic state writes using tempfile + os.replace pattern
-- Dual idempotency: checkpoint status AND output validation for skip decisions
+- JAX/jraph for TKG training (memory efficiency) — impacts Phase 9 JAX/PyTorch coordination
+- 60/40 LLM/TKG ensemble weighting — being replaced by deep integration in v2.0
+- RE-GCN over TiRGN — being upgraded to HisMatch in Phase 10
+
+### v2.0 Critical Constraints
+
+- RTX 3060 12GB VRAM — 4-bit quantization mandatory, training ~80-100h
+- JAX/PyTorch memory conflict — MUST resolve in Phase 9 before any model work
+- Frozen Llama backbone — only adapter layers and LoRA trained
+- HisMatch before training — embedding quality affects adapter training
 
 ### Deferred Issues
 
@@ -65,6 +69,6 @@ None.
 ## Session Continuity
 
 Last session: 2026-01-31
-Stopped at: v2.0 milestone definition (research phase)
+Stopped at: Roadmap created for v2.0
 Resume file: None
-Next: Complete research, define requirements, create roadmap
+Next: `/gsd:plan-phase 9` — Plan environment setup and JAX/PyTorch coordination
