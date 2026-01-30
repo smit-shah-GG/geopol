@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-01-28)
 
 **Core value:** Explainability — every forecast must provide clear, traceable reasoning paths
-**Current focus:** v1.1 Tech Debt Remediation — Phase 6 (NetworkX API Fix)
+**Current focus:** v1.1 Tech Debt Remediation — Phase 7 (Bootstrap Pipeline)
 
 ## Current Position
 
-Phase: 6 of 8 (NetworkX API Fix)
+Phase: 7 of 8 (Bootstrap Pipeline)
 Plan: 1 of 1 (complete)
-Status: Phase 6 complete
-Last activity: 2026-01-28 — Completed 06-01-PLAN.md
+Status: Phase 7 complete
+Last activity: 2026-01-30 — Completed 07-01-PLAN.md
 
-Progress: v1.1 █░░░░░░░░░ 10%
+Progress: v1.1 ██░░░░░░░░ 20%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 17
-- Average duration: 24 minutes
-- Total execution time: 6.6 hours
+- Total plans completed: 18
+- Average duration: 23 minutes
+- Total execution time: 6.7 hours
 
 **By Phase:**
 
@@ -33,10 +33,11 @@ Progress: v1.1 █░░░░░░░░░ 10%
 | 04-calibration-evaluation | 2 | 44min | 22min |
 | 05-tkg-training | 4 | 64min | 16min |
 | 06-networkx-fix | 1 | 2min | 2min |
+| 07-bootstrap-pipeline | 1 | 4min | 4min |
 
 **Recent Trend:**
-- Last 3 plans: 05-03 (25min), 05-04 (18min), 06-01 (2min)
-- Trend: Fast (targeted bug fix)
+- Last 3 plans: 05-04 (18min), 06-01 (2min), 07-01 (4min)
+- Trend: Fast (targeted implementations)
 
 ## Accumulated Context
 
@@ -48,6 +49,8 @@ Key decisions affecting current work:
 - NetworkX `shortest_path` misuse identified as UAT-005 (v1.0 post-ship)
 - JAX/jraph for training, PyTorch CPU-only for inference
 - SQLite for event and prediction storage
+- Parquet->SQLite bridge in ProcessEventsStage (not separate stage)
+- Atomic state writes using tempfile + os.replace pattern
 
 ### Deferred Issues
 
@@ -59,7 +62,7 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-01-28
-Stopped at: Completed 06-01-PLAN.md (Phase 6 complete)
+Last session: 2026-01-30
+Stopped at: Completed 07-01-PLAN.md (Phase 7 complete)
 Resume file: None
-Next: Phase 7 planning
+Next: Phase 8 planning
