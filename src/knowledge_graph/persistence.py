@@ -86,20 +86,26 @@ class GraphPersistence:
         # Add graph-level metadata
         self.graph.graph['saved_at'] = datetime.utcnow().isoformat()
 
+        # Serialize graph-level list/dict attributes to JSON
+        for key, value in list(self.graph.graph.items()):
+            if isinstance(value, (list, dict)):
+                self.graph.graph[key] = json.dumps(value)
+
         # Ensure all node attributes are serializable
         for node, data in self.graph.nodes(data=True):
-            if 'canonical' in data and isinstance(data['canonical'], bool):
-                # GraphML preserves this as string, will need to convert on load
-                pass
+            for key, value in list(data.items()):
+                if isinstance(value, (list, dict)):
+                    data[key] = json.dumps(value)
 
         # Ensure all edge attributes are serializable
         for u, v, key, data in self.graph.edges(keys=True, data=True):
             # Ensure confidence is float
             if 'confidence' in data:
                 data['confidence'] = float(data['confidence'])
-            # Ensure lists are serialized
-            if 'event_codes' in data and isinstance(data['event_codes'], list):
-                data['event_codes'] = json.dumps(data['event_codes'])
+            # Serialize any list/dict attributes to JSON
+            for attr_key, attr_value in list(data.items()):
+                if isinstance(attr_value, (list, dict)):
+                    data[attr_key] = json.dumps(attr_value)
 
         nx.write_graphml(self.graph, filepath)
 
@@ -192,13 +198,31 @@ class GraphPersistence:
             # Already MultiDiGraph from read_graphml with force_multigraph=True
             pass
 
-        # Deserialize JSON fields
-        for u, v, key, data in graph.edges(keys=True, data=True):
-            if 'event_codes' in data and isinstance(data['event_codes'], str):
+        # Deserialize graph-level JSON attributes
+        for key, value in list(graph.graph.items()):
+            if isinstance(value, str) and value.startswith(('[', '{')):
                 try:
-                    data['event_codes'] = json.loads(data['event_codes'])
-                except:
+                    graph.graph[key] = json.loads(value)
+                except json.JSONDecodeError:
                     pass
+
+        # Deserialize node-level JSON attributes
+        for node, data in graph.nodes(data=True):
+            for key, value in list(data.items()):
+                if isinstance(value, str) and value.startswith(('[', '{')):
+                    try:
+                        data[key] = json.loads(value)
+                    except json.JSONDecodeError:
+                        pass
+
+        # Deserialize edge-level JSON attributes
+        for u, v, key, data in graph.edges(keys=True, data=True):
+            for attr_key, attr_value in list(data.items()):
+                if isinstance(attr_value, str) and attr_value.startswith(('[', '{')):
+                    try:
+                        data[attr_key] = json.loads(attr_value)
+                    except json.JSONDecodeError:
+                        pass
 
         return graph
 

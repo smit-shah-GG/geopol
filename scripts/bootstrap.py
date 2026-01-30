@@ -26,7 +26,8 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.bootstrap import CheckpointManager, StageOrchestrator, ProgressReporter
+from src.bootstrap import CheckpointManager, StageOrchestrator
+from src.bootstrap.checkpoint import ConsoleReporter
 from src.bootstrap.stages import (
     GDELTCollectStage,
     ProcessEventsStage,
@@ -130,7 +131,7 @@ def main() -> int:
 
     # Initialize orchestrator
     checkpoint = CheckpointManager(state_file=args.state_file)
-    reporter = ProgressReporter(prefix="STAGE")
+    reporter = ConsoleReporter()
     orchestrator = StageOrchestrator(checkpoint_manager=checkpoint, reporter=reporter)
 
     # Register stages

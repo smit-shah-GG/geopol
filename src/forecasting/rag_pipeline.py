@@ -166,8 +166,8 @@ class RAGPipeline:
 
         stats['documents_indexed'] = len(documents)
 
-        # Create query engine
-        self._create_query_engine()
+        # Note: query_engine creation removed - we use VectorIndexRetriever directly
+        # in retrieve_similar_patterns() without needing an LLM
 
         stats['end_time'] = datetime.utcnow().isoformat()
         logger.info(f"Indexing complete: {stats['documents_indexed']} documents")
@@ -414,8 +414,7 @@ class RAGPipeline:
                 storage_context=storage_context
             )
 
-            # Create query engine
-            self._create_query_engine()
+            # Note: query_engine creation removed - we use VectorIndexRetriever directly
 
             logger.info(f"Loaded existing index with {len(collection_data['ids'])} documents")
             return True

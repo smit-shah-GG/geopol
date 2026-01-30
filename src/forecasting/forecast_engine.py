@@ -21,6 +21,7 @@ from typing import Any, Dict, List, Optional
 
 from src.forecasting.ensemble_predictor import EnsemblePredictor, EnsemblePrediction
 from src.forecasting.gemini_client import GeminiClient
+from src.forecasting.graph_validator import GraphValidator
 from src.forecasting.models import ForecastOutput
 from src.forecasting.rag_pipeline import RAGPipeline
 from src.forecasting.reasoning_orchestrator import ReasoningOrchestrator
@@ -92,10 +93,16 @@ class ForecastEngine:
         else:
             self.tkg_predictor = None
 
+        # Initialize graph validator with TKG predictor (if enabled)
+        graph_validator = None
+        if enable_tkg and self.tkg_predictor:
+            graph_validator = GraphValidator(tkg_predictor=self.tkg_predictor)
+
         # Initialize reasoning orchestrator
         self.reasoning_orchestrator = ReasoningOrchestrator(
             client=self.gemini_client,
             rag_pipeline=self.rag_pipeline,
+            graph_validator=graph_validator,
             enable_rag=enable_rag,
             enable_graph_validation=enable_tkg,
         )
