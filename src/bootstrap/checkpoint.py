@@ -11,11 +11,11 @@ import json
 import logging
 import os
 import tempfile
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Callable, Dict, Optional, Protocol, Tuple, runtime_checkable
 
 logger = logging.getLogger(__name__)
 
@@ -327,3 +327,140 @@ class CheckpointManager:
             summary[stage.status.value] += 1
 
         return summary
+
+
+# --- Progress Reporting ---
+
+
+@runtime_checkable
+class ProgressReporter(Protocol):
+    """Protocol defining the interface for progress reporting."""
+
+    def stage_start(self, name: str) -> None:
+        """Report stage starting."""
+        ...
+
+    def stage_progress(self, name: str, message: str) -> None:
+        """Report stage progress update."""
+        ...
+
+    def stage_complete(self, name: str, duration_sec: float, stats: Dict) -> None:
+        """Report stage completion with stats."""
+        ...
+
+    def stage_error(self, name: str, error: str) -> None:
+        """Report stage error."""
+        ...
+
+    def stage_skipped(self, name: str, reason: str) -> None:
+        """Report stage skipped."""
+        ...
+
+
+class ConsoleReporter:
+    """
+    Reports bootstrap progress to stdout with [STAGE] prefix format.
+
+    IMPORTANT: ALL output (including errors) goes to stdout per success
+    criterion: "The bootstrap script reports progress for each stage
+    (stage name, status, errors if any) to stdout"
+    """
+
+    def stage_start(self, name: str) -> None:
+        """Report stage starting."""
+        print(f"[STAGE] {name}: Starting...", flush=True)
+
+    def stage_progress(self, name: str, message: str) -> None:
+        """Report stage progress update."""
+        print(f"[STAGE] {name}: {message}", flush=True)
+
+    def stage_complete(self, name: str, duration_sec: float, stats: Dict) -> None:
+        """Report stage completion with stats."""
+        summary = ", ".join(
+            f"{k}={v}" for k, v in stats.items() if k != "duration_seconds"
+        )
+        print(f"[STAGE] {name}: Completed in {duration_sec:.1f}s ({summary})", flush=True)
+
+    def stage_error(self, name: str, error: str) -> None:
+        """Report stage error to stdout (NOT stderr)."""
+        print(f"[STAGE] {name}: FAILED - {error}", flush=True)
+
+    def stage_skipped(self, name: str, reason: str) -> None:
+        """Report stage skipped."""
+        print(f"[STAGE] {name}: Skipped ({reason})", flush=True)
+
+    def pipeline_complete(self, total_stages: int, duration_sec: float) -> None:
+        """Report pipeline completion."""
+        print(
+            f"[BOOTSTRAP] Complete: {total_stages}/{total_stages} stages in {duration_sec:.1f}s",
+            flush=True,
+        )
+
+
+# --- Dual Idempotency Check ---
+
+
+def should_skip_stage(
+    stage_name: str,
+    state: BootstrapState,
+    validator: Callable[[], Tuple[bool, str]],
+) -> Tuple[bool, str]:
+    """
+    Dual idempotency check: checkpoint status AND output validation.
+
+    This function implements the core resume logic for bootstrap stages.
+    A stage should only be skipped if BOTH conditions are true:
+    1. Checkpoint status is COMPLETED
+    2. Output validation passes (output exists and is valid)
+
+    Args:
+        stage_name: Name of the stage to check
+        state: Current bootstrap state
+        validator: Callable that returns (is_valid, reason) for output validation
+
+    Returns:
+        Tuple of (should_skip, reason) where reason explains the decision.
+
+    Logic:
+    - PENDING/RUNNING/FAILED -> don't skip (need to run/re-run)
+    - COMPLETED but output invalid -> don't skip (stale checkpoint, re-run)
+    - COMPLETED and output valid -> skip (idempotent, already done)
+    """
+    # Check if stage exists in state
+    if stage_name not in state.stages:
+        return False, f"Stage '{stage_name}' not in checkpoint (never run)"
+
+    stage_state = state.stages[stage_name]
+    status = stage_state.status
+
+    # Non-COMPLETED statuses always need to run
+    if status == StageStatus.PENDING:
+        return False, "Stage is pending (never completed)"
+
+    if status == StageStatus.RUNNING:
+        # RUNNING means interrupted mid-execution
+        logger.warning(
+            f"Stage '{stage_name}' was interrupted (status=RUNNING), will re-run"
+        )
+        return False, "Stage was interrupted (status=RUNNING), needs re-run"
+
+    if status == StageStatus.FAILED:
+        return False, "Stage previously failed, needs re-run"
+
+    # Status is COMPLETED - verify output is actually valid
+    assert status == StageStatus.COMPLETED, f"Unexpected status: {status}"
+
+    try:
+        is_valid, validation_reason = validator()
+    except Exception as e:
+        logger.error(f"Output validator for '{stage_name}' raised exception: {e}")
+        return False, f"Output validation failed with exception: {e}"
+
+    if is_valid:
+        return True, f"Already complete with valid output: {validation_reason}"
+    else:
+        # Checkpoint says complete but output is missing/invalid
+        logger.warning(
+            f"Stage '{stage_name}' marked COMPLETED but output invalid: {validation_reason}"
+        )
+        return False, f"Checkpoint stale (output invalid: {validation_reason}), needs re-run"

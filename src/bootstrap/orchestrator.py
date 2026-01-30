@@ -14,7 +14,13 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Protocol, Tuple, runtime_checkable
 
-from .checkpoint import CheckpointManager, StageStatus
+from .checkpoint import (
+    CheckpointManager,
+    ConsoleReporter,
+    ProgressReporter,
+    StageStatus,
+    should_skip_stage,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -59,36 +65,8 @@ class Stage(Protocol):
         ...
 
 
-@dataclass
-class ProgressReporter:
-    """Simple console progress reporter."""
-
-    prefix: str = "STAGE"
-
-    def stage_start(self, stage_name: str, message: str = "Starting...") -> None:
-        """Report stage start."""
-        print(f"[{self.prefix}] {stage_name}: {message}")
-
-    def stage_progress(self, stage_name: str, message: str) -> None:
-        """Report stage progress."""
-        print(f"[{self.prefix}] {stage_name}: {message}")
-
-    def stage_complete(self, stage_name: str, duration: float, stats: Dict) -> None:
-        """Report stage completion."""
-        stats_str = ", ".join(f"{k}={v}" for k, v in stats.items() if k != "duration_seconds")
-        print(f"[{self.prefix}] {stage_name}: Completed in {duration:.1f}s ({stats_str})")
-
-    def stage_skip(self, stage_name: str, reason: str) -> None:
-        """Report stage skip."""
-        print(f"[{self.prefix}] {stage_name}: Skipped ({reason})")
-
-    def stage_fail(self, stage_name: str, error: str) -> None:
-        """Report stage failure."""
-        print(f"[{self.prefix}] {stage_name}: FAILED - {error}")
-
-    def pipeline_complete(self, total_stages: int, duration: float) -> None:
-        """Report pipeline completion."""
-        print(f"[BOOTSTRAP] Complete: {total_stages}/{total_stages} stages in {duration:.1f}s")
+# ProgressReporter protocol and ConsoleReporter implementation are now in checkpoint.py
+# Re-exported above for backwards compatibility
 
 
 class StageOrchestrator:
@@ -116,7 +94,7 @@ class StageOrchestrator:
             reporter: ProgressReporter for console output
         """
         self.checkpoint = checkpoint_manager
-        self.reporter = reporter or ProgressReporter()
+        self.reporter = reporter or ConsoleReporter()
         self._stages: List[Stage] = []
         self._context: Dict[str, Any] = {}
 
@@ -134,9 +112,11 @@ class StageOrchestrator:
 
     def should_skip(self, stage: Stage) -> Tuple[bool, str]:
         """
-        Determine if stage should be skipped.
+        Determine if stage should be skipped using dual idempotency check.
 
-        Dual check: checkpoint shows COMPLETED AND output exists.
+        Delegates to should_skip_stage() which checks:
+        1. Checkpoint status is COMPLETED
+        2. Output validation passes
 
         Args:
             stage: Stage to check
@@ -144,22 +124,23 @@ class StageOrchestrator:
         Returns:
             Tuple of (should_skip, reason)
         """
-        status = self.checkpoint.get_status(stage.name)
+        state = self.checkpoint.load()
 
-        if status != StageStatus.COMPLETED:
-            return False, ""
+        # Use stage's validate_output method as the validator callable
+        skip, reason = should_skip_stage(
+            stage_name=stage.name,
+            state=state,
+            validator=stage.validate_output,
+        )
 
-        # Checkpoint says completed - verify output actually exists
-        is_valid, reason = stage.validate_output()
-        if is_valid:
-            return True, f"already completed, output valid"
-        else:
-            # Checkpoint says complete but output missing/invalid - need to re-run
-            logger.warning(
-                f"Stage '{stage.name}' marked complete but output invalid: {reason}"
-            )
-            self.checkpoint.reset_stage(stage.name)
-            return False, ""
+        # If checkpoint was stale (marked complete but output invalid), reset it
+        if not skip and stage.name in state.stages:
+            stage_state = state.stages[stage.name]
+            if stage_state.status == StageStatus.COMPLETED:
+                # should_skip_stage returned False for a COMPLETED stage = stale checkpoint
+                self.checkpoint.reset_stage(stage.name)
+
+        return skip, reason
 
     def execute_stage(self, stage: Stage) -> bool:
         """
@@ -199,7 +180,7 @@ class StageOrchestrator:
             duration = time.time() - start_time
             error_msg = str(e)
             self.checkpoint.mark_failed(stage.name, error_msg)
-            self.reporter.stage_fail(stage.name, error_msg)
+            self.reporter.stage_error(stage.name, error_msg)
             logger.exception(f"Stage '{stage.name}' failed after {duration:.1f}s")
             return False
 
@@ -232,7 +213,7 @@ class StageOrchestrator:
             # Check if we should skip
             should_skip, skip_reason = self.should_skip(stage)
             if should_skip:
-                self.reporter.stage_skip(stage.name, skip_reason)
+                self.reporter.stage_skipped(stage.name, skip_reason)
                 summary["skipped"] += 1
                 summary["stages"].append({"name": stage.name, "status": "skipped"})
                 continue
