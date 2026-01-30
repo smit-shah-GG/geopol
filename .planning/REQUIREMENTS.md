@@ -45,8 +45,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | BUG-01 | Phase 6 | Complete |
-| INFRA-01 | Phase 7 | Pending |
-| INFRA-02 | Phase 7 | Pending |
+| INFRA-01 | Phase 7 | Complete |
+| INFRA-02 | Phase 7 | Complete |
 | SCALE-01 | Phase 8 | Pending |
 | SCALE-02 | Phase 8 | Pending |
 
@@ -57,4 +57,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-01-28*
-*Last updated: 2026-01-28 after roadmap creation*
+*Last updated: 2026-01-30 after Phase 7 completion*

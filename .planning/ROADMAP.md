@@ -86,8 +86,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 07-01-PLAN.md — Bootstrap orchestration module with stage definitions
-- [ ] 07-02-PLAN.md — Checkpoint/resume and dual idempotency
+- [x] 07-01: Bootstrap orchestration module with stage definitions
+- [x] 07-02: Checkpoint/resume and dual idempotency
 
 #### Phase 8: Graph Partitioning
 **Goal**: Knowledge graph scales beyond 1M events through partitioning while preserving query correctness across partition boundaries
@@ -115,5 +115,5 @@ Plans:
 | 4. Calibration | v1.0 | 2/2 | Complete | 2026-01-19 |
 | 5. TKG Training | v1.0 | 4/4 | Complete | 2026-01-23 |
 | 6. NetworkX Fix | v1.1 | 1/1 | Complete | 2026-01-28 |
-| 7. Bootstrap Pipeline | v1.1 | 0/2 | Planning | - |
+| 7. Bootstrap Pipeline | v1.1 | 2/2 | Complete | 2026-01-30 |
 | 8. Graph Partitioning | v1.1 | 0/2 | Not started | - |
