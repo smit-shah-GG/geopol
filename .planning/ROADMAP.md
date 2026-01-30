@@ -100,7 +100,7 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 08-01-PLAN.md — Partition index (SQLite) and partition manager (temporal-first partitioning, LRU cache)
+- [x] 08-01-PLAN.md — Partition index (SQLite) and partition manager (temporal-first partitioning, LRU cache)
 - [ ] 08-02-PLAN.md — Boundary resolver, scatter-gather query router, PartitionedTemporalGraph interface
 
 ## Progress
@@ -116,4 +116,4 @@ Plans:
 | 5. TKG Training | v1.0 | 4/4 | Complete | 2026-01-23 |
 | 6. NetworkX Fix | v1.1 | 1/1 | Complete | 2026-01-28 |
 | 7. Bootstrap Pipeline | v1.1 | 2/2 | Complete | 2026-01-30 |
-| 8. Graph Partitioning | v1.1 | 0/2 | Planned | - |
+| 8. Graph Partitioning | v1.1 | 1/2 | In progress | - |
