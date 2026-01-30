@@ -74,6 +74,15 @@ uv run python scripts/bootstrap.py --n-days 60
 - JAX/jraph RE-GCN model training
 - Automated retraining scheduler
 
+### Phase 6-8: Infrastructure Hardening (v1.1)
+- NetworkX API compatibility fixes
+- Atomic checkpoint/resume bootstrap pipeline
+- **Graph partitioning** for >1M event scalability:
+  - Temporal-first partitioning (30-day windows)
+  - SQLite partition index for O(1) entity lookups
+  - LRU cache with memory-aware eviction
+  - Scatter-gather cross-partition queries
+
 ## Core Principles
 
 **Explainability**: Every forecast provides traceable reasoning paths from evidence to prediction.
@@ -94,5 +103,5 @@ uv run python scripts/bootstrap.py --n-days 60
 - **LLM Integration**: Google GenAI (Gemini)
 - **RAG Pipeline**: LlamaIndex, ChromaDB (vector store)
 - **Calibration**: scikit-learn (isotonic regression), netcal
-- **Storage**: SQLite (events), GraphML (knowledge graph), ChromaDB (RAG index)
-- **Infrastructure**: Atomic checkpoint/resume bootstrap pipeline
+- **Storage**: SQLite (events, partition index), GraphML (knowledge graph, partitions), ChromaDB (RAG index)
+- **Infrastructure**: Atomic checkpoint/resume bootstrap, temporal graph partitioning with LRU cache
