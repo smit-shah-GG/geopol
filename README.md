@@ -12,9 +12,9 @@ This project implements a geopolitical forecasting engine that:
 
 ## Setup
 
-1. Install dependencies:
+1. Install dependencies (requires [uv](https://docs.astral.sh/uv/)):
 ```bash
-pip install -r requirements.txt
+uv sync
 ```
 
 2. Configure environment (optional):
@@ -45,6 +45,23 @@ uv run python scripts/bootstrap.py --force-stage collect
 
 # Customize collection period
 uv run python scripts/bootstrap.py --n-days 60
+```
+
+## Quick Start
+
+1. Verify system readiness:
+```bash
+uv run python scripts/preflight.py
+```
+
+2. Run a forecast:
+```bash
+uv run python scripts/forecast.py --question "Will NATO expand to include new members in the next 6 months?"
+```
+
+3. For detailed output:
+```bash
+uv run python scripts/forecast.py --question "..." --verbose
 ```
 
 ## Architecture
