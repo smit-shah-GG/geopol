@@ -422,45 +422,43 @@ def should_skip_stage(
         Tuple of (should_skip, reason) where reason explains the decision.
 
     Logic:
-    - PENDING/RUNNING/FAILED -> don't skip (need to run/re-run)
+    - Output valid -> skip (output exists regardless of checkpoint state)
     - COMPLETED but output invalid -> don't skip (stale checkpoint, re-run)
-    - COMPLETED and output valid -> skip (idempotent, already done)
+    - PENDING/RUNNING/FAILED with no output -> don't skip (need to run/re-run)
     """
-    # Check if stage exists in state
+    # Always check output first — if valid output exists, skip regardless
+    # of checkpoint state. Handles deleted state files, fresh clones with
+    # pre-existing data, and interrupted stages whose output survived.
+    try:
+        is_valid, validation_reason = validator()
+    except Exception as e:
+        logger.error(f"Output validator for '{stage_name}' raised exception: {e}")
+        is_valid = False
+        validation_reason = f"Validation exception: {e}"
+
+    if is_valid:
+        return True, f"Valid output exists: {validation_reason}"
+
+    # Output doesn't exist — check checkpoint for context on why
     if stage_name not in state.stages:
-        return False, f"Stage '{stage_name}' not in checkpoint (never run)"
+        return False, f"No checkpoint and no valid output"
 
     stage_state = state.stages[stage_name]
     status = stage_state.status
 
-    # Non-COMPLETED statuses always need to run
-    if status == StageStatus.PENDING:
-        return False, "Stage is pending (never completed)"
-
     if status == StageStatus.RUNNING:
-        # RUNNING means interrupted mid-execution
         logger.warning(
             f"Stage '{stage_name}' was interrupted (status=RUNNING), will re-run"
         )
         return False, "Stage was interrupted (status=RUNNING), needs re-run"
 
     if status == StageStatus.FAILED:
-        return False, "Stage previously failed, needs re-run"
+        return False, f"Stage previously failed, needs re-run"
 
-    # Status is COMPLETED - verify output is actually valid
-    assert status == StageStatus.COMPLETED, f"Unexpected status: {status}"
-
-    try:
-        is_valid, validation_reason = validator()
-    except Exception as e:
-        logger.error(f"Output validator for '{stage_name}' raised exception: {e}")
-        return False, f"Output validation failed with exception: {e}"
-
-    if is_valid:
-        return True, f"Already complete with valid output: {validation_reason}"
-    else:
-        # Checkpoint says complete but output is missing/invalid
+    if status == StageStatus.COMPLETED:
         logger.warning(
             f"Stage '{stage_name}' marked COMPLETED but output invalid: {validation_reason}"
         )
         return False, f"Checkpoint stale (output invalid: {validation_reason}), needs re-run"
+
+    return False, "Stage is pending (never completed)"

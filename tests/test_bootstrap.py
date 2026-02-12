@@ -113,14 +113,49 @@ class TestCheckpointManager:
 class TestDualIdempotency:
     """Tests for should_skip_stage dual idempotency logic."""
 
-    def test_skip_when_complete_and_valid(self) -> None:
-        """Skip stage when checkpoint=COMPLETED and output valid."""
+    def test_skip_when_output_valid(self) -> None:
+        """Skip stage when output is valid, regardless of checkpoint status."""
         state = BootstrapState()
         state.stages["test"] = StageState(name="test", status=StageStatus.COMPLETED)
 
         skip, reason = should_skip_stage("test", state, lambda: (True, "ok"))
         assert skip is True
-        assert "already complete" in reason.lower()
+        assert "valid output" in reason.lower()
+
+    def test_skip_when_output_valid_but_pending(self) -> None:
+        """Skip when output exists even if checkpoint says PENDING."""
+        state = BootstrapState()
+        state.stages["test"] = StageState(name="test", status=StageStatus.PENDING)
+
+        skip, reason = should_skip_stage("test", state, lambda: (True, "ok"))
+        assert skip is True
+        assert "valid output" in reason.lower()
+
+    def test_skip_when_output_valid_but_running(self) -> None:
+        """Skip when output exists even if checkpoint says RUNNING (interrupted but output survived)."""
+        state = BootstrapState()
+        state.stages["test"] = StageState(name="test", status=StageStatus.RUNNING)
+
+        skip, reason = should_skip_stage("test", state, lambda: (True, "ok"))
+        assert skip is True
+        assert "valid output" in reason.lower()
+
+    def test_skip_when_output_valid_but_failed(self) -> None:
+        """Skip when output exists even if checkpoint says FAILED (output from earlier run)."""
+        state = BootstrapState()
+        state.stages["test"] = StageState(name="test", status=StageStatus.FAILED)
+
+        skip, reason = should_skip_stage("test", state, lambda: (True, "ok"))
+        assert skip is True
+        assert "valid output" in reason.lower()
+
+    def test_skip_when_output_valid_stage_not_in_state(self) -> None:
+        """Skip when output exists even if no checkpoint record (deleted state file)."""
+        state = BootstrapState()
+
+        skip, reason = should_skip_stage("new_stage", state, lambda: (True, "ok"))
+        assert skip is True
+        assert "valid output" in reason.lower()
 
     def test_no_skip_when_complete_but_invalid(self) -> None:
         """Don't skip when checkpoint=COMPLETED but output missing/invalid."""
@@ -131,40 +166,22 @@ class TestDualIdempotency:
         assert skip is False
         assert "stale" in reason.lower() or "invalid" in reason.lower()
 
-    def test_no_skip_when_pending(self) -> None:
-        """Don't skip when checkpoint=PENDING."""
+    def test_no_skip_when_no_output_and_no_checkpoint(self) -> None:
+        """Don't skip when no output and no checkpoint record."""
         state = BootstrapState()
-        state.stages["test"] = StageState(name="test", status=StageStatus.PENDING)
 
-        skip, reason = should_skip_stage("test", state, lambda: (True, "ok"))
+        skip, reason = should_skip_stage("new_stage", state, lambda: (False, "missing"))
         assert skip is False
-        assert "pending" in reason.lower()
+        assert "no checkpoint" in reason.lower() or "no valid output" in reason.lower()
 
-    def test_no_skip_when_running(self) -> None:
-        """Don't skip when checkpoint=RUNNING (interrupted)."""
+    def test_no_skip_when_no_output_and_running(self) -> None:
+        """Don't skip when no output and checkpoint says RUNNING."""
         state = BootstrapState()
         state.stages["test"] = StageState(name="test", status=StageStatus.RUNNING)
 
-        skip, reason = should_skip_stage("test", state, lambda: (True, "ok"))
+        skip, reason = should_skip_stage("test", state, lambda: (False, "missing"))
         assert skip is False
         assert "interrupt" in reason.lower() or "running" in reason.lower()
-
-    def test_no_skip_when_failed(self) -> None:
-        """Don't skip when checkpoint=FAILED."""
-        state = BootstrapState()
-        state.stages["test"] = StageState(name="test", status=StageStatus.FAILED)
-
-        skip, reason = should_skip_stage("test", state, lambda: (True, "ok"))
-        assert skip is False
-        assert "failed" in reason.lower()
-
-    def test_no_skip_when_stage_not_in_state(self) -> None:
-        """Don't skip when stage hasn't been run before."""
-        state = BootstrapState()
-
-        skip, reason = should_skip_stage("new_stage", state, lambda: (True, "ok"))
-        assert skip is False
-        assert "never run" in reason.lower()
 
     def test_validator_exception_returns_no_skip(self) -> None:
         """If validator raises exception, don't skip (re-run to be safe)."""
@@ -176,7 +193,7 @@ class TestDualIdempotency:
 
         skip, reason = should_skip_stage("test", state, bad_validator)
         assert skip is False
-        assert "exception" in reason.lower()
+        assert "stale" in reason.lower() or "invalid" in reason.lower()
 
 
 class TestValidation:
@@ -240,14 +257,19 @@ class TestResumeScenario:
         # Resume: load state, check which stages to run
         loaded = mgr.load()
 
-        # collect and process should skip (if outputs valid)
+        # collect and process should skip (outputs valid)
         skip_collect, _ = should_skip_stage("collect", loaded, lambda: (True, "ok"))
         skip_process, _ = should_skip_stage("process", loaded, lambda: (True, "ok"))
-        skip_graph, _ = should_skip_stage("graph", loaded, lambda: (True, "ok"))
+        assert skip_collect is True, "Should skip stage with valid output"
+        assert skip_process is True, "Should skip stage with valid output"
 
-        assert skip_collect is True, "Should skip completed stage"
-        assert skip_process is True, "Should skip completed stage"
-        assert skip_graph is False, "Should NOT skip interrupted stage"
+        # graph with valid output should skip even if interrupted
+        skip_graph_valid, _ = should_skip_stage("graph", loaded, lambda: (True, "ok"))
+        assert skip_graph_valid is True, "Should skip interrupted stage if output survived"
+
+        # graph with invalid output should NOT skip
+        skip_graph_invalid, _ = should_skip_stage("graph", loaded, lambda: (False, "missing"))
+        assert skip_graph_invalid is False, "Should NOT skip interrupted stage with no output"
 
     def test_resume_with_stale_checkpoint(self, tmp_path: Path) -> None:
         """Resume when checkpoint says complete but output is missing."""
