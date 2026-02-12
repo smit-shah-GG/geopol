@@ -298,22 +298,24 @@ class BuildGraphStage:
         }
 
     def validate_output(self) -> Tuple[bool, str]:
-        """Check graph has nodes and edges."""
-        if self._graph is None:
-            return False, "Graph not built"
+        """Check graph exists — in-memory or persisted on disk."""
+        # Check in-memory first (current session built it)
+        if self._graph is not None:
+            nodes = self._graph.graph.number_of_nodes()
+            edges = self._graph.graph.number_of_edges()
+            if nodes > 0 and edges > 0:
+                return True, f"Graph has {nodes} nodes, {edges} edges (in-memory)"
+            return False, "In-memory graph is empty"
 
-        nodes = self._graph.graph.number_of_nodes()
-        edges = self._graph.graph.number_of_edges()
+        # Fall back to persisted GraphML (previous session built it)
+        if DEFAULT_GRAPH_PATH.exists() and DEFAULT_GRAPH_PATH.stat().st_size > 0:
+            return True, f"Persisted graph exists at {DEFAULT_GRAPH_PATH}"
 
-        if nodes == 0:
-            return False, "Graph has no nodes"
-        if edges == 0:
-            return False, "Graph has no edges"
-
-        return True, f"Graph has {nodes} nodes, {edges} edges"
+        return False, "Graph not built and no persisted GraphML found"
 
     def get_output_path(self) -> Optional[str]:
-        # In-memory graph, no persistent path yet
+        if DEFAULT_GRAPH_PATH.exists():
+            return str(DEFAULT_GRAPH_PATH)
         return None
 
 
