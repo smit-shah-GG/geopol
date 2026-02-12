@@ -62,6 +62,12 @@ Key decisions affecting current work:
 
 - datetime.utcnow() deprecated warning (Python 3.12+)
 
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 001 | Fix README + add forecast CLI + preflight check | 2026-02-12 | 03dfe49 | [001-fix-readme-add-forecast-cli-preflight](./quick/001-fix-readme-add-forecast-cli-preflight/) |
+
 ### Blockers/Concerns
 
 None.
