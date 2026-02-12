@@ -55,6 +55,7 @@ def mock_scenario_tree():
             ),
         ],
         probability=0.65,
+        answers_affirmative=True,  # This scenario IS a "yes" to peaceful resolution
         reasoning_path=[
             ReasoningStep(
                 step_number=1,
@@ -79,6 +80,7 @@ def mock_scenario_tree():
             ),
         ],
         probability=0.35,
+        answers_affirmative=False,  # Sanctions escalation is NOT a peaceful resolution
         reasoning_path=[
             ReasoningStep(
                 step_number=1,

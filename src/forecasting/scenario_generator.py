@@ -136,7 +136,10 @@ Be specific, grounded in current events, and maintain logical consistency."""
             "4. Timeline with relative timing (T+1 week, T+1 month, etc.)",
             "5. Step-by-step reasoning chain",
             "6. Probability assessment (0.0 to 1.0)",
+            "7. answers_affirmative (true/false): Does this scenario constitute a 'yes' answer to the question?",
+            "   For example, if the question is 'Will X happen?', set true only for scenarios where X actually happens.",
             "",
+            "IMPORTANT: Scenario probabilities must sum to approximately 1.0.",
             "Ensure scenarios are mutually exclusive and collectively exhaustive.",
         ])
 
@@ -222,6 +225,7 @@ Be specific, grounded in current events, and maintain logical consistency."""
             entities=entities,
             timeline=timeline,
             probability=data.get("probability", 0.5),
+            answers_affirmative=data.get("answers_affirmative", False),
             reasoning_path=reasoning,
             parent_id=data.get("parent_id"),
             child_ids=data.get("child_ids", []),
@@ -370,6 +374,8 @@ Be specific, grounded in current events, and maintain logical consistency."""
             "2. Incorporate suggested improvements",
             "3. Adjust probabilities based on validation confidence",
             "4. Maintain scenario diversity and mutual exclusivity",
+            "5. Preserve answers_affirmative tagging (true if scenario means 'yes' to the question)",
+            "6. Ensure scenario probabilities still sum to approximately 1.0",
         ])
 
         return "\n".join(prompt_parts)

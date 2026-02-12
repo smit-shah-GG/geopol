@@ -30,12 +30,13 @@ Current solutions (Metaculus, Good Judgment Project) rely on human crowd-sourcin
 - **Dual Reasoning Paths**:
   - Graph-based: Statistical patterns from 40+ years of events (objective baseline)
   - LLM-based: Contextual reasoning about novel situations (adaptive intelligence)
-- **Ensemble Weighting**: Configurable α parameter (default 0.6 LLM / 0.4 TKG) balances creativity vs precedent
+- **Scenario-Derived Probability**: LLM generates mutually exclusive scenarios, each tagged as affirmative/negative relative to the question. Headline probability = sum of affirmative scenario probabilities (normalized).
+- **Ensemble Weighting**: Configurable α parameter (default 0.6 LLM / 0.4 TKG) combines scenario-derived LLM probability with graph-based TKG probability
 - **Confidence Calibration**: Temperature scaling (c' = c^T) adjusts prediction sharpness based on uncertainty
 
 ### Explainability Framework
 Every forecast includes:
-- Scenario trees with branching possibilities and probabilities
+- Scenario trees with branching possibilities, probabilities, and affirmative/negative tagging
 - Evidence sources traced to specific GDELT events
 - Historical precedents from graph patterns
 - Confidence scores calibrated against ground truth
@@ -88,16 +89,16 @@ Processing lag from event to forecast: <2 hours (vs 24-48 hours for human analys
 
 ## Technical Implementation
 
-**Current Status**: Phase 3 of 4 complete (Hybrid Forecasting operational)
+**Current Status**: v1.1 complete (8 phases shipped). v2.0 in progress (deep TGL-LLM integration).
 
-**Stack**: Python 3.12, NetworkX (graphs), Gemini 3.0 Pro (LLM), SQLite/PostgreSQL (storage)
+**Stack**: Python 3.12, NetworkX (graphs), Gemini 3.0 Pro (LLM), JAX/jraph (TKG training), SQLite (storage)
 
 **Performance**:
 - Processes 100K events/hour on single GPU
 - Sub-second inference for trained patterns
-- 85 automated tests (100% passing)
+- 212 automated tests (100% passing)
 
-**Next Phase**: Calibration & evaluation against ground truth data
+**Next Milestone**: v2.0 — Deep token-space integration replacing post-hoc ensemble
 
 ## Investment Case
 

@@ -434,24 +434,39 @@ class ReasoningOrchestrator:
             return state.initial_scenarios
 
     def _extract_prediction(self, state: ReasoningState) -> ForecastOutput:
-        """Step 4: Extract final prediction from refined scenarios."""
-        scenarios = state.refined_scenarios or state.initial_scenarios
+        """Step 4: Extract final prediction from refined scenarios.
 
-        # Select most likely scenarios
+        Probability derivation: sum of probabilities across all scenarios
+        that answer the forecasting question affirmatively. Scenarios are
+        normalized to sum to 1.0 before extraction so the result is a
+        coherent probability even when Gemini's raw values drift.
+        """
+        scenarios = state.refined_scenarios or state.initial_scenarios
+        all_scenarios = list(scenarios.scenarios.values())
+
+        # Select top scenarios for display (sorted by probability)
         sorted_scenarios = sorted(
-            scenarios.scenarios.values(),
+            all_scenarios,
             key=lambda s: s.probability,
             reverse=True,
         )
-        selected = sorted_scenarios[:2]  # Top 2 scenarios
+        selected = sorted_scenarios[:3]
 
-        # Calculate weighted prediction
-        if selected:
-            # Weight by probability
-            total_prob = sum(s.probability for s in selected)
-            weighted_prob = sum(s.probability ** 2 for s in selected) / total_prob if total_prob > 0 else 0.5
+        # Derive headline probability from scenario affirmative tags.
+        # Normalize scenario probabilities to sum to 1.0 first.
+        raw_sum = sum(s.probability for s in all_scenarios)
+        if raw_sum > 0 and all_scenarios:
+            norm_factor = 1.0 / raw_sum
+            affirmative_prob = sum(
+                s.probability * norm_factor
+                for s in all_scenarios
+                if s.answers_affirmative
+            )
         else:
-            weighted_prob = 0.5
+            affirmative_prob = 0.5
+
+        # Clamp to valid range
+        affirmative_prob = max(0.01, min(0.99, affirmative_prob))
 
         # Calculate confidence based on validation feedback
         if state.validation_feedback:
@@ -465,11 +480,21 @@ class ReasoningOrchestrator:
         # Extract evidence sources
         evidence_sources = self._extract_evidence_sources(selected)
 
+        # Use highest-probability affirmative scenario for the prediction
+        # text, falling back to the top scenario overall
+        affirmative_scenarios = [s for s in sorted_scenarios if s.answers_affirmative]
+        if affirmative_scenarios:
+            prediction_text = affirmative_scenarios[0].description
+        elif selected:
+            prediction_text = selected[0].description
+        else:
+            prediction_text = "Unable to generate prediction"
+
         # Create final forecast
         forecast = ForecastOutput(
             question=state.question,
-            prediction=selected[0].description if selected else "Unable to generate prediction",
-            probability=weighted_prob,
+            prediction=prediction_text,
+            probability=affirmative_prob,
             confidence=avg_confidence,
             scenario_tree=scenarios,
             selected_scenario_ids=[s.scenario_id for s in selected],
@@ -480,7 +505,9 @@ class ReasoningOrchestrator:
 
         state.add_step_output("extract_prediction", {
             "selected_scenarios": len(selected),
-            "final_probability": weighted_prob,
+            "affirmative_scenarios": len(affirmative_scenarios) if affirmative_scenarios else 0,
+            "raw_scenario_sum": raw_sum,
+            "final_probability": affirmative_prob,
             "final_confidence": avg_confidence,
         })
 

@@ -527,8 +527,9 @@ Input Question
      ↓
 [Forecast Engine]
      ├── RAG Pipeline → Historical Context
-     ├── Gemini LLM → Reasoning Chains
-     ├── TKG Predictor → Graph Patterns
+     ├── Gemini LLM → Scenario Tree (generate → validate → refine)
+     │        └── P_LLM = sum(affirmative scenario probabilities)
+     ├── TKG Predictor → Graph Patterns → P_TKG
      ↓
 [Ensemble Predictor] (α=0.6 LLM, β=0.4 TKG)
      ↓

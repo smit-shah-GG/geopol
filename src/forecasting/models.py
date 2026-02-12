@@ -49,6 +49,7 @@ class Scenario(BaseModel):
     entities: List[Entity] = Field(default_factory=list, description="Entities involved")
     timeline: List[TimelineEvent] = Field(default_factory=list, description="Sequence of events")
     probability: float = Field(0.5, description="Overall probability", ge=0.0, le=1.0)
+    answers_affirmative: bool = Field(False, description="Whether this scenario constitutes a 'yes' answer to the forecasting question")
     reasoning_path: List[ReasoningStep] = Field(default_factory=list, description="How we arrived at this scenario")
     parent_id: Optional[str] = Field(None, description="ID of parent scenario if branching")
     child_ids: List[str] = Field(default_factory=list, description="IDs of child scenarios")
@@ -169,6 +170,7 @@ def get_scenario_schema() -> Dict:
                 }
             },
             "probability": {"type": "number"},
+            "answers_affirmative": {"type": "boolean"},
             "reasoning_path": {
                 "type": "array",
                 "items": {
@@ -184,7 +186,7 @@ def get_scenario_schema() -> Dict:
                 }
             }
         },
-        "required": ["scenario_id", "description", "probability", "timeline"]
+        "required": ["scenario_id", "description", "probability", "answers_affirmative", "timeline"]
     }
 
 

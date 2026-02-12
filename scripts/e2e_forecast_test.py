@@ -50,7 +50,7 @@ def main():
     try:
         from src.forecasting.tkg_predictor import TKGPredictor
 
-        tkg = TKGPredictor()
+        tkg = TKGPredictor(auto_load=False)
         # Use the pretrained checkpoint from training pipeline
         checkpoint_path = Path("models/tkg/regcn_trained.pt")
         if checkpoint_path.exists():

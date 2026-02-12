@@ -126,7 +126,7 @@ def load_tkg(disable: bool) -> Optional[object]:
     try:
         from src.forecasting.tkg_predictor import TKGPredictor
 
-        tkg = TKGPredictor()
+        tkg = TKGPredictor(auto_load=False)
         tkg.load_pretrained(checkpoint_path)
         logger.info("TKG predictor loaded")
         return tkg
