@@ -4,16 +4,19 @@
 
 See: .planning/PROJECT.md (updated 2026-02-14)
 
-**Core value:** Explainability — every forecast must provide clear, traceable reasoning paths
-**Current focus:** v2.0 Operationalization & Forecast Quality
+**Core value:** Explainability -- every forecast must provide clear, traceable reasoning paths
+**Current focus:** Phase 9 - Database Foundation & Infrastructure
 
 ## Current Position
 
 Milestone: v2.0 Operationalization & Forecast Quality
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-02-14 — Milestone v2.0 defined
+Phase: 9 of 13 (Database Foundation & Infrastructure)
+Plan: --
+Status: Ready to plan
+Last activity: 2026-02-14 -- Roadmap created for v2.0 (Phases 9-13, 32 requirements)
+
+Progress: [####################....................] 50% (8/16 phases lifetime)
+v2.0:    [..........] 0% (0/5 phases)
 
 ## Performance Metrics
 
@@ -46,12 +49,12 @@ Last activity: 2026-02-14 — Milestone v2.0 defined
 Decisions are logged in PROJECT.md Key Decisions table.
 Key decisions affecting current work:
 
-- JAX/jraph for TKG training (memory efficiency) — v2.0 TKG replacement must maintain JAX compatibility
-- Fixed 60/40 alpha validated in v1.1.1 — being replaced by per-CAMEO dynamic weights in v2.0
-- Retain Gemini over local Llama — frontier reasoning >> 4-bit 7B on 12GB VRAM (decided 2026-02-14)
-- Micro-batch ingest (15-min GDELT), daily predict — v2.0 architecture decision
-- Streamlit for public-facing web demo — fast to build, Python-native
-- TKG predictor replacement via research — accuracy-first, JAX-compatible, weekly-retrainable
+- JAX/jraph for TKG training -- v2.0 must eliminate archived jraph, maintain JAX
+- Fixed 60/40 alpha -- being replaced by per-CAMEO dynamic weights in v2.0
+- Retain Gemini over local Llama -- frontier reasoning, negligible cost (2026-02-14)
+- Micro-batch ingest (15-min GDELT), daily predict -- v2.0 architecture
+- Streamlit for public-facing web demo -- fast to build, Python-native
+- TiRGN selected over HisMatch -- 60% RE-GCN code reuse, tractable JAX port
 
 ### Deferred Issues
 
@@ -65,11 +68,13 @@ Key decisions affecting current work:
 
 ### Blockers/Concerns
 
-None.
+- TiRGN JAX port has no published reference implementation (research-phase may be needed for Phase 11)
+- Gemini API cost exposure under public traffic (rate limiting mandatory before deployment)
+- jraph archived by Google DeepMind (migration mandatory in Phase 9)
 
 ## Session Continuity
 
 Last session: 2026-02-14
-Stopped at: Defining v2.0 milestone — PROJECT.md updated, requirements phase next
+Stopped at: v2.0 roadmap created (Phases 9-13)
 Resume file: None
-Next: Complete requirements definition → roadmap creation
+Next: `/gsd:plan-phase 9`

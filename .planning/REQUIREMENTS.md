@@ -1,6 +1,6 @@
 # Requirements: Geopol
 
-**Core Value:** Explainability — every forecast must provide clear, traceable reasoning paths
+**Core Value:** Explainability -- every forecast must provide clear, traceable reasoning paths
 
 ## Delivered Requirements
 
@@ -22,7 +22,7 @@
 ## v2.0 Requirements
 
 **Defined:** 2026-02-14
-**Core Value:** Explainability — every forecast must provide clear, traceable reasoning paths
+**Core Value:** Explainability -- every forecast must provide clear, traceable reasoning paths
 **Milestone Goal:** Transform research prototype into publicly demonstrable system with automated operations, upgraded TKG predictor, and self-improving calibration
 
 ### Infrastructure & Persistence
@@ -67,7 +67,7 @@
 ### Dynamic Calibration
 
 - [ ] **CAL-01**: System computes per-CAMEO-category ensemble alpha weights from accumulated outcome data, replacing fixed alpha=0.6
-- [ ] **CAL-02**: System uses hierarchical fallback: 4 super-categories (Verbal Coop, Material Coop, Verbal Conflict, Material Conflict) → 20 CAMEO root codes as data accumulates
+- [ ] **CAL-02**: System uses hierarchical fallback: 4 super-categories (Verbal Coop, Material Coop, Verbal Conflict, Material Conflict) -> 20 CAMEO root codes as data accumulates
 - [ ] **CAL-03**: System falls back to global alpha weight when insufficient outcome data exists for a category (configurable minimum sample threshold)
 - [ ] **CAL-04**: System optimizes alpha weights via scipy L-BFGS-B minimizing Brier score per category
 - [ ] **CAL-05**: Ensemble predictor dynamically loads per-CAMEO weights from `calibration_weights` table at prediction time
@@ -95,9 +95,9 @@ Tracked ideas not yet assigned to a milestone.
 ### Potential Improvements
 
 - **ADV-03**: Multi-language support (non-English GDELT sources)
-- **ADV-05**: Multi-source data expansion (ACLED, ICEWS) — deferred from v2.0 until micro-batch architecture is proven
-- **ADV-06**: Knowledge graph visualization in Streamlit — high complexity, deferred from v2.0
-- **ADV-07**: Real-time prediction (sub-daily forecast cycle) — requires incremental TKG inference
+- **ADV-05**: Multi-source data expansion (ACLED, ICEWS) -- deferred from v2.0 until micro-batch architecture is proven
+- **ADV-06**: Knowledge graph visualization in Streamlit -- high complexity, deferred from v2.0
+- **ADV-07**: Real-time prediction (sub-daily forecast cycle) -- requires incremental TKG inference
 
 ### Out of Scope
 
@@ -116,54 +116,54 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INFRA-01 | — | Pending |
-| INFRA-02 | — | Pending |
-| INFRA-03 | — | Pending |
-| INFRA-04 | — | Pending |
-| INFRA-05 | — | Pending |
-| INFRA-06 | — | Pending |
-| INFRA-07 | — | Pending |
-| INFRA-08 | — | Pending |
-| WEB-01 | — | Pending |
-| WEB-02 | — | Pending |
-| WEB-03 | — | Pending |
-| WEB-04 | — | Pending |
-| WEB-05 | — | Pending |
-| WEB-06 | — | Pending |
-| WEB-07 | — | Pending |
-| WEB-08 | — | Pending |
-| WEB-09 | — | Pending |
-| INGEST-01 | — | Pending |
-| INGEST-02 | — | Pending |
-| INGEST-03 | — | Pending |
-| INGEST-04 | — | Pending |
-| INGEST-05 | — | Pending |
-| AUTO-01 | — | Pending |
-| AUTO-02 | — | Pending |
-| AUTO-03 | — | Pending |
-| AUTO-04 | — | Pending |
-| AUTO-05 | — | Pending |
-| CAL-01 | — | Pending |
-| CAL-02 | — | Pending |
-| CAL-03 | — | Pending |
-| CAL-04 | — | Pending |
-| CAL-05 | — | Pending |
-| TKG-01 | — | Pending |
-| TKG-02 | — | Pending |
-| TKG-03 | — | Pending |
-| TKG-04 | — | Pending |
-| TKG-05 | — | Pending |
-| MON-01 | — | Pending |
-| MON-02 | — | Pending |
-| MON-03 | — | Pending |
-| MON-04 | — | Pending |
-| MON-05 | — | Pending |
+| INFRA-01 | Phase 9 | Pending |
+| INFRA-02 | Phase 9 | Pending |
+| INFRA-03 | Phase 9 | Pending |
+| INFRA-04 | Phase 9 | Pending |
+| INFRA-05 | Phase 9 | Pending |
+| INFRA-06 | Phase 9 | Pending |
+| INFRA-07 | Phase 9 | Pending |
+| INFRA-08 | Phase 9 | Pending |
+| WEB-01 | Phase 12 | Pending |
+| WEB-02 | Phase 12 | Pending |
+| WEB-03 | Phase 12 | Pending |
+| WEB-04 | Phase 12 | Pending |
+| WEB-05 | Phase 12 | Pending |
+| WEB-06 | Phase 12 | Pending |
+| WEB-07 | Phase 12 | Pending |
+| WEB-08 | Phase 12 | Pending |
+| WEB-09 | Phase 12 | Pending |
+| INGEST-01 | Phase 10 | Pending |
+| INGEST-02 | Phase 10 | Pending |
+| INGEST-03 | Phase 10 | Pending |
+| INGEST-04 | Phase 10 | Pending |
+| INGEST-05 | Phase 10 | Pending |
+| AUTO-01 | Phase 10 | Pending |
+| AUTO-02 | Phase 10 | Pending |
+| AUTO-03 | Phase 10 | Pending |
+| AUTO-04 | Phase 10 | Pending |
+| AUTO-05 | Phase 10 | Pending |
+| CAL-01 | Phase 12 | Pending |
+| CAL-02 | Phase 12 | Pending |
+| CAL-03 | Phase 12 | Pending |
+| CAL-04 | Phase 12 | Pending |
+| CAL-05 | Phase 12 | Pending |
+| TKG-01 | Phase 11 | Pending |
+| TKG-02 | Phase 11 | Pending |
+| TKG-03 | Phase 11 | Pending |
+| TKG-04 | Phase 11 | Pending |
+| TKG-05 | Phase 11 | Pending |
+| MON-01 | Phase 13 | Pending |
+| MON-02 | Phase 13 | Pending |
+| MON-03 | Phase 13 | Pending |
+| MON-04 | Phase 13 | Pending |
+| MON-05 | Phase 13 | Pending |
 
 **Coverage:**
 - v2.0 requirements: 32 total
-- Mapped to phases: 0 (pending roadmap creation)
-- Unmapped: 32
+- Mapped to phases: 32/32
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-14*
-*Last updated: 2026-02-14 after v2.0 milestone definition*
+*Last updated: 2026-02-14 after v2.0 roadmap creation*
