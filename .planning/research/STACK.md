@@ -1,417 +1,509 @@
-# Stack Research: TGL-LLM Integration
+# Technology Stack: v2.0 Operationalization & Forecast Quality
 
-**Project:** Geopolitical Forecasting Engine - Deep Token-Space Integration
-**Researched:** 2026-01-31
-**Constraint:** RTX 3060 12GB VRAM
-**Overall Confidence:** HIGH (verified via official sources and PyPI)
+**Project:** Geopolitical Forecasting Engine v2.0
+**Researched:** 2026-02-14
+**Constraint:** RTX 3060 12GB, Python 3.11+, JAX/jraph for TKG, Gemini API for LLM
+**Overall Confidence:** MEDIUM-HIGH (TKG algorithms LOW-MEDIUM, supporting libraries HIGH)
 
 ---
 
 ## Executive Summary
 
-Replacing the current 60/40 post-hoc ensemble with deep token-space integration requires:
-1. **Self-hosted Llama2-7B** via `transformers` + `bitsandbytes` (4-bit NF4)
-2. **Projection layer** mapping 200-dim TKG embeddings to 4096-dim LLM hidden space
-3. **PEFT/LoRA** for adapter training without touching base LLM weights
-4. **DLPack bridge** for zero-copy JAX->PyTorch tensor conversion
+v2.0 adds five capability dimensions to the existing v1.1 stack: (1) a Streamlit web frontend, (2) scheduled automation via systemd, (3) a superior TKG algorithm, (4) dynamic per-CAMEO calibration, and (5) micro-batch GDELT ingest. The most consequential finding from this research is twofold:
 
-The RTX 3060's 12GB VRAM is sufficient for 4-bit Llama2-7B (~4-5GB weights + ~3GB KV cache + ~2GB projection layers + ~2GB headroom).
+**First:** jraph (the JAX graph neural network library from Google DeepMind) was **archived on 2025-05-21** and is now read-only. The project currently depends on jraph v0.0.6.dev0. While the dependency is shallow (only `GraphsTuple` NamedTuple and `segment_sum` wrapper are used, both trivially replaceable with native JAX), this must be addressed in v2.0 regardless of TKG algorithm choice.
+
+**Second:** No TKG algorithm superior to RE-GCN has a JAX implementation. All candidates (HiSMatch, TiRGN, TRCL, CENET) are PyTorch+DGL. Porting any of them to JAX is a 2-4 week engineering effort. The recommendation is to port TiRGN (best effort/reward ratio) or, if resources are tight, to keep RE-GCN and focus the TKG investment on eliminating the jraph dependency and optimizing the existing encoder.
+
+The remaining dimensions (Streamlit, scheduling, calibration, ingest) are straightforward library additions with well-established solutions.
 
 ---
 
-## Additions Required
+## CRITICAL: jraph Archived — Mandatory Migration
 
-### Core LLM Inference
+**Status:** jraph was archived by Google DeepMind on 2025-05-21. No further updates, bug fixes, or security patches.
+
+**Impact on this project:** The current `regcn_jraph.py` imports:
+- `jraph.GraphsTuple` — a NamedTuple with 7 fields (nodes, edges, senders, receivers, n_node, n_edge, globals). Trivially replaceable with a local NamedTuple definition.
+- `jraph.segment_sum` — a thin wrapper around `jax.ops.segment_sum`, which is a JAX built-in.
+
+**Migration effort:** ~2 hours. Define a local `GraphsTuple` NamedTuple and replace `jraph.segment_sum` with `jax.ops.segment_sum`. No algorithmic changes. This should be done in the first v2.0 phase regardless of other decisions.
+
+**Alternative considered:** JraphX (v0.0.4) — an unofficial community successor with PyG-inspired API. Not recommended. It is experimental (version 0.0.4), community-maintained with no guarantees, and the project's actual jraph usage is trivial enough that bringing in a new dependency is overkill.
+
+**Sources:**
+- [jraph GitHub (archived)](https://github.com/google-deepmind/jraph) — HIGH confidence
+- [jax.ops.segment_sum docs](https://docs.jax.dev/en/latest/_autosummary/jax.ops.segment_sum.html) — HIGH confidence
+
+---
+
+## 1. TKG Algorithm Candidates (CRITICAL)
+
+### Current Baseline: RE-GCN
+
+- **ICEWS14 MRR:** 42.00% (from TRCL benchmark paper; geopol.md states 40.4% — the discrepancy likely reflects different evaluation protocols or hyperparameter tuning)
+- **Architecture:** R-GCN spatial encoder + GRU temporal evolution + MLP decoder
+- **Framework:** JAX/jraph/Flax NNX (already implemented)
+- **Training characteristics:** ~50 epochs on 30 days of GDELT data, fits RTX 3060 12GB
+
+### Candidate Comparison
+
+| Algorithm | ICEWS14 MRR | ICEWS18 MRR | H@1 (14) | H@10 (14) | Framework | JAX Port? | Porting Effort |
+|-----------|------------|------------|----------|-----------|-----------|-----------|----------------|
+| **TRCL** | **45.07%** | **33.78%** | 34.71% | 65.37% | PyTorch | No | HIGH (3-4 weeks) |
+| **TiRGN** | **44.04%** | **33.66%** | 33.83% | 63.84% | PyTorch | No | MEDIUM (2-3 weeks) |
+| **HiSMatch** | ~46.4%* | — | — | — | PyTorch/DGL | No | HIGH (3-4 weeks) |
+| **CEN** | 42.20% | 31.50% | 32.08% | 61.31% | PyTorch | No | MEDIUM (2-3 weeks) |
+| **RE-GCN** | 42.00% | 30.58% | 31.63% | 61.65% | **JAX** | **Yes (current)** | N/A |
+| **CENET** | 32.42% | 26.40% | 24.56% | 48.13% | PyTorch | No | MEDIUM |
+
+\*HiSMatch's 46.4% MRR is from geopol.md; the TRCL benchmark paper excludes HiSMatch from its comparison table. This number could not be independently verified against the exact same evaluation protocol used for the other models. Confidence: LOW.
+
+**Sources:**
+- TRCL benchmark table: [PeerJ Computer Science e2595](https://peerj.com/articles/cs-2595/) — HIGH confidence (peer-reviewed, 2025)
+- HiSMatch paper: [EMNLP 2022 Findings](https://aclanthology.org/2022.findings-emnlp.542.pdf) — MEDIUM confidence (self-reported, different eval protocol may apply)
+- TiRGN: [IJCAI 2022](https://www.ijcai.org/proceedings/2022/299) — HIGH confidence
+- RE-GCN: [SIGIR 2021](https://github.com/Lee-zix/RE-GCN) — HIGH confidence
+
+### Detailed Analysis Per Candidate
+
+#### HiSMatch (claimed 46.4% MRR on ICEWS14)
+
+**Architecture:** Three structure encoders — query history encoder, candidate history encoder, background knowledge encoder. Uses CompGCN (Composition-based GCN) for graph encoding. Frames TKG reasoning as a **matching task** between query and candidate historical subgraphs.
+
+**Framework:** PyTorch + DGL (Deep Graph Library). Same author as RE-GCN (Zixuan Li / Lee-zix). Codebase shares data loading infrastructure with RE-GCN.
+
+**JAX Porting Assessment:**
+- **Difficulty: HIGH.** Three separate graph encoders means 3x the porting surface compared to RE-GCN. The matching architecture requires pairwise similarity computation between subgraph representations, which is more complex than RE-GCN's straightforward encode-then-decode pattern.
+- **DGL dependency:** DGL's message passing API is more opinionated than jraph. Porting requires reimplementing DGL's `update_all`, `apply_edges`, and `apply_nodes` primitives in terms of `jax.ops.segment_sum` and scatter operations.
+- **Historical structure extraction:** HiSMatch requires pre-extracting per-entity historical subgraphs via `get_repetitive_history.py` and `get_history_dict.py`. This preprocessing is Python/NumPy, trivially portable.
+
+**Memory estimate:** Three encoders + matching layer = ~1.5-2x RE-GCN parameter count at same embedding dim. With 200-dim embeddings and 7K entities (ICEWS14 scale), fits in 12GB. With GDELT-scale entities (7.7K entities, 240 relations, 2.2M+ triples), unknown — needs profiling.
+
+**Training time:** No published training time data. Given 3 encoders, expect 2-3x RE-GCN training time per epoch.
+
+**Confidence in 46.4% MRR:** LOW. The number from the original paper may use a different evaluation protocol (e.g., time-aware filtering vs standard filtering). The TRCL paper (2025) — which tested 10 baselines — does not include HiSMatch in its comparison, which is suspicious for a model claiming SOTA.
+
+#### TiRGN (44.04% MRR on ICEWS14)
+
+**Architecture:** Dual-path encoder — local recurrent encoder (R-GCN + GRU, nearly identical to RE-GCN) PLUS global history encoder that captures repeated historical facts. Combines via learned alpha: `P = alpha * P_local + (1-alpha) * P_global`.
+
+**Framework:** PyTorch. Official code at [Liyyy2122/TiRGN](https://github.com/Liyyy2122/TiRGN).
+
+**JAX Porting Assessment:**
+- **Difficulty: MEDIUM.** The local encoder is structurally identical to RE-GCN (already implemented in JAX). The global history encoder is a lookup + aggregation over historical fact vocabulary — implementable with `jax.numpy` operations and embedding lookups. The 1D convolution decoder (`TimeConvTransE`) replaces the MLP decoder but is straightforward in Flax NNX.
+- **Incremental path:** Implement global history encoder as an add-on to existing RE-GCN code. ~60% of the local encoder code can be reused directly.
+- **History snapshot lengths:** Optimal for GDELT is 10 snapshots (training), 11 (testing). This is manageable for memory.
+
+**Memory estimate:** ~1.3-1.5x RE-GCN due to global history matrix. The global history encoder stores a historical vocabulary matrix of size `(num_entities, num_relations)` for each historical timestamp. For GDELT (7.7K entities, 240 relations), this is ~1.85M entries per snapshot * 10 snapshots = ~18.5M entries. At float32, ~74MB. Fits easily in 12GB.
+
+**Training time:** Approximately 1.2-1.5x RE-GCN per epoch (global encoder adds a forward pass but no graph convolution). With the GDELT benchmark (2.2M triples), published results show models of this class train one epoch in ~30 minutes on a single GPU.
+
+**Verdict:** Best candidate for porting. The local encoder is RE-GCN (already done), and the global encoder is a self-contained module.
+
+#### TRCL (45.07% MRR on ICEWS14)
+
+**Architecture:** TiRGN-like dual encoder + contrastive learning loss. The contrastive objective distinguishes historical dependencies from non-historical interference.
+
+**Framework:** PyTorch. **No public code repository found.** The PeerJ paper does not link to a GitHub repo. This is a showstopper.
+
+**JAX Porting Assessment:** Cannot port without source code. Even if obtained, the contrastive learning loss adds training complexity beyond TiRGN.
+
+**Verdict:** Eliminated. No public implementation. Even if code becomes available, marginal gain over TiRGN (+1.03% MRR) does not justify the additional contrastive learning complexity.
+
+### TKG Algorithm Recommendation
+
+**Primary recommendation: Port TiRGN to JAX/Flax NNX.**
+
+Rationale:
+1. **+2.04% MRR over RE-GCN** on ICEWS14 (44.04% vs 42.00%) — meaningful improvement.
+2. **Reuses ~60% of existing RE-GCN code** — the local encoder IS RE-GCN.
+3. **Global history encoder is self-contained** — can be developed and tested independently.
+4. **No DGL dependency** — TiRGN's PyTorch code uses standard PyTorch, not DGL's graph API.
+5. **Memory-feasible** — estimated 1.3-1.5x RE-GCN, well within 12GB.
+6. **Proven on GDELT** — published results on the GDELT benchmark dataset.
+
+**Fallback recommendation: Keep RE-GCN, invest in optimization.**
+
+If porting resources are insufficient, keep RE-GCN but:
+1. Eliminate jraph dependency (mandatory regardless)
+2. Add ConvTransE decoder (replaces MLP, typically +1-2% MRR)
+3. Tune hyperparameters more aggressively with the freed engineering time
+
+**Do NOT attempt HiSMatch porting.** The 3-encoder architecture is too complex for the marginal gain over TiRGN, and the claimed 46.4% MRR is unverified against the same evaluation protocol.
+
+---
+
+## 2. Streamlit Web Frontend
+
+### Core Package
 
 | Package | Version | Purpose | Rationale |
 |---------|---------|---------|-----------|
-| `transformers` | `>=5.0.0` | Llama2 model loading + inference | v5 is current stable; consolidates tokenizers, weekly releases, 400+ architectures. Native `BitsAndBytesConfig` support. |
-| `bitsandbytes` | `>=0.49.0` | 4-bit NF4 quantization | Latest stable (Jan 2026). CUDA 12/13 support, sm86 (RTX 3060/Ampere) verified. |
-| `accelerate` | `>=1.12.0` | `device_map="auto"`, big model inference | Required by transformers for quantized loading. Handles layer placement automatically. |
+| `streamlit` | `>=1.54.0` | Web frontend framework | Latest stable (2026-02-04). Python 3.10-3.14. `@st.fragment(run_every=...)` for real-time updates. Experimental `st.App` ASGI entry point for middleware. |
 
-### Adapter Training
+### Key Streamlit Features for v2.0
+
+**Real-time chart updates:**
+- `@st.fragment(run_every="30s")` decorator on calibration/Brier score plots — reruns only the fragment, not the full page
+- `st.session_state` persists user selections across auto-refreshes
+- Built-in `st.line_chart`, `st.area_chart` with improved hover performance (v1.54)
+
+**Interactive query input:**
+- `st.text_input` + `st.button` for forecast queries
+- `st.spinner` / `st.status` for loading states during Gemini API calls
+- `st.expander` for reasoning chain display
+
+**Session management:**
+- `st.session_state` handles per-user state natively
+- No separate session backend needed for demo-scale traffic
+
+### Rate Limiting
+
+Streamlit's new `st.App` (experimental, v1.53+) enables ASGI middleware integration. Use `slowapi` for rate limiting:
 
 | Package | Version | Purpose | Rationale |
 |---------|---------|---------|-----------|
-| `peft` | `>=0.18.1` | LoRA adapter training | Latest stable (Jan 2026). Python 3.10+ required. Supports hotswapping, trainable token indices. |
+| `slowapi` | `>=0.1.9` | Rate limiting via ASGI middleware | Starlette/FastAPI compatible. `SlowAPIASGIMiddleware` for async. Uses in-memory store by default (sufficient for single-server). |
 
-### JAX-PyTorch Bridge
+**Architecture for rate limiting with st.App:**
+```python
+import streamlit as st
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+from slowapi.middleware import SlowAPIASGIMiddleware
+
+limiter = Limiter(key_func=get_remote_address)
+app = st.App(middleware=[SlowAPIASGIMiddleware])
+app.state.limiter = limiter
+```
+
+**Caveat:** `st.App` is experimental as of v1.54. If it proves unstable, the fallback is application-level rate limiting via `st.session_state` counters — cruder but functional. This is a LOW confidence recommendation pending `st.App` stabilization.
+
+### Extensions
+
+| Package | Version | Purpose | When |
+|---------|---------|---------|------|
+| `streamlit-autorefresh` | `>=1.0.1` | Timer-based auto-refresh for dashboard | Fallback if `@st.fragment(run_every=)` is insufficient. Not needed initially. |
+| `plotly` | `>=6.0.0` | Advanced interactive charts | If built-in Streamlit charts lack calibration plot customization. Already a Streamlit optional dep. |
+
+**Sources:**
+- [Streamlit 2026 release notes](https://docs.streamlit.io/develop/quick-reference/release-notes/2026) — HIGH confidence
+- [Streamlit fragments docs](https://docs.streamlit.io/develop/concepts/architecture/fragments) — HIGH confidence
+- [slowapi GitHub](https://github.com/laurentS/slowapi) — HIGH confidence
+- [Streamlit PyPI](https://pypi.org/project/streamlit/) — HIGH confidence
+
+---
+
+## 3. Micro-batch GDELT Processing
+
+### Scheduling Approach
+
+**Recommendation: systemd timers, not APScheduler.**
+
+| Approach | Verdict | Rationale |
+|----------|---------|-----------|
+| **systemd timers** | **RECOMMENDED** | OS-level, survives process crashes, zero Python dependency, native journald logging. The ingest process is a short-lived script (fetch + process + insert), not a long-running daemon. systemd timers are the correct abstraction for "run this script every 15 minutes." |
+| APScheduler 3.11 | Not recommended | Requires a continuously running Python process. If the process crashes, scheduling stops. APScheduler 4.0 is still alpha (v4.0.0a6). Adds complexity without benefit for a periodic batch job. |
+| `schedule` library | Not recommended | Already in pyproject.toml but same problem as APScheduler — requires persistent process. Single-threaded by default; long-running jobs block the scheduler. |
+| cron | Acceptable fallback | Works, but systemd timers provide better logging integration, dependency management, and failure handling. |
+
+**Implementation:**
+```ini
+# /etc/systemd/system/geopol-ingest.service
+[Unit]
+Description=GDELT micro-batch ingest
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/kondraki/personal/geopol
+ExecStart=/home/kondraki/personal/geopol/.venv/bin/python scripts/ingest_gdelt.py
+User=kondraki
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=geopol-ingest
+
+# /etc/systemd/system/geopol-ingest.timer
+[Unit]
+Description=Run GDELT ingest every 15 minutes
+
+[Timer]
+OnCalendar=*:0/15
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+```
+
+### Incremental Graph Updates
+
+No new library needed. The existing `NetworkX` graph supports incremental `add_edges_from()`. The ingest script should:
+1. Fetch new GDELT 15-minute slice
+2. Process through existing `data_processor.py` pipeline
+3. Insert new events into SQLite
+4. Add new triples to the in-memory graph (or rebuild from SQLite if graph is stale)
+
+For SQLite concurrent access (ingest writes while Streamlit reads):
+- SQLite WAL mode (Write-Ahead Logging) — already sufficient for single-writer/multiple-reader
+- Set via `PRAGMA journal_mode=WAL;` on connection
+
+**No new packages required for this dimension.**
+
+---
+
+## 4. Dynamic Per-CAMEO Calibration
+
+### Existing Libraries (Already in Stack)
+
+| Package | Current Version | v2.0 Usage |
+|---------|----------------|------------|
+| `netcal` | `>=1.3.5` (in pyproject.toml) | ECE computation, reliability diagrams. Already integrated in `src/evaluation/calibration_metrics.py`. |
+| `scipy` | `>=1.11.0` (in pyproject.toml) | `scipy.optimize.minimize` for per-CAMEO weight optimization. Bounded L-BFGS-B with box constraints `alpha_i in [0.0, 1.0]`. |
+| `scikit-learn` | `>=1.3.0` (in pyproject.toml) | `IsotonicRegression` for non-parametric calibration curves. Already available. |
+| `numpy` | `>=1.24.0` (in pyproject.toml) | Array operations for Brier score decomposition. |
+
+### New Libraries: None
+
+The dynamic calibration system does not require new packages. The per-CAMEO alpha optimization is:
+
+```python
+from scipy.optimize import minimize
+
+def optimize_alpha_for_category(
+    llm_probs: np.ndarray,
+    tkg_probs: np.ndarray,
+    outcomes: np.ndarray,  # 0 or 1
+) -> float:
+    """Find optimal alpha for one CAMEO root category."""
+    def brier_score(alpha):
+        ensemble = alpha * llm_probs + (1 - alpha) * tkg_probs
+        return np.mean((ensemble - outcomes) ** 2)
+
+    result = minimize(
+        brier_score,
+        x0=0.6,  # Current default
+        bounds=[(0.0, 1.0)],
+        method='L-BFGS-B',
+    )
+    return result.x[0]
+```
+
+This runs in milliseconds for any reasonable number of historical predictions. No online learning framework needed — the optimization is batch (run after each day's outcomes are resolved).
+
+**For reliability diagrams in Streamlit:**
+- `netcal` provides `ReliabilityDiagram` visualization
+- Alternatively, compute bin-level stats with `netcal.metrics.ECE` and plot with `matplotlib` (already in stack) or Streamlit's native charts
+
+**Sources:**
+- [netcal PyPI](https://pypi.org/project/netcal/) — HIGH confidence (v1.3.6, Aug 2024)
+- [scipy.optimize.minimize docs](https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.minimize.html) — HIGH confidence
+
+---
+
+## 5. Scheduling & Automation
+
+### Daily Forecast Automation
+
+**Recommendation: systemd timer (same pattern as GDELT ingest)**
+
+```ini
+# /etc/systemd/system/geopol-forecast.service
+[Unit]
+Description=Daily geopolitical forecast generation
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/kondraki/personal/geopol
+ExecStart=/home/kondraki/personal/geopol/.venv/bin/python scripts/daily_forecast.py
+User=kondraki
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=geopol-forecast
+TimeoutStartSec=1800  # 30 minutes max
+
+# /etc/systemd/system/geopol-forecast.timer
+[Timer]
+OnCalendar=*-*-* 06:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+```
+
+### Health Monitoring & Alerting
+
+**Recommendation: systemd journal + simple Python health check script + email alerts**
+
+For a single-server deployment, heavyweight monitoring (Prometheus, Grafana, Datadog) is overkill. The appropriate stack:
+
+| Component | Tool | Rationale |
+|-----------|------|-----------|
+| Log aggregation | **systemd journald** (built-in) | All services log via `StandardOutput=journal`. Query with `journalctl -u geopol-*`. Structured logging via Python's `logging` module with `systemd.journal.JournalHandler`. |
+| Health checks | **Custom Python script** on systemd timer | Check: (1) SQLite DB freshness (last event timestamp), (2) last forecast timestamp, (3) Streamlit process alive, (4) disk space. |
+| Alerting | **Python `smtplib`** or `apprise` | Send email/notification on health check failure. `apprise` supports 90+ notification services (Slack, Telegram, email) with a single API. |
+| Process management | **systemd** | Streamlit runs as a systemd service with `Restart=on-failure`. |
+
+| Package | Version | Purpose | When |
+|---------|---------|---------|------|
+| `apprise` | `>=1.9.0` | Multi-channel alerting (email, Slack, Telegram) | Only if email-only alerting is insufficient. Lightweight, zero config for basic channels. |
+
+**For systemd journal integration:**
 
 | Package | Version | Purpose | Rationale |
 |---------|---------|---------|-----------|
-| `jax2torch` | `>=0.1.0` | Zero-copy JAX->PyTorch conversion | Uses DLPack under the hood. Avoids CPU round-trip for GPU tensors. |
+| `systemd-python` | `>=235` | `JournalHandler` for structured logging to journald | Optional. Python's standard `logging` to stdout already goes to journald via systemd. Only needed if structured metadata (key-value pairs) in journal entries is desired. |
 
-**Alternative (no extra dependency):** Direct DLPack conversion:
-```python
-import torch
-import jax
-
-def jax_to_torch(x: jax.Array) -> torch.Tensor:
-    """Zero-copy JAX array to PyTorch tensor."""
-    return torch.utils.dlpack.from_dlpack(jax.dlpack.to_dlpack(x))
-```
-
-This avoids adding `jax2torch` if you want minimal dependencies. Both approaches are equivalent.
+**Sources:**
+- [systemd journal Python logging](https://lincolnloop.com/blog/logging-systemds-journal-python/) — HIGH confidence
+- [Centralized logging with journald](https://www.andrewkroh.com/linux/2025/12/19/centralized-logging-with-journald.html) — HIGH confidence
+- [APScheduler PyPI](https://pypi.org/project/APScheduler/) — HIGH confidence (3.11.2 stable, 4.0 alpha)
 
 ---
 
-## Quantization Approach
-
-**Recommendation:** NF4 (4-bit NormalFloat) with bfloat16 compute dtype
-
-### VRAM Budget (RTX 3060 12GB)
-
-| Component | VRAM | Notes |
-|-----------|------|-------|
-| Llama2-7B weights (NF4) | ~3.5-4.0 GB | 7B params @ 4 bits |
-| KV cache (2048 context) | ~2.0-2.5 GB | Scales with context length |
-| Projection layer | ~0.4 GB | 200 -> 4096, float16 |
-| LoRA adapters | ~0.1 GB | r=16, alpha=32 typical |
-| Activations/buffers | ~1.5 GB | Generation overhead |
-| **Total** | **~8-9 GB** | ~3GB headroom |
-
-### Configuration
-
-```python
-from transformers import BitsAndBytesConfig
-import torch
-
-quantization_config = BitsAndBytesConfig(
-    load_in_4bit=True,
-    bnb_4bit_quant_type="nf4",           # NormalFloat4 - better than FP4
-    bnb_4bit_compute_dtype=torch.bfloat16,  # RTX 3060 supports bf16
-    bnb_4bit_use_double_quant=True,      # Quantize the quantization constants
-)
-```
-
-**Why NF4 over GPTQ/AWQ:**
-- NF4 is integrated natively into transformers (no separate quantization step)
-- GPTQ/AWQ require pre-quantized model files
-- For training (QLoRA), NF4 is the standard approach
-- GPTQ is slightly better for pure inference, but the difference is marginal
-
-**Confidence:** HIGH - verified via [Hugging Face bitsandbytes docs](https://huggingface.co/docs/transformers/main/en/quantization/bitsandbytes), [VRAM calculators](https://apxml.com/tools/vram-calculator), and [RTX 3060 compatibility reports](https://localllm.in/blog/ollama-vram-requirements-for-local-llms).
-
----
-
-## Adapter Framework
-
-**Recommendation:** PEFT with LoRA for projection layer training
-
-### Architecture Design (LLaGA-inspired)
-
-The approach follows [LLaGA: Large Language and Graph Assistant](https://arxiv.org/abs/2402.08170) pattern:
-
-1. **TKG Encoder** (existing JAX/jraph RE-GCN) produces entity embeddings: `(num_entities, 200)`
-2. **Projection MLP** maps TKG embeddings to LLM token space: `200 -> 4096`
-3. **Soft tokens** are injected into the LLM's input embedding sequence
-4. **LoRA adapters** on attention layers allow the LLM to learn to use graph context
-
-```
-TKG Embeddings (200-dim)
-         |
-    [Projection MLP]  <-- Trainable
-         |
-    Soft Tokens (4096-dim, N tokens)
-         |
-    [Concat with text tokens]
-         |
-    Llama2-7B (frozen, 4-bit)
-         + LoRA adapters (trainable)
-         |
-    Prediction Output
-```
-
-### Projection Layer Design
-
-```python
-import torch
-import torch.nn as nn
-
-class GraphProjection(nn.Module):
-    """Project TKG embeddings into LLM token space."""
-
-    def __init__(
-        self,
-        tkg_dim: int = 200,      # RE-GCN embedding dimension
-        llm_dim: int = 4096,      # Llama2-7B hidden dimension
-        num_virtual_tokens: int = 8,  # How many "graph tokens" to inject
-    ):
-        super().__init__()
-        self.num_virtual_tokens = num_virtual_tokens
-
-        # Two-layer MLP following LLaGA pattern
-        self.projection = nn.Sequential(
-            nn.Linear(tkg_dim, llm_dim),
-            nn.GELU(),
-            nn.Linear(llm_dim, llm_dim * num_virtual_tokens),
-        )
-
-    def forward(self, entity_embeddings: torch.Tensor) -> torch.Tensor:
-        """
-        Args:
-            entity_embeddings: (batch, num_entities, tkg_dim)
-
-        Returns:
-            virtual_tokens: (batch, num_virtual_tokens, llm_dim)
-        """
-        # Aggregate entity embeddings (mean pooling)
-        aggregated = entity_embeddings.mean(dim=1)  # (batch, tkg_dim)
-
-        # Project to LLM space
-        projected = self.projection(aggregated)  # (batch, llm_dim * num_tokens)
-
-        # Reshape to virtual token sequence
-        return projected.view(-1, self.num_virtual_tokens, 4096)
-```
-
-### LoRA Configuration
-
-```python
-from peft import LoraConfig, get_peft_model
-
-lora_config = LoraConfig(
-    r=16,                          # Low-rank dimension
-    lora_alpha=32,                 # Scaling factor
-    target_modules=["q_proj", "v_proj"],  # Attention projection layers
-    lora_dropout=0.05,
-    bias="none",
-    task_type="CAUSAL_LM",
-)
-
-# Apply LoRA to quantized model
-model = get_peft_model(quantized_model, lora_config)
-```
-
-**Why LoRA targets only q_proj/v_proj:**
-- k_proj has minimal impact on downstream performance
-- Reduces trainable parameters by 33%
-- Standard practice from QLoRA paper
-
-**Confidence:** HIGH - architecture verified via [LLaGA paper](https://arxiv.org/abs/2402.08170), [PEFT docs](https://huggingface.co/docs/peft/en/index), and [transformers integration](https://huggingface.co/docs/transformers/en/peft).
-
----
-
-## JAX<->PyTorch Bridge
-
-### The Problem
-
-- TKG encoder: JAX/jraph (RE-GCN) produces `jax.Array` on GPU
-- LLM: PyTorch (Llama2) consumes `torch.Tensor` on GPU
-- Naive: `np.asarray()` -> CPU -> GPU round-trip = slow
-
-### The Solution: DLPack
-
-DLPack is a tensor interchange format. Both JAX and PyTorch support it natively.
-
-```python
-import jax
-import torch
-
-def jax_to_torch_gpu(x: jax.Array) -> torch.Tensor:
-    """Zero-copy conversion for GPU arrays."""
-    # Force device synchronization (JAX is async)
-    x = jax.device_get(x) if x.device().platform == 'cpu' else x
-
-    # DLPack transfer - no copy if same device
-    return torch.utils.dlpack.from_dlpack(jax.dlpack.to_dlpack(x))
-
-
-def torch_to_jax_gpu(x: torch.Tensor) -> jax.Array:
-    """Zero-copy conversion for GPU tensors."""
-    return jax.dlpack.from_dlpack(torch.utils.dlpack.to_dlpack(x))
-```
-
-### Integration Point
-
-In your pipeline:
-
-```python
-# 1. Run TKG encoder (JAX)
-entity_embeddings_jax = regcn_model.evolve_embeddings(graphs, training=False)
-# Shape: (num_entities, 200), dtype: jax.Array
-
-# 2. Convert to PyTorch (zero-copy)
-entity_embeddings_torch = jax_to_torch_gpu(entity_embeddings_jax)
-# Shape: (num_entities, 200), dtype: torch.Tensor
-
-# 3. Project to LLM space
-virtual_tokens = projection_layer(entity_embeddings_torch.unsqueeze(0))
-# Shape: (1, num_virtual_tokens, 4096)
-
-# 4. Inject into Llama2 and generate
-...
-```
-
-### Caveat: Device Mismatch
-
-If JAX uses one GPU and PyTorch uses another (or CPU), DLPack transfer will fail. Ensure both frameworks target the same CUDA device:
-
-```python
-# Force JAX to use same device as PyTorch
-jax.config.update("jax_default_device", jax.devices("cuda")[0])
-
-# Force PyTorch to use CUDA:0
-torch.cuda.set_device(0)
-```
-
-**Confidence:** HIGH - verified via [JAX DLPack docs](https://github.com/jax-ml/jax/discussions/18765), [torch_jax_interop library](https://github.com/lebrice/torch_jax_interop), and [PyTorch forums](https://discuss.pytorch.org/t/convert-jax-array-to-torch-tensor/64079).
-
----
-
-## Not Recommended
-
-### 1. vLLM
-
-**What it is:** High-performance LLM inference server with PagedAttention.
-
-**Why not:**
-- Designed for server deployments with many concurrent users
-- Overhead is not justified for single-request forecasting pipeline
-- Adds operational complexity (separate server process)
-- Your use case: single inference at a time, not throughput-optimized serving
-
-**When to reconsider:** If you need to serve multiple concurrent forecast requests.
-
-### 2. llama.cpp / llama-cpp-python
-
-**What it is:** C++ inference engine with Python bindings. Excellent for CPU inference.
-
-**Why not:**
-- You need to train adapter layers (projection + LoRA)
-- llama.cpp doesn't integrate with PEFT/LoRA training
-- Your existing stack is Python-native (transformers ecosystem)
-- The VRAM constraint is solvable with bitsandbytes (no need for GGUF/GGML)
-
-**When to reconsider:** If you need to deploy to edge devices without GPU.
-
-### 3. AWQ/GPTQ Pre-Quantized Models
-
-**What it is:** Weights quantized offline using calibration data.
-
-**Why not:**
-- Requires separate quantization step and specific model files
-- Can't easily combine with QLoRA training
-- NF4 (bitsandbytes) achieves similar quality with simpler workflow
-- GPTQ/AWQ is better for pure inference, but you need training capability
-
-**When to reconsider:** If you freeze the architecture and only do inference.
-
-### 4. Custom Fusion Layers in JAX
-
-**What it is:** Rewrite Llama2 in JAX to avoid framework bridge.
-
-**Why not:**
-- Massive engineering effort
-- Lose access to transformers ecosystem (tokenizers, configs, PEFT)
-- bitsandbytes only works with PyTorch
-- DLPack bridge is zero-copy and trivial to implement
-
-**When to reconsider:** If you're building a research paper, not a product.
-
-### 5. DeepSpeed ZeRO / FSDP
-
-**What it is:** Distributed training frameworks for sharding model weights.
-
-**Why not:**
-- You have 1 GPU, not a cluster
-- ZeRO-Offload (CPU offloading) is slower than 4-bit quantization
-- Adds significant complexity for no benefit at your scale
-
-**When to reconsider:** If you scale to multi-GPU training.
-
----
-
-## Integration with Existing Stack
-
-### pyproject.toml Additions
-
-```toml
-dependencies = [
-    # ... existing dependencies ...
-
-    # TGL-LLM Integration (NEW)
-    "transformers>=5.0.0",      # Was not in deps, llama-index uses it internally
-    "bitsandbytes>=0.49.0",     # 4-bit quantization
-    "accelerate>=1.12.0",       # device_map support
-    "peft>=0.18.1",             # LoRA adapter training
-]
-```
-
-**Note:** `transformers` may already be a transitive dependency via `llama-index`. Pin explicitly to ensure v5.x.
-
-### Conflicts to Watch
-
-| Existing Dep | Potential Conflict | Resolution |
-|--------------|-------------------|------------|
-| `jax[cuda12]>=0.6.2` | CUDA driver version | Both require CUDA 12.x - no conflict if driver is 535+ |
-| `torch>=2.0.0` | CUDA compatibility | Update to `torch>=2.5.0` for CUDA 12.4+ and bf16 support |
-| `google-genai>=1.0` | Will be replaced | Keep for fallback, remove when Llama2 integration is stable |
-
-### Architecture Change
-
-**Before (current ensemble_predictor.py):**
-```
-LLM (Gemini API) --> probability_llm --|
-                                       |--> weighted average --> output
-TKG (RE-GCN)     --> probability_tkg --|
-```
-
-**After (deep integration):**
-```
-TKG (RE-GCN) --> embeddings --> projection --> soft tokens --|
-                                                             |--> Llama2 --> output
-Question    --> tokenize ----------------------------------- |
-```
-
-The TKG doesn't produce a separate probability - it provides context that the LLM uses for reasoning.
+## Recommended Stack Additions Summary
+
+### Must Add (New Dependencies)
+
+| Package | Version | Purpose | Phase |
+|---------|---------|---------|-------|
+| `streamlit` | `>=1.54.0` | Web frontend | Phase 1 (Frontend) |
+| `slowapi` | `>=0.1.9` | Rate limiting middleware | Phase 1 (Frontend) |
+
+### May Add (Conditional)
+
+| Package | Version | Purpose | Condition |
+|---------|---------|---------|-----------|
+| `apprise` | `>=1.9.0` | Multi-channel alerting | If email-only alerting is insufficient |
+| `systemd-python` | `>=235` | Structured journal logging | If structured metadata in journal entries is needed |
+| `plotly` | `>=6.0.0` | Advanced interactive charts | If built-in Streamlit charts are insufficient |
+
+### Must Remove / Replace
+
+| Package | Action | Rationale |
+|---------|--------|-----------|
+| `jraph>=0.0.6.dev0` | **Remove** — replace with local NamedTuple + `jax.ops.segment_sum` | Archived library, no future updates. Dependency is shallow (2 API calls). |
+| `schedule>=1.2.0` | **Remove** | Replaced by systemd timers. Not used in any current source code. |
+
+### Must Update
+
+| Package | Current | Target | Rationale |
+|---------|---------|--------|-----------|
+| (none) | — | — | Existing pinnings are adequate. |
+
+### Explicitly NOT Adding
+
+| Package | Reason |
+|---------|--------|
+| `APScheduler` | systemd timers are superior for periodic batch jobs on a single server |
+| `celery` / `dramatiq` | Task queue is overkill for 2 cron-like jobs |
+| `prometheus-client` / `grafana` | Heavyweight monitoring for a single-server demo |
+| `DGL` (Deep Graph Library) | Would only be needed for HiSMatch port, which is not recommended |
+| `transformers` / `bitsandbytes` / `peft` | Llama integration cancelled per commit c7786d4 |
+| `streamlit-autorefresh` | `@st.fragment(run_every=)` covers the use case natively |
+| `JraphX` | Experimental (v0.0.4), community-maintained; project's jraph usage is trivial enough to inline |
+| `river` / `vowpalwabbit` | Online learning frameworks — the calibration optimization is batch, not streaming |
 
 ---
 
 ## Installation Commands
 
 ```bash
-# Update torch to 2.5+ with CUDA 12.4
-uv add "torch>=2.5.0"
+# Add new dependencies
+uv add "streamlit>=1.54.0" "slowapi>=0.1.9"
 
-# Add TGL-LLM dependencies
-uv add "transformers>=5.0.0" "bitsandbytes>=0.49.0" "accelerate>=1.12.0" "peft>=0.18.1"
+# Remove deprecated dependencies
+uv remove schedule jraph
 
-# Verify installation
+# Verify
 uv run python -c "
-import torch
-import bitsandbytes as bnb
-from transformers import AutoModelForCausalLM, BitsAndBytesConfig
-
-print(f'PyTorch: {torch.__version__}')
-print(f'CUDA available: {torch.cuda.is_available()}')
-print(f'bitsandbytes: {bnb.__version__}')
-print(f'CUDA setup: {bnb.cuda_setup.main()}')
+import streamlit
+print(f'Streamlit: {streamlit.__version__}')
+import jax
+print(f'JAX: {jax.__version__}')
+print(f'jax.ops.segment_sum available: {hasattr(jax.ops, \"segment_sum\")}')
 "
 ```
+
+**Note:** After removing jraph, the import in `src/training/models/regcn_jraph.py` will break. The jraph elimination must be done atomically with the code changes to replace `jraph.GraphsTuple` and `jraph.segment_sum`.
+
+---
+
+## Integration Points with Existing Stack
+
+### JAX/Flax NNX (TKG)
+
+- TiRGN port builds on existing `regcn_jraph.py` architecture
+- Same `nnx.Module` patterns, same `optax` optimizer, same checkpoint format
+- Global history encoder is a new `nnx.Module` that composes with existing encoder
+- `jax.ops.segment_sum` replaces `jraph.segment_sum` (identical API, different import)
+
+### SQLite (Storage)
+
+- Micro-batch ingest writes new events to existing SQLite schema
+- WAL mode enables concurrent reads (Streamlit) and writes (ingest)
+- Prediction store (`src/calibration/prediction_store.py`) already exists for outcome tracking
+- Per-CAMEO alpha values stored in a new SQLite table (20 rows, trivial)
+
+### Gemini API (LLM)
+
+- Streamlit interactive queries call existing `gemini_client.py`
+- Rate limiting at Streamlit layer protects against API cost abuse
+- No changes to Gemini integration itself
+
+### NetworkX (Graph)
+
+- Micro-batch ingest adds edges incrementally via `add_edges_from()`
+- Graph reconstruction from SQLite as fallback if in-memory graph drifts
+- No new graph library needed
+
+---
+
+## Confidence Assessment
+
+| Area | Confidence | Rationale |
+|------|------------|-----------|
+| jraph archival | HIGH | Verified directly on GitHub — archived 2025-05-21, read-only |
+| TKG benchmarks (TRCL paper) | HIGH | Peer-reviewed 2025 paper with reproducible comparison table |
+| HiSMatch MRR claim (46.4%) | LOW | Self-reported, not reproduced in subsequent benchmark papers, different eval protocol possible |
+| TiRGN porting feasibility | MEDIUM | Architecture is structurally similar to RE-GCN, but no one has published a JAX port — estimation based on code structure analysis |
+| TiRGN memory on GDELT-scale | LOW | Theoretical estimate only; needs profiling on actual GDELT data |
+| Streamlit features (fragments, st.App) | HIGH | Verified in official 2025-2026 release notes |
+| st.App rate limiting via slowapi | LOW | st.App is experimental; integration pattern not battle-tested |
+| systemd timers | HIGH | Standard Linux infrastructure, well-documented |
+| Dynamic calibration (scipy) | HIGH | scipy.optimize is the gold standard for bounded optimization |
+| netcal ECE/reliability | HIGH | Already integrated and tested in codebase |
+| GDELT training time estimates | LOW | Extrapolated from TGL paper and general benchmarks, not measured on this codebase |
 
 ---
 
 ## Sources
 
+### Peer-Reviewed Papers (HIGH confidence)
+- [TRCL: Recurrent encoding + contrastive learning for TKG](https://peerj.com/articles/cs-2595/) — PeerJ Computer Science, 2025
+- [TiRGN: IJCAI 2022](https://www.ijcai.org/proceedings/2022/299)
+- [HiSMatch: EMNLP 2022 Findings](https://aclanthology.org/2022.findings-emnlp.542.pdf)
+- [RE-GCN: SIGIR 2021](https://github.com/Lee-zix/RE-GCN)
+
 ### Official Documentation (HIGH confidence)
-- [Hugging Face Transformers v5](https://huggingface.co/docs/transformers/main/en/index)
-- [bitsandbytes Documentation](https://huggingface.co/docs/bitsandbytes/main/en/installation)
-- [PEFT Documentation](https://huggingface.co/docs/peft/en/index)
-- [Accelerate Big Model Inference](https://huggingface.co/docs/accelerate/concept_guides/big_model_inference)
+- [Streamlit 2026 release notes](https://docs.streamlit.io/develop/quick-reference/release-notes/2026)
+- [Streamlit fragments](https://docs.streamlit.io/develop/concepts/architecture/fragments)
+- [Streamlit PyPI](https://pypi.org/project/streamlit/) — v1.54.0, Python >=3.10
+- [APScheduler PyPI](https://pypi.org/project/APScheduler/) — v3.11.2 stable, v4.0.0a6 alpha
+- [netcal PyPI](https://pypi.org/project/netcal/) — v1.3.6
+- [scipy.optimize.minimize](https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.minimize.html)
+- [jax.ops.segment_sum](https://docs.jax.dev/en/latest/_autosummary/jax.ops.segment_sum.html)
 
-### PyPI Versions (HIGH confidence)
-- [bitsandbytes 0.49.0](https://pypi.org/project/bitsandbytes/) - Jan 8, 2026
-- [peft 0.18.1](https://pypi.org/project/peft/) - Jan 9, 2026
-- [accelerate 1.12.0](https://pypi.org/project/accelerate/)
-- [transformers 5.0.0](https://pypi.org/project/transformers/)
+### GitHub Repositories (HIGH confidence)
+- [jraph (archived)](https://github.com/google-deepmind/jraph) — archived 2025-05-21
+- [TiRGN official code](https://github.com/Liyyy2122/TiRGN)
+- [HiSMatch official code](https://github.com/Lee-zix/HiSMatch)
+- [CENET official code](https://github.com/xyjigsaw/CENET)
+- [slowapi](https://github.com/laurentS/slowapi)
+- [JraphX](https://dirt.design/jraphx/) — v0.0.4, experimental
 
-### Architecture References (HIGH confidence)
-- [LLaGA: Large Language and Graph Assistant](https://arxiv.org/abs/2402.08170) - ICML 2024
-- [Llama 2 Architecture](https://huggingface.co/docs/transformers/model_doc/llama2) - 4096 hidden dim
-- [JAX DLPack Interop](https://github.com/jax-ml/jax/discussions/18765)
-
-### VRAM Calculations (MEDIUM confidence - multiple sources agree)
-- [VRAM Calculator](https://apxml.com/tools/vram-calculator)
-- [Ollama VRAM Requirements](https://localllm.in/blog/ollama-vram-requirements-for-local-llms)
-- [RTX 3060 LLM Guide](https://www.bacloud.com/en/blog/163/guide-to-gpu-requirements-for-running-ai-models.html)
+### Web Sources (MEDIUM confidence)
+- [Streamlit st.App ASGI feedback](https://github.com/streamlit/streamlit/issues/13600)
+- [systemd journal Python logging guide](https://lincolnloop.com/blog/logging-systemds-journal-python/)
+- [JAX vs PyTorch porting guide](https://cloud.google.com/blog/products/ai-machine-learning/guide-to-jax-for-pytorch-developers)
