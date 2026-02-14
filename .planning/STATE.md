@@ -2,16 +2,18 @@
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-01-31)
+See: .planning/PROJECT.md (updated 2026-02-14)
 
 **Core value:** Explainability — every forecast must provide clear, traceable reasoning paths
-**Current focus:** v2.0 direction pending — Llama-TGL plan cancelled 2026-02-14, Gemini retained
+**Current focus:** v2.0 Operationalization & Forecast Quality
 
 ## Current Position
 
-Milestone: v2.0 (direction pending)
-Status: Awaiting `/gsd:new-milestone` to define new v2.0 direction
-Last activity: 2026-02-14 — Cancelled v2.0 Llama-TGL plan, archived to `.planning/archive/`
+Milestone: v2.0 Operationalization & Forecast Quality
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-02-14 — Milestone v2.0 defined
 
 ## Performance Metrics
 
@@ -44,9 +46,12 @@ Last activity: 2026-02-14 — Cancelled v2.0 Llama-TGL plan, archived to `.plann
 Decisions are logged in PROJECT.md Key Decisions table.
 Key decisions affecting current work:
 
-- JAX/jraph for TKG training (memory efficiency)
-- 60/40 LLM/TKG ensemble weighting — validated in v1.1.1
+- JAX/jraph for TKG training (memory efficiency) — v2.0 TKG replacement must maintain JAX compatibility
+- Fixed 60/40 alpha validated in v1.1.1 — being replaced by per-CAMEO dynamic weights in v2.0
 - Retain Gemini over local Llama — frontier reasoning >> 4-bit 7B on 12GB VRAM (decided 2026-02-14)
+- Micro-batch ingest (15-min GDELT), daily predict — v2.0 architecture decision
+- Streamlit for public-facing web demo — fast to build, Python-native
+- TKG predictor replacement via research — accuracy-first, JAX-compatible, weekly-retrainable
 
 ### Deferred Issues
 
@@ -64,7 +69,7 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-12
-Stopped at: Completed quick-001 (README fix + forecast CLI + preflight)
+Last session: 2026-02-14
+Stopped at: Defining v2.0 milestone — PROJECT.md updated, requirements phase next
 Resume file: None
-Next: `/gsd:new-milestone` — Define new v2.0 direction (Gemini-centric)
+Next: Complete requirements definition → roadmap creation
