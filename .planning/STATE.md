@@ -5,16 +5,13 @@
 See: .planning/PROJECT.md (updated 2026-01-31)
 
 **Core value:** Explainability — every forecast must provide clear, traceable reasoning paths
-**Current focus:** v2.0 Hybrid Architecture — Phase 9: Environment Setup & Data Preparation
+**Current focus:** v2.0 direction pending — Llama-TGL plan cancelled 2026-02-14, Gemini retained
 
 ## Current Position
 
-Phase: 9 of 14 (Environment Setup & Data Preparation)
-Plan: 0 of 2 in current phase
-Status: Ready to plan
-Last activity: 2026-02-12 — Completed quick-001 (README fix + forecast CLI + preflight)
-
-Progress: v2.0 [░░░░░░░░░░░░] 0%
+Milestone: v2.0 (direction pending)
+Status: Awaiting `/gsd:new-milestone` to define new v2.0 direction
+Last activity: 2026-02-14 — Cancelled v2.0 Llama-TGL plan, archived to `.planning/archive/`
 
 ## Performance Metrics
 
@@ -47,16 +44,9 @@ Progress: v2.0 [░░░░░░░░░░░░] 0%
 Decisions are logged in PROJECT.md Key Decisions table.
 Key decisions affecting current work:
 
-- JAX/jraph for TKG training (memory efficiency) — impacts Phase 9 JAX/PyTorch coordination
-- 60/40 LLM/TKG ensemble weighting — being replaced by deep integration in v2.0
-- RE-GCN over TiRGN — being upgraded to HisMatch in Phase 10
-
-### v2.0 Critical Constraints
-
-- RTX 3060 12GB VRAM — 4-bit quantization mandatory, training ~80-100h
-- JAX/PyTorch memory conflict — MUST resolve in Phase 9 before any model work
-- Frozen Llama backbone — only adapter layers and LoRA trained
-- HisMatch before training — embedding quality affects adapter training
+- JAX/jraph for TKG training (memory efficiency)
+- 60/40 LLM/TKG ensemble weighting — validated in v1.1.1
+- Retain Gemini over local Llama — frontier reasoning >> 4-bit 7B on 12GB VRAM (decided 2026-02-14)
 
 ### Deferred Issues
 
@@ -77,4 +67,4 @@ None.
 Last session: 2026-02-12
 Stopped at: Completed quick-001 (README fix + forecast CLI + preflight)
 Resume file: None
-Next: `/gsd:plan-phase 9` — Plan environment setup and JAX/PyTorch coordination
+Next: `/gsd:new-milestone` — Define new v2.0 direction (Gemini-centric)

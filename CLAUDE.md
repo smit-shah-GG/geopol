@@ -77,9 +77,9 @@ The distinction: if a decision is being made or approved, be aggressive. If it's
 
 This repository implements an AI-powered geopolitical forecasting system combining Temporal Knowledge Graphs with LLM reasoning. The repository contains:
 1. A comprehensive technical reference document (`geopol.md`) covering algorithms and architectures
-2. Production implementation of the forecasting engine (v1.0 shipped, v1.1 in progress)
+2. Production implementation of the forecasting engine (v1.0 shipped, v1.1 shipped)
 
-**Status**: Active development. v1.0 MVP complete (Phases 1-5). v1.1 Tech Debt Remediation in progress (Phases 6-8).
+**Status**: Active development. v1.0 MVP complete (Phases 1-5). v1.1 Tech Debt Remediation complete (Phases 6-8). v2.0 direction pending.
 
 ## Repository Structure
 
@@ -188,4 +188,4 @@ When asked about geopolitical AI systems, the document provides detailed coverag
 - **Created**: January 8, 2026
 - **Primary Language**: Python 3.10+
 - **v1.0 Shipped**: 2026-01-23
-- **Current Milestone**: v1.1 Tech Debt Remediation
+- **Current Milestone**: v2.0 (direction pending)

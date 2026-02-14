@@ -89,16 +89,16 @@ Processing lag from event to forecast: <2 hours (vs 24-48 hours for human analys
 
 ## Technical Implementation
 
-**Current Status**: v1.1 complete (8 phases shipped). v2.0 in progress (deep TGL-LLM integration).
+**Current Status**: v1.1.1 complete (8 phases shipped). v2.0 direction pending.
 
-**Stack**: Python 3.12, NetworkX (graphs), Gemini 3.0 Pro (LLM), JAX/jraph (TKG training), SQLite (storage)
+**Stack**: Python 3.12, NetworkX (graphs), Gemini (LLM reasoning), JAX/jraph (TKG training), SQLite (storage)
 
 **Performance**:
 - Processes 100K events/hour on single GPU
 - Sub-second inference for trained patterns
 - 212 automated tests (100% passing)
 
-**Next Milestone**: v2.0 — Deep token-space integration replacing post-hoc ensemble
+**Next Milestone**: v2.0 — direction under definition (Gemini retained as LLM backbone)
 
 ## Investment Case
 

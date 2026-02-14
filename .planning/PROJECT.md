@@ -24,29 +24,15 @@ Explainability — every forecast must provide clear, traceable reasoning paths 
 
 ### Active
 
-- Deep token-space integration projecting TKG embeddings into LLM token space (TGL-LLM architecture)
-- Adaptive ensemble weighting based on context quality assessment
-- TKG algorithm upgrade from RE-GCN to state-of-art (HisMatch or similar)
-- Gradual migration path with parallel Gemini/Llama systems for validation
-- Benchmark framework comparing v2.0 against v1.1 baseline
+None — v2.0 direction pending definition via `/gsd:new-milestone`.
 
-## Current Milestone: v2.0 Hybrid Architecture
+## Current Milestone: v2.0 (Direction Pending)
 
-**Goal:** Replace post-hoc weighted voting with deep graph-language integration where TKG embeddings are projected directly into the LLM's token space, achieving 40-60% accuracy improvement over v1.1.
+**Status:** The original v2.0 plan (Llama-TGL deep token-space integration) was cancelled on 2026-02-14. The new v2.0 direction has not been defined yet.
 
-**Target features:**
-- TGL-LLM style adapter architecture (RGCN → GRU → learned adapter → Llama2-7B)
-- Self-hosted Llama2-7B inference (4-bit quantized for RTX 3060 12GB)
-- Context-quality-aware adaptive weighting (when deep integration unavailable)
-- TKG algorithm upgrade (RE-GCN → HisMatch for ~6% MRR gain)
-- A/B comparison framework (v1.1 Gemini vs v2.0 Llama-TGL)
+**Decision:** Retain Gemini as the LLM reasoning engine. See `.planning/archive/v2.0-llama-cancelled.md` for the full cancelled plan and rationale.
 
-**Constraints:**
-- RTX 3060 12GB VRAM — adapter training feasible, full fine-tuning not feasible
-- Frozen Llama backbone — only adapter layers trained
-- Must validate gains before deprecating Gemini path
-
-**Success criteria:** Any measurable accuracy improvement over v1.1 baseline.
+**Next step:** Run `/gsd:new-milestone` to define the new v2.0 goals and requirements.
 
 ### Out of Scope
 
@@ -71,9 +57,9 @@ This is a greenfield implementation starting from first principles rather than e
 
 ## Constraints
 
-- **Compute**: Limited GPU resources — must optimize for CPU-friendly models and avoid large transformer architectures
+- **Compute**: Limited GPU resources (RTX 3060 12GB) — JAX TKG training constrained, no local LLM feasible
 - **Data volume**: Cannot process full GDELT firehose (500K-1M articles/day) — must use selective sampling
-- **Model size**: Prefer smaller models (7B parameters max) over frontier LLMs for cost and latency
+- **LLM**: Gemini API (frontier-class reasoning, negligible cost at current query volume)
 
 ## Key Decisions
 
@@ -85,7 +71,8 @@ This is a greenfield implementation starting from first principles rather than e
 | Batch processing over real-time | Reduces complexity and compute requirements significantly | Good |
 | Python for implementation | Scientific computing ecosystem | Good |
 | RE-GCN over TiRGN | More mature implementation available | Good |
-| 60/40 LLM/TKG ensemble weighting | Balance reasoning with pattern matching | ⚠️ Revisit — v2.0 targets deep integration |
+| 60/40 LLM/TKG ensemble weighting | Balance reasoning with pattern matching | Good — validated in v1.1.1 |
+| Retain Gemini over local Llama | Frontier-class reasoning >> 4-bit 7B on 12GB VRAM; API costs negligible for query volume | Good — v2.0 Llama plan cancelled 2026-02-14 |
 | JAX/jraph for TKG training | Memory efficiency on CPU | Good |
 | Weekly retraining schedule | Captures evolving geopolitical patterns | Good |
 
@@ -104,10 +91,10 @@ This is a greenfield implementation starting from first principles rather than e
 **Codebase:**
 - ~100 source files
 - 40,257 lines of Python
-- 8 phases, 21 plans delivered across 2 milestones
+- 8 phases, 21 plans delivered across 2 milestones (v1.0 + v1.1)
 
 **Known Issues:**
 - datetime.utcnow() deprecated in Python 3.12+ (minor, in bootstrap code)
 
 ---
-*Last updated: 2026-01-31 after v2.0 milestone started*
+*Last updated: 2026-02-14 — v2.0 Llama plan cancelled, Gemini retained*
