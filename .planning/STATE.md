@@ -5,25 +5,25 @@
 See: .planning/PROJECT.md (updated 2026-02-27)
 
 **Core value:** Explainability -- every forecast must provide clear, traceable reasoning paths
-**Current focus:** Phase 10 in progress -- Plans 01-03 complete (GDELT poller, API hardening, RSS daemon)
+**Current focus:** Phase 10 COMPLETE -- all 4 plans delivered. Ready for Phase 11/12/13 parallel execution.
 
 ## Current Position
 
 Milestone: v2.0 Operationalization & Forecast Quality
-Phase: 10 of 13 (Ingest & Forecast Pipeline) -- IN PROGRESS
-Plan: 03 of 4 (in phase 10)
-Status: In progress
-Last activity: 2026-03-01 -- Completed 10-03-PLAN.md (RSS feed ingestion daemon)
+Phase: 10 of 13 (Ingest & Forecast Pipeline) -- COMPLETE
+Plan: 04 of 4 (in phase 10) -- ALL COMPLETE
+Status: Phase complete
+Last activity: 2026-03-01 -- Completed 10-04-PLAN.md (daily forecast pipeline + real endpoints)
 
-Progress: [####################....................] 56% (9/16 phases lifetime)
-v2.0:    [##........] 20% (1/5 phases complete, Phase 10 Plans 01-03 done)
+Progress: [########################................] 63% (10/16 phases lifetime)
+v2.0:    [####......] 40% (2/5 phases complete, Phase 10 all plans done)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 31
-- Average duration: 16 minutes
-- Total execution time: 7.95 hours
+- Total plans completed: 32
+- Average duration: 15 minutes
+- Total execution time: 8.12 hours
 
 **By Phase:**
 
@@ -38,11 +38,11 @@ v2.0:    [##........] 20% (1/5 phases complete, Phase 10 Plans 01-03 done)
 | 07-bootstrap-pipeline | 2 | 12min | 6min |
 | 08-graph-partitioning | 2 | 12min | 6min |
 | 09-api-foundation | 6 | 33min | 6min |
-| 10-ingest-forecast-pipeline | 3 | 17min | 6min |
+| 10-ingest-forecast-pipeline | 4 | 27min | 7min |
 
 **Recent Trend:**
-- Last 3 plans: 10-01 (6min), 10-02 (5min), 10-03 (6min)
-- Trend: Fast (daemon infrastructure, RSS pipeline, tests)
+- Last 4 plans: 10-01 (6min), 10-02 (5min), 10-03 (6min), 10-04 (10min)
+- Trend: Consistent (pipeline components, API wiring, tests)
 
 ## Accumulated Context
 
@@ -78,6 +78,11 @@ Key decisions affecting current work:
 - 101 geopolitical feeds from WM's 298-domain list: 31 tier-1 (15-min), 70 tier-2 (60-min) (2026-03-01, 10-03)
 - Separate ChromaDB collection 'rss_articles' with same embedding model as graph_patterns (2026-03-01, 10-03)
 - Paragraph-boundary chunking with sentence fallback; propaganda risk metadata for downstream weighting (2026-03-01, 10-03)
+- LLM-based outcome resolution primary, heuristic (actor+event_code matching) as fallback (2026-03-01, 10-04)
+- Carryover questions get priority=1, processed before fresh generation (2026-03-01, 10-04)
+- Consecutive failure alerting at >= 2 failures emits CRITICAL log (2026-03-01, 10-04)
+- POST /forecasts creates EnsemblePredictor per-request (stateless) (2026-03-01, 10-04)
+- Redis lifecycle in app.py lifespan: init on startup, close on shutdown (2026-03-01, 10-04)
 
 ### Deferred Issues
 
@@ -93,7 +98,7 @@ Key decisions affecting current work:
 ### Blockers/Concerns
 
 - TiRGN JAX port has no published reference implementation (research-phase may be needed for Phase 11)
-- Gemini API cost exposure under public traffic (PARTIALLY RESOLVED: rate limiter + Gemini budget tracking in 10-02; enforcement wired to endpoints in 10-04)
+- Gemini API cost exposure under public traffic (RESOLVED: rate limiter + Gemini budget tracking in 10-02, enforcement wired to endpoints in 10-04, budget exhaustion returns 429)
 - jraph archived by Google DeepMind (RESOLVED: eliminated in 09-03)
 - Polyglot tax: Python + TypeScript + Rust/Tauri -- three ecosystems for single developer
 - Docker daemon not auto-started -- verification of PostgreSQL/Redis containers and Alembic migration deferred
@@ -101,6 +106,6 @@ Key decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-03-01
-Stopped at: Completed 10-03-PLAN.md (RSS feed ingestion daemon)
+Stopped at: Completed 10-04-PLAN.md (daily forecast pipeline + real endpoints) -- Phase 10 COMPLETE
 Resume file: None
-Next: Phase 10 Plan 04 (daily forecast pipeline + real endpoints)
+Next: Phase 11/12/13 parallel execution (frontend, LLM enhancements, calibration)
