@@ -192,7 +192,16 @@ Plans:
   6. `CalibrationPanel` displays reliability diagram and Brier score decomposition (populated from real data when Phase 10 is complete, placeholder when running against mocks)
   7. Dark/light theme toggle works correctly with semantic severity colors consistent across all panels and map layers
   8. `ForecastServiceClient` implements circuit breaker pattern — API failures result in stale-data display with "unavailable" indicator, not a broken UI
-**Plans**: TBD
+**Plans**: 7 plans
+
+Plans:
+- [ ] 12-01-PLAN.md — Project scaffold (Vite, TypeScript, Panel base class, AppContext, h() helper, theme system, API types)
+- [ ] 12-02-PLAN.md — ForecastServiceClient with CircuitBreaker (typed API access, resilience, deduplication)
+- [ ] 12-03-PLAN.md — DeckGLMap globe with 5 map layers (choropleth, markers, arcs, heatmap, scenario zones)
+- [ ] 12-04-PLAN.md — Dashboard panels (ForecastPanel, RiskIndexPanel, EventTimelinePanel, EnsembleBreakdownPanel, SystemHealthPanel, CalibrationPanel)
+- [ ] 12-05-PLAN.md — ScenarioExplorer modal (d3-hierarchy tree visualization, evidence sidebar)
+- [ ] 12-06-PLAN.md — Country Brief Page (6-tab full-screen modal with entity graph, calibration charts)
+- [ ] 12-07-PLAN.md — Integration wiring (main.ts, panel layout, RefreshScheduler, end-to-end verification)
 
 ### Phase 13: Calibration, Monitoring & Hardening
 **Goal**: System self-improves its ensemble weights from accumulated outcome data, health is continuously observable, operational failures trigger alerts, and the system runs unattended for days without degradation
@@ -226,7 +235,7 @@ Phase 9 first (critical path). Then Phases 10, 11, 12 in parallel. Phase 13 afte
 | 9. API Foundation | v2.0 | 6/6 | Complete | 2026-03-01 |
 | 10. Ingest & Pipeline | v2.0 | 4/4 | Complete | 2026-03-01 |
 | 11. TKG Replacement | v2.0 | 3/3 | Complete | 2026-03-01 |
-| 12. WM-Derived Frontend | v2.0 | 0/TBD | Not started | - |
+| 12. WM-Derived Frontend | v2.0 | 0/7 | Not started | - |
 | 13. Calibration & Monitoring | v2.0 | 0/TBD | Not started | - |
 
 **Total:** 11 phases complete (v1.0 + v1.1 + Phases 9-11), 35 plans delivered. v2.0: 3/5 phases complete, 48 requirements, Phase 12 next, Phase 13 awaits convergence.
