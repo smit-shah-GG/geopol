@@ -65,14 +65,14 @@ Removed requirements:
 
 ### Frontend (WM-Derived TypeScript Dashboard)
 
-- [ ] **FE-01**: WM-derived scaffold: Vite build system, TypeScript strict mode, `Panel` base class with `refresh()` lifecycle, `AppContext` singleton, `DataLoaderManager` skeleton, `RefreshScheduler`, `h()` DOM helper — stripped of all WM-specific panels/services/data sources
-- [ ] **FE-02**: Forecast service client (`services/forecast/client.ts`) consuming Geopol REST API with circuit breaker, freshness tracking, `inFlight` request deduplication, and response caching
-- [ ] **FE-03**: Dashboard panels: `ForecastPanel` (top N active forecasts globally), `RiskIndexPanel` (per-country aggregate risk, CII-derived pattern), `EventTimelinePanel` (recent GDELT events), `EnsembleBreakdownPanel` (LLM vs TKG weights), `SystemHealthPanel` (ingest freshness, graph size, API budget)
-- [ ] **FE-04**: `ScenarioExplorer` modal: full-screen interactive scenario tree visualization with click-to-expand branches, probability as node size, evidence sidebar with GDELT event links, historical precedent panel
-- [ ] **FE-05**: Map layers: `ForecastRiskChoropleth` (GeoJsonLayer coloring countries by aggregate forecast risk), `ActiveForecastMarkers` (ScatterplotLayer sized by probability), `GDELTEventHeatmap` (density of recent events)
-- [ ] **FE-06**: Country Brief page: full-screen modal (WM pattern) with tabs — Active Forecasts (probability bars + scenario trees), GDELT Events, Forecast History, Risk Signals (CAMEO categories), Entity Relations (knowledge graph subgraph), Calibration (per-category accuracy)
-- [ ] **FE-07**: Dark/light theme with WM's CSS variable system and semantic severity colors (critical/high/elevated/normal/low mapped to forecast confidence bands)
-- [ ] **FE-08**: `CalibrationPanel`: reliability diagrams, Brier score decomposition, per-CAMEO category accuracy, prediction track record over time
+- [x] **FE-01**: WM-derived scaffold: Vite build system, TypeScript strict mode, `Panel` base class with `refresh()` lifecycle, `AppContext` singleton, `DataLoaderManager` skeleton, `RefreshScheduler`, `h()` DOM helper — stripped of all WM-specific panels/services/data sources
+- [x] **FE-02**: Forecast service client (`services/forecast/client.ts`) consuming Geopol REST API with circuit breaker, freshness tracking, `inFlight` request deduplication, and response caching
+- [x] **FE-03**: Dashboard panels: `ForecastPanel` (top N active forecasts globally), `RiskIndexPanel` (per-country aggregate risk, CII-derived pattern), `EventTimelinePanel` (recent GDELT events), `EnsembleBreakdownPanel` (LLM vs TKG weights), `SystemHealthPanel` (ingest freshness, graph size, API budget)
+- [x] **FE-04**: `ScenarioExplorer` modal: full-screen interactive scenario tree visualization with click-to-expand branches, probability as node size, evidence sidebar with GDELT event links, historical precedent panel
+- [x] **FE-05**: Map layers: `ForecastRiskChoropleth` (GeoJsonLayer coloring countries by aggregate forecast risk), `ActiveForecastMarkers` (ScatterplotLayer sized by probability), `GDELTEventHeatmap` (density of recent events)
+- [x] **FE-06**: Country Brief page: full-screen modal (WM pattern) with tabs — Active Forecasts (probability bars + scenario trees), GDELT Events, Forecast History, Risk Signals (CAMEO categories), Entity Relations (knowledge graph subgraph), Calibration (per-category accuracy)
+- [x] **FE-07**: Dark/light theme with WM's CSS variable system and semantic severity colors (critical/high/elevated/normal/low mapped to forecast confidence bands)
+- [x] **FE-08**: `CalibrationPanel`: reliability diagrams, Brier score decomposition, per-CAMEO category accuracy, prediction track record over time
 
 ### Micro-batch Ingest
 
@@ -174,14 +174,14 @@ Which phases cover which requirements. Updated during roadmap creation.
 | API-05 | Phase 10 | Complete |
 | API-06 | Phase 10 | Complete |
 | API-07 | Phase 9 | Complete |
-| FE-01 | Phase 12 | Pending |
-| FE-02 | Phase 12 | Pending |
-| FE-03 | Phase 12 | Pending |
-| FE-04 | Phase 12 | Pending |
-| FE-05 | Phase 12 | Pending |
-| FE-06 | Phase 12 | Pending |
-| FE-07 | Phase 12 | Pending |
-| FE-08 | Phase 12 | Pending |
+| FE-01 | Phase 12 | Complete |
+| FE-02 | Phase 12 | Complete |
+| FE-03 | Phase 12 | Complete |
+| FE-04 | Phase 12 | Complete |
+| FE-05 | Phase 12 | Complete |
+| FE-06 | Phase 12 | Complete |
+| FE-07 | Phase 12 | Complete |
+| FE-08 | Phase 12 | Complete |
 | INGEST-01 | Phase 10 | Complete |
 | INGEST-02 | Phase 10 | Complete |
 | INGEST-03 | Phase 10 | Complete |
