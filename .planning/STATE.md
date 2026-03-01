@@ -5,15 +5,15 @@
 See: .planning/PROJECT.md (updated 2026-02-27)
 
 **Core value:** Explainability -- every forecast must provide clear, traceable reasoning paths
-**Current focus:** Phase 12 in progress. Service layer delivered (plan 02/07). 5 panel plans remain.
+**Current focus:** Phase 12 in progress. Wave 3 panels executing in parallel (05/07).
 
 ## Current Position
 
 Milestone: v2.0 Operationalization & Forecast Quality
 Phase: 12 of 13 (WM-Derived Frontend) -- IN PROGRESS
-Plan: 02 of 7 (in phase 12) -- COMPLETE
+Plan: 05 of 7 (in phase 12) -- COMPLETE
 Status: In progress
-Last activity: 2026-03-02 -- Completed 12-02-PLAN.md (CircuitBreaker + ForecastServiceClient)
+Last activity: 2026-03-02 -- Completed 12-05-PLAN.md (ScenarioExplorer modal)
 
 Progress: [##############################..........] 75% (12/16 phases lifetime)
 v2.0:    [######....] 60% (3/5 phases complete, 12 in progress)
@@ -21,9 +21,9 @@ v2.0:    [######....] 60% (3/5 phases complete, 12 in progress)
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 37
+- Total plans completed: 38
 - Average duration: 14 minutes
-- Total execution time: 8.61 hours
+- Total execution time: 8.66 hours
 
 **By Phase:**
 
@@ -40,11 +40,11 @@ v2.0:    [######....] 60% (3/5 phases complete, 12 in progress)
 | 09-api-foundation | 6 | 33min | 6min |
 | 10-ingest-forecast-pipeline | 4 | 27min | 7min |
 | 11-tkg-predictor-replacement | 3 | 21min | 7min |
-| 12-wm-derived-frontend | 2 | 9min | 5min |
+| 12-wm-derived-frontend | 3 | 12min | 4min |
 
 **Recent Trend:**
-- Last 4 plans: 11-02 (6min), 11-03 (8min), 12-01 (7min), 12-02 (2min)
-- Trend: Accelerating (service layer is pure WM adaptation + typing)
+- Last 4 plans: 11-03 (8min), 12-01 (7min), 12-02 (2min), 12-05 (3min)
+- Trend: Accelerating (panel components are focused d3/DOM work)
 
 ## Accumulated Context
 
@@ -112,6 +112,9 @@ Key decisions affecting current work:
 - POST createForecast bypasses dedup + circuit breaker -- mutations fire every time (2026-03-02, 12-02)
 - CircuitBreaker<unknown> for per-group breakers; casting at call site is type-safe (2026-03-02, 12-02)
 - ForecastServiceClient fulfills FE-01 DataLoaderManager -- separate class would be redundant (2026-03-02, 12-02)
+- Node selection by SVG transform coordinate matching -- avoids d3 selection dependency (2026-03-02, 12-05)
+- MAX_DEPTH=4 for scenario tree with pruned-count indicator (2026-03-02, 12-05)
+- Evidence source badge classification by substring match (gdelt/tkg/rag) for flexibility (2026-03-02, 12-05)
 
 ### Deferred Issues
 
@@ -135,6 +138,6 @@ Key decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-03-02
-Stopped at: Completed 12-02-PLAN.md (CircuitBreaker + ForecastServiceClient)
+Stopped at: Completed 12-05-PLAN.md (ScenarioExplorer modal)
 Resume file: None
-Next: 12-03-PLAN.md through 12-07-PLAN.md (5 remaining panel plans in Phase 12)
+Next: Remaining Wave 3 plans (12-03, 12-04, 12-06) + 12-07 app shell wiring
