@@ -5,25 +5,25 @@
 See: .planning/PROJECT.md (updated 2026-02-27)
 
 **Core value:** Explainability -- every forecast must provide clear, traceable reasoning paths
-**Current focus:** Phase 11 Plan 02 complete. TiRGN training pipeline delivered. Plan 03 remaining (integration + backend dispatch).
+**Current focus:** Phase 11 complete. TKG Predictor Replacement delivered (3 plans). Phases 12/13 remain.
 
 ## Current Position
 
 Milestone: v2.0 Operationalization & Forecast Quality
-Phase: 11 of 13 (TKG Predictor Replacement) -- In progress
-Plan: 02 of 3 (in phase 11)
-Status: In progress
-Last activity: 2026-03-01 -- Completed 11-02-PLAN.md (TiRGN training pipeline)
+Phase: 11 of 13 (TKG Predictor Replacement) -- COMPLETE
+Plan: 03 of 3 (in phase 11) -- COMPLETE
+Status: Phase complete
+Last activity: 2026-03-01 -- Completed 11-03-PLAN.md (integration + backend dispatch)
 
-Progress: [########################................] 63% (10/16 phases lifetime)
-v2.0:    [####......] 40% (2/5 phases complete, Phase 11 plan 02 of 3 done)
+Progress: [############################............] 69% (11/16 phases lifetime)
+v2.0:    [######....] 60% (3/5 phases complete)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 34
+- Total plans completed: 35
 - Average duration: 15 minutes
-- Total execution time: 8.34 hours
+- Total execution time: 8.47 hours
 
 **By Phase:**
 
@@ -39,11 +39,11 @@ v2.0:    [####......] 40% (2/5 phases complete, Phase 11 plan 02 of 3 done)
 | 08-graph-partitioning | 2 | 12min | 6min |
 | 09-api-foundation | 6 | 33min | 6min |
 | 10-ingest-forecast-pipeline | 4 | 27min | 7min |
-| 11-tkg-predictor-replacement | 2 | 13min | 7min |
+| 11-tkg-predictor-replacement | 3 | 21min | 7min |
 
 **Recent Trend:**
-- Last 4 plans: 10-03 (6min), 10-04 (10min), 11-01 (7min), 11-02 (6min)
-- Trend: Consistent (training infrastructure, reuse-heavy, test-driven)
+- Last 4 plans: 10-04 (10min), 11-01 (7min), 11-02 (6min), 11-03 (8min)
+- Trend: Consistent (integration work, test-driven, reuse-heavy)
 
 ## Accumulated Context
 
@@ -97,6 +97,12 @@ Key decisions affecting current work:
 - ComparisonResult pass_threshold defaults to -5.0% -- TiRGN ships if within 5% of RE-GCN MRR (2026-03-01, 11-02)
 - _evaluate_tirgn uses _compute_fused_distribution directly, evolves embeddings once for all triples (2026-03-01, 11-02)
 - Early stopping increments by eval_interval per non-improving evaluation, not by 1 (2026-03-01, 11-02)
+- TKG_BACKEND envvar read once at TKGPredictor.__init__; process restart to switch (2026-03-01, 11-03)
+- TiRGN mode: self.model = None (no REGCNWrapper), saves memory (2026-03-01, 11-03)
+- TiRGN checkpoint restore: nnx.split -> flatten -> map npz keys -> unflatten -> nnx.merge (2026-03-01, 11-03)
+- TiRGN predict_object uses raw_decoder directly (not fused distribution) for inference speed (2026-03-01, 11-03)
+- Scheduler model_tirgn config section alongside existing model section (2026-03-01, 11-03)
+- retrain_tkg.py --backend override resets Settings singleton before scheduler init (2026-03-01, 11-03)
 
 ### Deferred Issues
 
@@ -120,6 +126,6 @@ Key decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-03-01
-Stopped at: Completed 11-02-PLAN.md (TiRGN training pipeline)
+Stopped at: Completed 11-03-PLAN.md (integration + backend dispatch) -- Phase 11 complete
 Resume file: None
-Next: Phase 11 Plan 03 (integration + backend dispatch)
+Next: Phase 12 (TypeScript frontend) or Phase 13 (calibration) -- parallel eligible
