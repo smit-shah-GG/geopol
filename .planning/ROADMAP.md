@@ -110,7 +110,7 @@ Phase 9 (API + DB foundation) ─── critical path, everything gates on this
 ```
 
 - [x] **Phase 9: API Foundation & Infrastructure** — PostgreSQL, FastAPI skeleton with DTOs and mock fixtures, structured logging, jraph elimination, TKGModelProtocol
-- [ ] **Phase 10: Ingest & Forecast Pipeline** — Micro-batch GDELT ingest, daily forecast automation, real API endpoints replacing mocks, Redis caching
+- [x] **Phase 10: Ingest & Forecast Pipeline** — Micro-batch GDELT ingest, daily forecast automation, real API endpoints replacing mocks, Redis caching
 - [ ] **Phase 11: TKG Predictor Replacement** — TiRGN JAX port replacing RE-GCN for improved accuracy (parallelizable with Phases 10 and 12)
 - [ ] **Phase 12: WM-Derived Frontend** — TypeScript dashboard scaffolded from World Monitor patterns: deck.gl globe, forecast panels, scenario explorer, country briefs, map layers
 - [ ] **Phase 13: Calibration, Monitoring & Hardening** — Dynamic per-CAMEO calibration from accumulated outcome data, system health observability, alerting, operational resilience
@@ -156,10 +156,10 @@ Plans:
 **Plans**: 4 plans
 
 Plans:
-- [ ] 10-01-PLAN.md — GDELT micro-batch poller daemon with backoff, metrics, incremental graph update
-- [ ] 10-02-PLAN.md — API hardening: three-tier cache, per-key rate limiting, input sanitization
-- [ ] 10-03-PLAN.md — RSS feed ingestion daemon with tiered polling and ChromaDB indexing
-- [ ] 10-04-PLAN.md — Daily forecast pipeline, outcome resolution, real API route wiring
+- [x] 10-01-PLAN.md — GDELT micro-batch poller daemon with backoff, metrics, incremental graph update
+- [x] 10-02-PLAN.md — API hardening: three-tier cache, per-key rate limiting, input sanitization
+- [x] 10-03-PLAN.md — RSS feed ingestion daemon with tiered polling and ChromaDB indexing
+- [x] 10-04-PLAN.md — Daily forecast pipeline, outcome resolution, real API route wiring
 
 ### Phase 11: TKG Predictor Replacement
 **Goal**: TiRGN replaces RE-GCN as the TKG backend, delivering measurable accuracy improvement while fitting the RTX 3060 training envelope and weekly retraining cadence
@@ -219,9 +219,9 @@ Phase 9 first (critical path). Then Phases 10, 11, 12 in parallel. Phase 13 afte
 | 7. Bootstrap Pipeline | v1.1 | 2/2 | Complete | 2026-01-30 |
 | 8. Graph Partitioning | v1.1 | 2/2 | Complete | 2026-01-30 |
 | 9. API Foundation | v2.0 | 6/6 | Complete | 2026-03-01 |
-| 10. Ingest & Pipeline | v2.0 | 0/4 | Planned | - |
+| 10. Ingest & Pipeline | v2.0 | 4/4 | Complete | 2026-03-01 |
 | 11. TKG Replacement | v2.0 | 0/TBD | Not started | - |
 | 12. WM-Derived Frontend | v2.0 | 0/TBD | Not started | - |
 | 13. Calibration & Monitoring | v2.0 | 0/TBD | Not started | - |
 
-**Total:** 9 phases complete (v1.0 + v1.1 + Phase 9), 27 plans delivered. v2.0: 1/5 phases complete, 48 requirements, Phases 10/11/12 now parallelizable.
+**Total:** 10 phases complete (v1.0 + v1.1 + Phases 9-10), 32 plans delivered. v2.0: 2/5 phases complete, 48 requirements, Phases 11/12 parallelizable, Phase 13 awaits convergence.
