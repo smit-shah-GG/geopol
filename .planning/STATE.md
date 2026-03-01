@@ -5,15 +5,15 @@
 See: .planning/PROJECT.md (updated 2026-02-27)
 
 **Core value:** Explainability -- every forecast must provide clear, traceable reasoning paths
-**Current focus:** Phase 12 in progress. Wave 3 panels executing in parallel (05/07).
+**Current focus:** Phase 12 in progress. Wave 3 panels executing in parallel (04+05 complete, 03/06/07 remain).
 
 ## Current Position
 
 Milestone: v2.0 Operationalization & Forecast Quality
 Phase: 12 of 13 (WM-Derived Frontend) -- IN PROGRESS
-Plan: 05 of 7 (in phase 12) -- COMPLETE
+Plan: 05 of 7 (in phase 12) -- plans 01,02,04,05 COMPLETE
 Status: In progress
-Last activity: 2026-03-02 -- Completed 12-05-PLAN.md (ScenarioExplorer modal)
+Last activity: 2026-03-02 -- Completed 12-04-PLAN.md (6 dashboard panels)
 
 Progress: [##############################..........] 75% (12/16 phases lifetime)
 v2.0:    [######....] 60% (3/5 phases complete, 12 in progress)
@@ -21,9 +21,9 @@ v2.0:    [######....] 60% (3/5 phases complete, 12 in progress)
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 38
-- Average duration: 14 minutes
-- Total execution time: 8.66 hours
+- Total plans completed: 39
+- Average duration: 13 minutes
+- Total execution time: 8.76 hours
 
 **By Phase:**
 
@@ -40,11 +40,11 @@ v2.0:    [######....] 60% (3/5 phases complete, 12 in progress)
 | 09-api-foundation | 6 | 33min | 6min |
 | 10-ingest-forecast-pipeline | 4 | 27min | 7min |
 | 11-tkg-predictor-replacement | 3 | 21min | 7min |
-| 12-wm-derived-frontend | 3 | 12min | 4min |
+| 12-wm-derived-frontend | 4 | 18min | 5min |
 
 **Recent Trend:**
-- Last 4 plans: 11-03 (8min), 12-01 (7min), 12-02 (2min), 12-05 (3min)
-- Trend: Accelerating (panel components are focused d3/DOM work)
+- Last 4 plans: 12-01 (7min), 12-02 (2min), 12-05 (3min), 12-04 (6min)
+- Trend: Stable velocity (panel components are focused DOM/SVG work)
 
 ## Accumulated Context
 
@@ -115,6 +115,12 @@ Key decisions affecting current work:
 - Node selection by SVG transform coordinate matching -- avoids d3 selection dependency (2026-03-02, 12-05)
 - MAX_DEPTH=4 for scenario tree with pruned-count indicator (2026-03-02, 12-05)
 - Evidence source badge classification by substring match (gdelt/tkg/rag) for flexibility (2026-03-02, 12-05)
+- isoToFlag via regional indicator symbol codepoint math, no lookup table (2026-03-02, 12-04)
+- CalibrationPanel uses temperature as predicted-bin proxy, historical_accuracy as observed (2026-03-02, 12-04)
+- EventTimelinePanel renders mock data (no GDELT events endpoint yet) (2026-03-02, 12-04)
+- EnsembleBreakdownPanel and CalibrationPanel are update-driven (refresh no-op) (2026-03-02, 12-04)
+- Severity thresholds: probability >0.8/0.6/0.4/0.2 for critical/high/elevated/normal/low (2026-03-02, 12-04)
+- Track record sparkline requires >= 3 data points before rendering polyline (2026-03-02, 12-04)
 
 ### Deferred Issues
 
@@ -138,6 +144,6 @@ Key decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-03-02
-Stopped at: Completed 12-05-PLAN.md (ScenarioExplorer modal)
+Stopped at: Completed 12-04-PLAN.md (6 dashboard panels)
 Resume file: None
-Next: Remaining Wave 3 plans (12-03, 12-04, 12-06) + 12-07 app shell wiring
+Next: Remaining plans 12-03 (deck.gl globe), 12-06 (main.ts wiring), 12-07 (build + deploy)
