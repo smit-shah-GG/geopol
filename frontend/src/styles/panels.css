@@ -1048,3 +1048,109 @@
   max-width: 100%;
   height: auto;
 }
+
+/* ========================================================================
+   DeckGLMap -- Layer Toggle Panel + Map Tooltip + Attribution
+   ======================================================================== */
+
+.deckgl-map-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.map-layer-toggles {
+  position: absolute;
+  top: var(--space-md);
+  right: var(--space-md);
+  z-index: 10;
+  background: var(--panel-bg);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  padding: var(--space-sm);
+  min-width: 160px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.map-layer-toggles-title {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding-bottom: var(--space-xs);
+  border-bottom: 1px solid var(--border-subtle);
+  margin-bottom: var(--space-xs);
+}
+
+.map-layer-toggle-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: 2px 0;
+}
+
+.map-layer-toggle-row input[type="checkbox"] {
+  width: 12px;
+  height: 12px;
+  accent-color: var(--accent);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.map-layer-toggle-label {
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.map-tooltip {
+  position: absolute;
+  z-index: 20;
+  pointer-events: none;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: var(--space-xs) var(--space-sm);
+  font-size: var(--font-size-xs);
+  color: var(--text-primary);
+  line-height: var(--line-height-loose);
+  max-width: 280px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.map-tooltip strong {
+  color: var(--text-primary);
+}
+
+.map-attribution {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  z-index: 5;
+  font-size: 9px;
+  color: var(--text-muted);
+  opacity: 0.6;
+}
+
+.map-attribution a {
+  color: var(--text-muted);
+  text-decoration: none;
+}
+
+.map-attribution a:hover {
+  text-decoration: underline;
+}
+
+/* ---- Light theme map overrides ---- */
+
+[data-theme="light"] .map-layer-toggles {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .map-tooltip {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
