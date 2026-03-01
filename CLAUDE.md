@@ -79,7 +79,7 @@ This repository implements an AI-powered geopolitical forecasting system combini
 1. A comprehensive technical reference document (`geopol.md`) covering algorithms and architectures
 2. Production implementation of the forecasting engine (v1.0 shipped, v1.1 shipped)
 
-**Status**: Active development. v1.0 MVP complete (Phases 1-5). v1.1 Tech Debt Remediation complete (Phases 6-8). v2.0 direction pending.
+**Status**: Active development. v1.0 MVP complete (Phases 1-5). v1.1 Tech Debt Remediation complete (Phases 6-8). v2.0 in progress (headless FastAPI backend + WM-derived TypeScript frontend, parallel execution after Phase 9).
 
 ## Repository Structure
 
@@ -188,4 +188,4 @@ When asked about geopolitical AI systems, the document provides detailed coverag
 - **Created**: January 8, 2026
 - **Primary Language**: Python 3.10+
 - **v1.0 Shipped**: 2026-01-23
-- **Current Milestone**: v2.0 (direction pending)
+- **Current Milestone**: v2.0 Operationalization & Forecast Quality (5 phases, 48 requirements)
