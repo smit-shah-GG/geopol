@@ -274,13 +274,30 @@ body {
 .panel-grid {
   flex: 1;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  grid-template-columns: 25% 50% 25%;
+  grid-template-rows: 1fr 1fr 1fr;
+  grid-template-areas:
+    "forecasts   map  risk-index"
+    "ensemble    map  health"
+    "calibration map  events";
   gap: 1px;
-  padding: 1px;
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: hidden;
   background: var(--bg);
-  align-content: start;
+}
+
+.grid-slot {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.grid-slot > .panel {
+  flex: 1;
+  min-height: 0;
+}
+
+.grid-slot--map {
+  min-height: 0;
 }
 
 /* ========================================================================
@@ -384,13 +401,34 @@ body {
    Responsive
    ======================================================================== */
 
-@media (max-width: 768px) {
+@media (max-width: 1200px) {
   .panel-grid {
     grid-template-columns: 1fr;
+    grid-template-rows: auto;
+    grid-template-areas:
+      "map"
+      "forecasts"
+      "risk-index"
+      "ensemble"
+      "health"
+      "calibration"
+      "events";
+    overflow-y: auto;
+    overflow-x: hidden;
   }
 
+  .grid-slot--map {
+    min-height: 400px;
+  }
+}
+
+@media (max-width: 768px) {
   .header-subtitle {
     display: none;
+  }
+
+  .grid-slot--map {
+    min-height: 300px;
   }
 }
 
