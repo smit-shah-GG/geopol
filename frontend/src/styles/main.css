@@ -1,0 +1,405 @@
+/*
+ * Geopol -- Intelligence/Analyst Aesthetic
+ *
+ * Dark-first design with monospace typography, muted accent colors,
+ * and information-density optimized for analyst workflows.
+ *
+ * Inspired by terminal UIs, Bloomberg terminals, and SCIF displays.
+ */
+
+/* ========================================================================
+   CSS Custom Properties (Theme Variables)
+   ======================================================================== */
+
+:root {
+  /* --- Dark theme (default) --- */
+  --bg: #0a0e14;
+  --bg-surface: #111620;
+  --bg-elevated: #1a2030;
+  --bg-overlay: rgba(10, 14, 20, 0.92);
+
+  --border: #1e2a3a;
+  --border-subtle: #151d2a;
+  --border-focus: #3a7bd5;
+
+  --text-primary: #d0d8e0;
+  --text-secondary: #8090a4;
+  --text-muted: #506070;
+  --text-inverse: #0a0e14;
+
+  --accent: #3a7bd5;
+  --accent-hover: #4a8be5;
+  --accent-muted: rgba(58, 123, 213, 0.15);
+
+  /* Semantic severity (intelligence grading) */
+  --semantic-critical: #e63946;
+  --semantic-warning: #e6a23c;
+  --semantic-success: #2ecc71;
+  --semantic-info: #3a7bd5;
+  --semantic-neutral: #8090a4;
+
+  /* Probability heat ramp (0.0 -> 1.0) */
+  --prob-low: #2ecc71;
+  --prob-medium: #e6a23c;
+  --prob-high: #e63946;
+  --prob-extreme: #c0392b;
+
+  /* Data badge states */
+  --badge-live: #2ecc71;
+  --badge-cached: #e6a23c;
+  --badge-unavailable: #e63946;
+
+  /* Panel */
+  --panel-bg: #111620;
+  --panel-header-bg: #151d2a;
+  --panel-border: #1e2a3a;
+  --panel-radius: 0px;
+
+  /* Spacing scale */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 12px;
+  --space-lg: 16px;
+  --space-xl: 24px;
+  --space-2xl: 32px;
+
+  /* Typography */
+  --font-mono: 'SF Mono', 'Monaco', 'Cascadia Code', 'Fira Code', 'DejaVu Sans Mono', 'Liberation Mono', monospace;
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+
+  --font-size-xs: 10px;
+  --font-size-sm: 12px;
+  --font-size-base: 13px;
+  --font-size-md: 14px;
+  --font-size-lg: 16px;
+  --font-size-xl: 20px;
+  --font-size-2xl: 24px;
+
+  --line-height-tight: 1.2;
+  --line-height-base: 1.5;
+  --line-height-loose: 1.7;
+
+  /* Z-index scale */
+  --z-panel: 1;
+  --z-header: 10;
+  --z-tooltip: 100;
+  --z-modal: 1000;
+  --z-overlay: 900;
+
+  /* Transitions */
+  --transition-fast: 100ms ease;
+  --transition-base: 200ms ease;
+  --transition-slow: 400ms ease;
+
+  /* Scrollbar */
+  --scrollbar-width: 6px;
+  --scrollbar-thumb: #2a3648;
+  --scrollbar-track: transparent;
+}
+
+/* --- Light theme --- */
+[data-theme="light"] {
+  --bg: #e8ecf0;
+  --bg-surface: #f4f6f8;
+  --bg-elevated: #ffffff;
+  --bg-overlay: rgba(232, 236, 240, 0.92);
+
+  --border: #c8d0d8;
+  --border-subtle: #dce2e8;
+  --border-focus: #2a6bc5;
+
+  --text-primary: #1a2030;
+  --text-secondary: #506070;
+  --text-muted: #8090a4;
+  --text-inverse: #f4f6f8;
+
+  --accent: #2a6bc5;
+  --accent-hover: #1a5bb5;
+  --accent-muted: rgba(42, 107, 197, 0.12);
+
+  --semantic-critical: #d32f2f;
+  --semantic-warning: #d48806;
+  --semantic-success: #27a95e;
+  --semantic-info: #2a6bc5;
+  --semantic-neutral: #6b7a8d;
+
+  --prob-low: #27a95e;
+  --prob-medium: #d48806;
+  --prob-high: #d32f2f;
+  --prob-extreme: #b71c1c;
+
+  --badge-live: #27a95e;
+  --badge-cached: #d48806;
+  --badge-unavailable: #d32f2f;
+
+  --panel-bg: #f4f6f8;
+  --panel-header-bg: #eaecf0;
+  --panel-border: #c8d0d8;
+
+  --scrollbar-thumb: #b0b8c4;
+}
+
+/* ========================================================================
+   Reset & Base
+   ======================================================================== */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: var(--font-size-base);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  font-family: var(--font-mono);
+  background: var(--bg);
+  color: var(--text-primary);
+  line-height: var(--line-height-base);
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ========================================================================
+   Scrollbar
+   ======================================================================== */
+
+::-webkit-scrollbar {
+  width: var(--scrollbar-width);
+  height: var(--scrollbar-width);
+}
+
+::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+/* ========================================================================
+   App Header
+   ======================================================================== */
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 40px;
+  padding: 0 var(--space-lg);
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  z-index: var(--z-header);
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.header-logo {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: var(--accent);
+  user-select: none;
+}
+
+.header-subtitle {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.header-theme-toggle {
+  padding: 4px 10px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.header-theme-toggle:hover {
+  background: var(--accent-muted);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+/* ========================================================================
+   Panel Grid
+   ======================================================================== */
+
+.panel-grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1px;
+  padding: 1px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: var(--bg);
+  align-content: start;
+}
+
+/* ========================================================================
+   Utility Classes
+   ======================================================================== */
+
+.hidden {
+  display: none !important;
+}
+
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* ========================================================================
+   Loading / Error States
+   ======================================================================== */
+
+.panel-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-xl);
+  gap: var(--space-md);
+}
+
+.panel-loading-radar {
+  position: relative;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+}
+
+.panel-radar-sweep {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    var(--accent-muted) 60deg,
+    transparent 120deg
+  );
+  animation: radar-sweep 2s linear infinite;
+}
+
+.panel-radar-dot {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 4px;
+  height: 4px;
+  margin: -2px 0 0 -2px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+@keyframes radar-sweep {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.panel-loading-text {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.panel-loading-text.retrying {
+  color: var(--semantic-warning);
+}
+
+.error-message {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-xl);
+  color: var(--semantic-critical);
+  font-size: var(--font-size-sm);
+  text-align: center;
+}
+
+/* ========================================================================
+   Responsive
+   ======================================================================== */
+
+@media (max-width: 768px) {
+  .panel-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .header-subtitle {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .app-header {
+    padding: 0 var(--space-sm);
+  }
+
+  .header-logo {
+    font-size: var(--font-size-md);
+  }
+}

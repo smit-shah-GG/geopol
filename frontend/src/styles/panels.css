@@ -1,0 +1,217 @@
+/*
+ * Panel Component Styles
+ *
+ * Styles for the Panel base class: headers, content areas, resize handles,
+ * data badges, info tooltips, and span-based height classes.
+ */
+
+/* ========================================================================
+   Panel Base
+   ======================================================================== */
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--panel-radius);
+  overflow: hidden;
+  min-height: 200px;
+  position: relative;
+}
+
+.panel.placeholder {
+  min-height: 280px;
+}
+
+/* ========================================================================
+   Panel Header
+   ======================================================================== */
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 32px;
+  padding: 0 var(--space-md);
+  background: var(--panel-header-bg);
+  border-bottom: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.panel-header-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  min-width: 0;
+}
+
+.panel-header-error {
+  border-bottom-color: var(--semantic-critical);
+}
+
+.panel-title {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ========================================================================
+   Panel Content
+   ======================================================================== */
+
+.panel-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: var(--space-md);
+}
+
+/* ========================================================================
+   Panel Count Badge
+   ======================================================================== */
+
+.panel-count {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ========================================================================
+   Data Badge (LIVE / CACHED / UNAVAILABLE)
+   ======================================================================== */
+
+.panel-data-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  border-radius: 2px;
+  line-height: 1;
+}
+
+.panel-data-badge.live {
+  color: var(--badge-live);
+  background: rgba(46, 204, 113, 0.1);
+  border: 1px solid rgba(46, 204, 113, 0.25);
+}
+
+.panel-data-badge.cached {
+  color: var(--badge-cached);
+  background: rgba(230, 162, 60, 0.1);
+  border: 1px solid rgba(230, 162, 60, 0.25);
+}
+
+.panel-data-badge.unavailable {
+  color: var(--badge-unavailable);
+  background: rgba(230, 57, 70, 0.1);
+  border: 1px solid rgba(230, 57, 70, 0.25);
+}
+
+/* ========================================================================
+   Info Tooltip
+   ======================================================================== */
+
+.panel-info-wrapper {
+  position: relative;
+  display: inline-flex;
+}
+
+.panel-info-btn {
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  padding: 0;
+  line-height: 1;
+}
+
+.panel-info-btn:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.panel-info-tooltip {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 4px;
+  padding: var(--space-sm) var(--space-md);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+  line-height: var(--line-height-loose);
+  min-width: 200px;
+  max-width: 320px;
+  z-index: var(--z-tooltip);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.panel-info-tooltip.visible {
+  display: block;
+}
+
+/* ========================================================================
+   Resize Handle
+   ======================================================================== */
+
+.panel-resize-handle {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 6px;
+  cursor: ns-resize;
+  background: transparent;
+  transition: background var(--transition-fast);
+  z-index: 2;
+}
+
+.panel-resize-handle:hover,
+.panel-resize-handle.active {
+  background: var(--accent-muted);
+}
+
+.panel.resizing {
+  user-select: none;
+}
+
+/* ========================================================================
+   Span Height Classes (for resize persistence)
+   ======================================================================== */
+
+.panel.span-1 { min-height: 200px; }
+.panel.span-2 { min-height: 280px; }
+.panel.span-3 { min-height: 380px; }
+.panel.span-4 { min-height: 520px; }
+
+/* ========================================================================
+   Light Theme Panel Overrides
+   ======================================================================== */
+
+[data-theme="light"] .panel-info-tooltip {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
