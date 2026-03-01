@@ -5,25 +5,25 @@
 See: .planning/PROJECT.md (updated 2026-02-27)
 
 **Core value:** Explainability -- every forecast must provide clear, traceable reasoning paths
-**Current focus:** Phase 11 Plan 01 complete. TiRGN model architecture delivered. Plans 02-03 remaining (training loop, integration).
+**Current focus:** Phase 11 Plan 02 complete. TiRGN training pipeline delivered. Plan 03 remaining (integration + backend dispatch).
 
 ## Current Position
 
 Milestone: v2.0 Operationalization & Forecast Quality
 Phase: 11 of 13 (TKG Predictor Replacement) -- In progress
-Plan: 01 of 3 (in phase 11)
+Plan: 02 of 3 (in phase 11)
 Status: In progress
-Last activity: 2026-03-01 -- Completed 11-01-PLAN.md (TiRGN model architecture)
+Last activity: 2026-03-01 -- Completed 11-02-PLAN.md (TiRGN training pipeline)
 
 Progress: [########################................] 63% (10/16 phases lifetime)
-v2.0:    [####......] 40% (2/5 phases complete, Phase 11 plan 01 of 3 done)
+v2.0:    [####......] 40% (2/5 phases complete, Phase 11 plan 02 of 3 done)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 33
+- Total plans completed: 34
 - Average duration: 15 minutes
-- Total execution time: 8.24 hours
+- Total execution time: 8.34 hours
 
 **By Phase:**
 
@@ -39,11 +39,11 @@ v2.0:    [####......] 40% (2/5 phases complete, Phase 11 plan 01 of 3 done)
 | 08-graph-partitioning | 2 | 12min | 6min |
 | 09-api-foundation | 6 | 33min | 6min |
 | 10-ingest-forecast-pipeline | 4 | 27min | 7min |
-| 11-tkg-predictor-replacement | 1 | 7min | 7min |
+| 11-tkg-predictor-replacement | 2 | 13min | 7min |
 
 **Recent Trend:**
-- Last 4 plans: 10-02 (5min), 10-03 (6min), 10-04 (10min), 11-01 (7min)
-- Trend: Consistent (model architecture, component modules, tests)
+- Last 4 plans: 10-03 (6min), 10-04 (10min), 11-01 (7min), 11-02 (6min)
+- Trend: Consistent (training infrastructure, reuse-heavy, test-driven)
 
 ## Accumulated Context
 
@@ -90,6 +90,13 @@ Key decisions affecting current work:
 - Relation GRU uses projection + existing GRUCell, not modified GRUCell (2026-03-01, 11-01)
 - TiRGN uses NLL loss; neg_triples/margin accepted but ignored for protocol compat (2026-03-01, 11-01)
 - Modern Flax NNX param[...] access in new code, deprecated .value in existing code untouched (2026-03-01, 11-01)
+- tensorboardX over torch.utils.tensorboard -- no PyTorch dependency, pure-Python TensorBoard writer (2026-03-01, 11-02)
+- wandb as optional[observability] extra, not core dependency -- never crashes training (2026-03-01, 11-02)
+- TiRGN checkpoint JSON includes model_type: "tirgn" discriminator for downstream model loading (2026-03-01, 11-02)
+- compare_models loads GDELT data ONCE, both models evaluated on same val_triples -- no re-splitting (2026-03-01, 11-02)
+- ComparisonResult pass_threshold defaults to -5.0% -- TiRGN ships if within 5% of RE-GCN MRR (2026-03-01, 11-02)
+- _evaluate_tirgn uses _compute_fused_distribution directly, evolves embeddings once for all triples (2026-03-01, 11-02)
+- Early stopping increments by eval_interval per non-improving evaluation, not by 1 (2026-03-01, 11-02)
 
 ### Deferred Issues
 
@@ -113,6 +120,6 @@ Key decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-03-01
-Stopped at: Completed 11-01-PLAN.md (TiRGN model architecture)
+Stopped at: Completed 11-02-PLAN.md (TiRGN training pipeline)
 Resume file: None
-Next: Phase 11 Plan 02 (training loop + observability), then Plan 03 (integration + backend dispatch)
+Next: Phase 11 Plan 03 (integration + backend dispatch)
