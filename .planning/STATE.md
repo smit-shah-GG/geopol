@@ -2,28 +2,28 @@
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-02-14)
+See: .planning/PROJECT.md (updated 2026-02-27)
 
 **Core value:** Explainability -- every forecast must provide clear, traceable reasoning paths
-**Current focus:** Phase 9 - Database Foundation & Infrastructure
+**Current focus:** Phase 9 - API Foundation & Infrastructure
 
 ## Current Position
 
 Milestone: v2.0 Operationalization & Forecast Quality
-Phase: 9 of 13 (Database Foundation & Infrastructure)
-Plan: --
-Status: Ready to plan
-Last activity: 2026-02-14 -- Roadmap created for v2.0 (Phases 9-13, 32 requirements)
+Phase: 9 of 13 (API Foundation & Infrastructure)
+Plan: 03 of ? (in phase 9)
+Status: In progress
+Last activity: 2026-03-01 -- Completed 09-03-PLAN.md (jraph elimination, TKGModelProtocol, logging config)
 
 Progress: [####################....................] 50% (8/16 phases lifetime)
-v2.0:    [..........] 0% (0/5 phases)
+v2.0:    [..........] 0% (0/5 phases, plan 3 of phase 9 complete)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 22
-- Average duration: 19 minutes
-- Total execution time: 7.1 hours
+- Total plans completed: 23
+- Average duration: 18 minutes
+- Total execution time: 7.2 hours
 
 **By Phase:**
 
@@ -38,8 +38,10 @@ v2.0:    [..........] 0% (0/5 phases)
 | 07-bootstrap-pipeline | 2 | 12min | 6min |
 | 08-graph-partitioning | 2 | 12min | 6min |
 
+| 09-api-foundation | 1 | 4min | 4min |
+
 **Recent Trend:**
-- Last 3 plans: 08-01 (4min), 08-02 (8min), quick-001 (4min)
+- Last 3 plans: 08-02 (8min), quick-001 (4min), 09-03 (4min)
 - Trend: Fast (targeted implementations)
 
 ## Accumulated Context
@@ -49,12 +51,17 @@ v2.0:    [..........] 0% (0/5 phases)
 Decisions are logged in PROJECT.md Key Decisions table.
 Key decisions affecting current work:
 
-- JAX/jraph for TKG training -- v2.0 must eliminate archived jraph, maintain JAX
+- JAX for TKG training -- jraph eliminated in 09-03, local GraphsTuple + jax.ops.segment_sum
+- TKGModelProtocol defined -- @runtime_checkable, REGCNJraph + StubTiRGN verified (09-03)
 - Fixed 60/40 alpha -- being replaced by per-CAMEO dynamic weights in v2.0
 - Retain Gemini over local Llama -- frontier reasoning, negligible cost (2026-02-14)
 - Micro-batch ingest (15-min GDELT), daily predict -- v2.0 architecture
-- Streamlit for public-facing web demo -- fast to build, Python-native
-- TiRGN selected over HisMatch -- 60% RE-GCN code reuse, tractable JAX port
+- WM-derived TypeScript frontend over Streamlit -- vanilla TS + deck.gl + Panel system (2026-02-27)
+- Headless API-first backend -- FastAPI + Pydantic DTOs as mandatory bridge (2026-02-27)
+- PostgreSQL for forecast persistence -- SQLite retained only for GDELT events/partition index (2026-02-27)
+- Contract-first parallel execution -- DTOs + mock fixtures in Phase 9 enable Phases 10/11/12 in parallel (2026-02-27)
+- RSS feeds from WM's 298-domain list → RAG enrichment in Phase 10 (2026-02-27)
+- Polymarket comparison for calibration validation in Phase 13 (2026-02-27)
 
 ### Deferred Issues
 
@@ -70,11 +77,12 @@ Key decisions affecting current work:
 
 - TiRGN JAX port has no published reference implementation (research-phase may be needed for Phase 11)
 - Gemini API cost exposure under public traffic (rate limiting mandatory before deployment)
-- jraph archived by Google DeepMind (migration mandatory in Phase 9)
+- jraph archived by Google DeepMind (RESOLVED: eliminated in 09-03)
+- Polyglot tax: Python + TypeScript + Rust/Tauri — three ecosystems for single developer
 
 ## Session Continuity
 
-Last session: 2026-02-14
-Stopped at: v2.0 roadmap created (Phases 9-13)
+Last session: 2026-03-01
+Stopped at: Completed 09-03-PLAN.md (jraph elimination, TKGModelProtocol, logging config)
 Resume file: None
-Next: `/gsd:plan-phase 9`
+Next: Continue Phase 9 execution (09-04 logging sweep next)
