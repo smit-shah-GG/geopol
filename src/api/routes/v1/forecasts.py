@@ -1,12 +1,15 @@
 """
 Forecast CRUD endpoints.
 
-Serves mock fixture data until Phase 10 replaces with real database queries.
+GET /forecasts/{id} queries PostgreSQL via ForecastService first, falls back
+to mock fixtures if no database row exists. Other list endpoints still use
+mock data until Phase 10 wires real queries throughout.
+
 All endpoints require API key authentication via the ``verify_api_key``
 dependency.
 
 Endpoints:
-    GET  /forecasts/{forecast_id}        -- Single forecast by ID
+    GET  /forecasts/{forecast_id}        -- Single forecast by ID (DB + fixture fallback)
     GET  /forecasts/country/{iso_code}   -- Forecasts by country ISO code
     GET  /forecasts/top                  -- Top risk forecasts
     POST /forecasts                      -- Create forecast (mock)
@@ -19,7 +22,9 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.api.deps import get_db
 from src.api.fixtures.factory import (
     create_mock_forecast,
     load_all_fixtures,
@@ -28,6 +33,7 @@ from src.api.fixtures.factory import (
 from src.api.middleware.auth import verify_api_key
 from src.api.schemas.common import PaginatedResponse
 from src.api.schemas.forecast import ForecastResponse
+from src.api.services.forecast_service import ForecastService
 
 logger = logging.getLogger(__name__)
 
@@ -156,18 +162,36 @@ async def get_forecasts_by_country(
 async def get_forecast_by_id(
     forecast_id: str,
     _client: str = Depends(verify_api_key),
+    db: AsyncSession = Depends(get_db),
 ) -> ForecastResponse:
-    """Return a single forecast by its ID."""
+    """Return a single forecast by its ID.
+
+    Query order:
+    1. PostgreSQL via ForecastService (real persisted data)
+    2. Mock fixture cache (development fallback)
+    3. 404 if both miss
+    """
+    # 1. Try PostgreSQL first
+    try:
+        service = ForecastService(db)
+        result = await service.get_forecast_by_id(forecast_id)
+        if result is not None:
+            return result
+    except Exception as exc:
+        # Database unavailable -- fall through to fixture fallback
+        logger.warning("PostgreSQL lookup failed for %s: %s", forecast_id, exc)
+
+    # 2. Fall back to mock fixture cache
     cache = _get_forecast_cache()
-
     forecast = cache.get(forecast_id)
-    if forecast is None:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Forecast '{forecast_id}' not found",
-        )
+    if forecast is not None:
+        return forecast
 
-    return forecast
+    # 3. Neither source has it
+    raise HTTPException(
+        status_code=404,
+        detail=f"Forecast '{forecast_id}' not found",
+    )
 
 
 @router.post(
