@@ -5,25 +5,25 @@
 See: .planning/PROJECT.md (updated 2026-02-27)
 
 **Core value:** Explainability -- every forecast must provide clear, traceable reasoning paths
-**Current focus:** Phase 10 COMPLETE -- all 4 plans delivered. Ready for Phase 11/12/13 parallel execution.
+**Current focus:** Phase 11 Plan 01 complete. TiRGN model architecture delivered. Plans 02-03 remaining (training loop, integration).
 
 ## Current Position
 
 Milestone: v2.0 Operationalization & Forecast Quality
-Phase: 10 of 13 (Ingest & Forecast Pipeline) -- COMPLETE
-Plan: 04 of 4 (in phase 10) -- ALL COMPLETE
-Status: Phase complete
-Last activity: 2026-03-01 -- Completed 10-04-PLAN.md (daily forecast pipeline + real endpoints)
+Phase: 11 of 13 (TKG Predictor Replacement) -- In progress
+Plan: 01 of 3 (in phase 11)
+Status: In progress
+Last activity: 2026-03-01 -- Completed 11-01-PLAN.md (TiRGN model architecture)
 
 Progress: [########################................] 63% (10/16 phases lifetime)
-v2.0:    [####......] 40% (2/5 phases complete, Phase 10 all plans done)
+v2.0:    [####......] 40% (2/5 phases complete, Phase 11 plan 01 of 3 done)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 32
+- Total plans completed: 33
 - Average duration: 15 minutes
-- Total execution time: 8.12 hours
+- Total execution time: 8.24 hours
 
 **By Phase:**
 
@@ -39,10 +39,11 @@ v2.0:    [####......] 40% (2/5 phases complete, Phase 10 all plans done)
 | 08-graph-partitioning | 2 | 12min | 6min |
 | 09-api-foundation | 6 | 33min | 6min |
 | 10-ingest-forecast-pipeline | 4 | 27min | 7min |
+| 11-tkg-predictor-replacement | 1 | 7min | 7min |
 
 **Recent Trend:**
-- Last 4 plans: 10-01 (6min), 10-02 (5min), 10-03 (6min), 10-04 (10min)
-- Trend: Consistent (pipeline components, API wiring, tests)
+- Last 4 plans: 10-02 (5min), 10-03 (6min), 10-04 (10min), 11-01 (7min)
+- Trend: Consistent (model architecture, component modules, tests)
 
 ## Accumulated Context
 
@@ -83,6 +84,12 @@ Key decisions affecting current work:
 - Consecutive failure alerting at >= 2 failures emits CRITICAL log (2026-03-01, 10-04)
 - POST /forecasts creates EnsemblePredictor per-request (stateless) (2026-03-01, 10-04)
 - Redis lifecycle in app.py lifespan: init on startup, close on shutdown (2026-03-01, 10-04)
+- Sparse history vocab (dict[(s,r)] -> set[o]) instead of dense (E*R, E) matrix -- 28GB saved at GDELT scale (2026-03-01, 11-01)
+- history_rate is fixed hyperparameter (default 0.3), not learned -- per CONTEXT.md (2026-03-01, 11-01)
+- History vocab passed via kwargs to compute_loss, not stored in model (2026-03-01, 11-01)
+- Relation GRU uses projection + existing GRUCell, not modified GRUCell (2026-03-01, 11-01)
+- TiRGN uses NLL loss; neg_triples/margin accepted but ignored for protocol compat (2026-03-01, 11-01)
+- Modern Flax NNX param[...] access in new code, deprecated .value in existing code untouched (2026-03-01, 11-01)
 
 ### Deferred Issues
 
@@ -97,7 +104,7 @@ Key decisions affecting current work:
 
 ### Blockers/Concerns
 
-- TiRGN JAX port has no published reference implementation (research-phase may be needed for Phase 11)
+- TiRGN JAX port has no published reference implementation (RESOLVED: model architecture ported successfully in 11-01, research doc sufficient)
 - Gemini API cost exposure under public traffic (RESOLVED: rate limiter + Gemini budget tracking in 10-02, enforcement wired to endpoints in 10-04, budget exhaustion returns 429)
 - jraph archived by Google DeepMind (RESOLVED: eliminated in 09-03)
 - Polyglot tax: Python + TypeScript + Rust/Tauri -- three ecosystems for single developer
@@ -106,6 +113,6 @@ Key decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-03-01
-Stopped at: Completed 10-04-PLAN.md (daily forecast pipeline + real endpoints) -- Phase 10 COMPLETE
+Stopped at: Completed 11-01-PLAN.md (TiRGN model architecture)
 Resume file: None
-Next: Phase 11/12/13 parallel execution (frontend, LLM enhancements, calibration)
+Next: Phase 11 Plan 02 (training loop + observability), then Plan 03 (integration + backend dispatch)
