@@ -7,6 +7,9 @@ current with evolving world events. The scheduler:
 - Determines when retraining is due
 - Orchestrates the full retraining pipeline
 - Manages model versioning and backup
+
+The scheduler is model-agnostic: it dispatches to the correct training
+function (RE-GCN or TiRGN) based on ``Settings.tkg_backend``.
 """
 
 import json
@@ -17,6 +20,8 @@ from pathlib import Path
 from typing import Any, Optional
 
 import yaml
+
+from src.settings import get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +37,9 @@ class RetrainingScheduler:
     Manages periodic retraining of TKG models on a configurable schedule.
 
     The scheduler follows a time-based approach (weekly or monthly) rather than
-    performance-triggered retraining for simplicity and predictability.
+    performance-triggered retraining for simplicity and predictability.  It
+    dispatches to the correct training function based on ``Settings.tkg_backend``
+    (RE-GCN or TiRGN).
 
     Attributes:
         config: Retraining configuration dictionary
@@ -77,6 +84,23 @@ class RetrainingScheduler:
         logger.info(f"Initialized RetrainingScheduler with {self.config_path}")
         logger.info(f"  Frequency: {self.config['schedule']['frequency']}")
         logger.info(f"  Model dir: {self.model_dir}")
+        logger.info(f"  Backend: {get_settings().tkg_backend}")
+
+    # ------------------------------------------------------------------
+    # Active backend helpers
+    # ------------------------------------------------------------------
+
+    @property
+    def _backend(self) -> str:
+        """Return the active TKG backend from settings."""
+        return get_settings().tkg_backend
+
+    @property
+    def _production_model_path(self) -> Path:
+        """Path to the production model checkpoint for the active backend."""
+        if self._backend == "tirgn":
+            return self.model_dir / "tirgn_best.npz"
+        return self.model_dir / "regcn_trained.pt"
 
     def _load_config(self) -> dict[str, Any]:
         """
@@ -117,6 +141,17 @@ class RetrainingScheduler:
                 "num_layers": 2,
                 "learning_rate": 0.001,
             },
+            "model_tirgn": {
+                "epochs": 100,
+                "batch_size": 1024,
+                "embedding_dim": 200,
+                "num_layers": 2,
+                "learning_rate": 0.001,
+                "history_rate": 0.3,
+                "history_window": 50,
+                "patience": 15,
+                "logdir": "runs/tirgn_retrain",
+            },
             "versioning": {
                 "backup_count": 3,
                 "model_dir": "models/tkg",
@@ -150,12 +185,16 @@ class RetrainingScheduler:
         """
         Record timestamp of successful training.
 
+        Includes ``model_type`` so downstream tooling knows which backend
+        was used for the most recent training run.
+
         Args:
             timestamp: Training completion time
         """
         data = {
             "last_trained": timestamp.isoformat(),
-            "model_path": str(self.model_dir / "regcn_trained.pt"),
+            "model_type": self._backend,
+            "model_path": str(self._production_model_path),
         }
 
         with open(self.last_trained_path, "w") as f:
@@ -278,39 +317,73 @@ class RetrainingScheduler:
         """
         Backup current model before retraining.
 
+        Backend-aware: backs up the correct file(s) depending on whether
+        RE-GCN (.pt) or TiRGN (.npz + .json) is active.
+
         Returns:
             Path to backup file, or None if no model exists
         """
-        current_model = self.model_dir / "regcn_trained.pt"
-        if not current_model.exists():
-            logger.info("No existing model to backup")
-            return None
-
-        # Create timestamped backup
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        backup_path = self.model_dir / f"regcn_backup_{timestamp}.pt"
 
-        shutil.copy2(current_model, backup_path)
-        logger.info(f"Backed up model to {backup_path}")
+        if self._backend == "tirgn":
+            current_npz = self.model_dir / "tirgn_best.npz"
+            current_json = self.model_dir / "tirgn_best.json"
+            if not current_npz.exists():
+                logger.info("No existing TiRGN model to backup")
+                return None
 
-        # Clean up old backups
-        self._cleanup_old_backups()
+            backup_npz = self.model_dir / f"tirgn_backup_{timestamp}.npz"
+            backup_json = self.model_dir / f"tirgn_backup_{timestamp}.json"
+            shutil.copy2(current_npz, backup_npz)
+            if current_json.exists():
+                shutil.copy2(current_json, backup_json)
+            logger.info(f"Backed up TiRGN model to {backup_npz}")
 
-        return backup_path
+            self._cleanup_old_backups()
+            return backup_npz
+        else:
+            current_model = self.model_dir / "regcn_trained.pt"
+            if not current_model.exists():
+                logger.info("No existing model to backup")
+                return None
+
+            backup_path = self.model_dir / f"regcn_backup_{timestamp}.pt"
+            shutil.copy2(current_model, backup_path)
+            logger.info(f"Backed up model to {backup_path}")
+
+            self._cleanup_old_backups()
+            return backup_path
 
     def _cleanup_old_backups(self) -> None:
-        """Remove old backup files exceeding backup_count."""
+        """Remove old backup files exceeding backup_count.
+
+        Uses backend-appropriate glob patterns.
+        """
         backup_count = self.config.get("versioning", {}).get("backup_count", 3)
 
-        backups = sorted(
-            self.model_dir.glob("regcn_backup_*.pt"),
-            key=lambda p: p.stat().st_mtime,
-            reverse=True,
-        )
-
-        for old_backup in backups[backup_count:]:
-            logger.info(f"Removing old backup: {old_backup}")
-            old_backup.unlink()
+        if self._backend == "tirgn":
+            # Clean up .npz backups
+            npz_backups = sorted(
+                self.model_dir.glob("tirgn_backup_*.npz"),
+                key=lambda p: p.stat().st_mtime,
+                reverse=True,
+            )
+            for old in npz_backups[backup_count:]:
+                logger.info(f"Removing old backup: {old}")
+                old.unlink()
+                # Also remove companion .json if it exists
+                json_companion = old.with_suffix(".json")
+                if json_companion.exists():
+                    json_companion.unlink()
+        else:
+            backups = sorted(
+                self.model_dir.glob("regcn_backup_*.pt"),
+                key=lambda p: p.stat().st_mtime,
+                reverse=True,
+            )
+            for old_backup in backups[backup_count:]:
+                logger.info(f"Removing old backup: {old_backup}")
+                old_backup.unlink()
 
     def _collect_fresh_data(self) -> Path:
         """
@@ -352,19 +425,29 @@ class RetrainingScheduler:
         """
         Train a new model on the collected data.
 
+        Dispatches to ``train_tirgn`` or ``train_regcn`` depending on
+        ``Settings.tkg_backend``.
+
         Args:
             data_path: Path to processed data
 
         Returns:
             Training result dictionary with metrics
         """
-        # Import here to avoid circular dependencies
+        data_config = self.config.get("data", {})
+
+        if self._backend == "tirgn":
+            return self._train_tirgn(data_path, data_config)
+        else:
+            return self._train_regcn(data_path, data_config)
+
+    def _train_regcn(self, data_path: Path, data_config: dict[str, Any]) -> dict[str, Any]:
+        """Train RE-GCN model (original behaviour)."""
         from scripts.train_tkg import train_regcn
 
         model_config = self.config.get("model", {})
-        data_config = self.config.get("data", {})
 
-        logger.info("Starting model training")
+        logger.info("Starting RE-GCN model training")
 
         result = train_regcn(
             epochs=model_config.get("epochs", 50),
@@ -379,9 +462,42 @@ class RetrainingScheduler:
 
         return result
 
+    def _train_tirgn(self, data_path: Path, data_config: dict[str, Any]) -> dict[str, Any]:
+        """Train TiRGN model using the TiRGN training pipeline."""
+        from src.training.train_tirgn import TiRGNTrainingConfig, train_tirgn
+
+        tirgn_config = self.config.get("model_tirgn", {})
+
+        logger.info("Starting TiRGN model training")
+
+        config = TiRGNTrainingConfig(
+            epochs=tirgn_config.get("epochs", 100),
+            learning_rate=tirgn_config.get("learning_rate", 0.001),
+            batch_size=tirgn_config.get("batch_size", 1024),
+            history_rate=tirgn_config.get("history_rate", 0.3),
+            history_window=tirgn_config.get("history_window", 50),
+            patience=tirgn_config.get("patience", 15),
+            logdir=tirgn_config.get("logdir", "runs/tirgn_retrain"),
+        )
+
+        result = train_tirgn(
+            data_path=data_path,
+            config=config,
+            model_dir=self.model_dir,
+            max_events=data_config.get("max_events", 1000000),
+            num_days=data_config.get("data_window", 30),
+            embedding_dim=tirgn_config.get("embedding_dim", 200),
+            num_layers=tirgn_config.get("num_layers", 2),
+        )
+
+        return result
+
     def _validate_new_model(self, new_model_path: Path, old_model_path: Optional[Path]) -> bool:
         """
         Validate that new model meets quality threshold.
+
+        Backend-aware: loads ``.json`` metadata for TiRGN or ``.pt`` via
+        torch for RE-GCN.
 
         Args:
             new_model_path: Path to newly trained model
@@ -401,7 +517,15 @@ class RetrainingScheduler:
             logger.info("No previous model for comparison, accepting new model")
             return True
 
-        # Load and compare metrics from checkpoints
+        if self._backend == "tirgn":
+            return self._validate_tirgn_model(new_model_path, old_model_path, min_improvement)
+        else:
+            return self._validate_regcn_model(new_model_path, old_model_path, min_improvement)
+
+    def _validate_regcn_model(
+        self, new_model_path: Path, old_model_path: Path, min_improvement: float
+    ) -> bool:
+        """Validate RE-GCN model using torch checkpoint."""
         import torch
 
         new_checkpoint = torch.load(new_model_path, map_location="cpu", weights_only=False)
@@ -420,6 +544,35 @@ class RetrainingScheduler:
             logger.warning(f"New model below improvement threshold ({improvement:.4f} < {min_improvement:.4f})")
             return False
 
+    def _validate_tirgn_model(
+        self, new_model_path: Path, old_model_path: Path, min_improvement: float
+    ) -> bool:
+        """Validate TiRGN model using JSON metadata sidecar."""
+        new_json = new_model_path.with_suffix(".json")
+        old_json = old_model_path.with_suffix(".json")
+
+        if not new_json.exists() or not old_json.exists():
+            logger.info("Missing JSON metadata for TiRGN comparison, accepting new model")
+            return True
+
+        with open(new_json) as f:
+            new_meta = json.load(f)
+        with open(old_json) as f:
+            old_meta = json.load(f)
+
+        new_mrr = new_meta.get("metrics", {}).get("mrr", 0.0)
+        old_mrr = old_meta.get("metrics", {}).get("mrr", 0.0)
+
+        improvement = new_mrr - old_mrr
+        logger.info(f"TiRGN comparison: old MRR={old_mrr:.4f}, new MRR={new_mrr:.4f}, improvement={improvement:.4f}")
+
+        if improvement >= min_improvement:
+            logger.info(f"New TiRGN meets improvement threshold ({improvement:.4f} >= {min_improvement:.4f})")
+            return True
+        else:
+            logger.warning(f"New TiRGN below improvement threshold ({improvement:.4f} < {min_improvement:.4f})")
+            return False
+
     def retrain(self, dry_run: bool = False, skip_data_collection: bool = False) -> dict[str, Any]:
         """
         Execute full retraining pipeline.
@@ -427,7 +580,7 @@ class RetrainingScheduler:
         Steps:
         1. Backup existing model
         2. Collect fresh GDELT data (unless skipped)
-        3. Train new model
+        3. Train new model (RE-GCN or TiRGN per Settings.tkg_backend)
         4. Validate against baseline
         5. Replace production model if validation passes
         6. Update last trained timestamp
@@ -447,6 +600,7 @@ class RetrainingScheduler:
         logger.info("Starting TKG Retraining Pipeline")
         logger.info("=" * 60)
         logger.info(f"Started: {start_time.isoformat()}")
+        logger.info(f"Backend: {self._backend}")
 
         if dry_run:
             logger.info("DRY RUN - simulating retraining pipeline")
@@ -482,7 +636,7 @@ class RetrainingScheduler:
                 data_path = self._collect_fresh_data()
 
             # Step 3: Train new model
-            logger.info("Step 3: Training new model")
+            logger.info("Step 3: Training new model (%s)", self._backend)
             train_result = self._train_new_model(data_path)
 
             if train_result.get("status") != "complete":
@@ -490,7 +644,7 @@ class RetrainingScheduler:
 
             # Step 4: Validate new model
             logger.info("Step 4: Validating new model")
-            new_model_path = self.model_dir / "regcn_trained.pt"
+            new_model_path = self._production_model_path
             if self._validate_new_model(new_model_path, backup_path):
                 logger.info("Validation passed - new model deployed")
                 deploy_status = "deployed"
@@ -498,6 +652,12 @@ class RetrainingScheduler:
                 logger.warning("Validation failed - keeping previous model")
                 if backup_path and backup_path.exists():
                     shutil.copy2(backup_path, new_model_path)
+                    if self._backend == "tirgn":
+                        # Also restore the JSON sidecar
+                        backup_json = backup_path.with_suffix(".json")
+                        prod_json = new_model_path.with_suffix(".json")
+                        if backup_json.exists():
+                            shutil.copy2(backup_json, prod_json)
                 deploy_status = "rolled_back"
 
             # Step 5: Update timestamp
@@ -515,6 +675,7 @@ class RetrainingScheduler:
                 "duration_seconds": duration,
                 "metrics": train_result.get("metrics", {}),
                 "model_path": str(new_model_path),
+                "backend": self._backend,
             }
 
             # Log to file

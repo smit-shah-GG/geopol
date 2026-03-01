@@ -28,12 +28,25 @@ data:
   max_events: 1000000
 
 model:
-  # Training hyperparameters (matched to original training)
+  # RE-GCN training hyperparameters (matched to original training)
   epochs: 50
   batch_size: 1024
   embedding_dim: 200
   num_layers: 2
   learning_rate: 0.001
+
+# TiRGN-specific training hyperparameters.
+# Used when TKG_BACKEND=tirgn (Settings.tkg_backend == "tirgn").
+model_tirgn:
+  epochs: 100
+  batch_size: 1024
+  embedding_dim: 200
+  num_layers: 2
+  learning_rate: 0.001
+  history_rate: 0.3
+  history_window: 50
+  patience: 15
+  logdir: runs/tirgn_retrain
 
 versioning:
   # Number of old model versions to keep for rollback

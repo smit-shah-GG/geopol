@@ -11,7 +11,8 @@ This script is designed to be called by cron/systemd for periodic retraining:
 6. Logs all metrics and decisions
 
 Usage:
-    uv run python scripts/retrain_tkg.py              # Normal execution
+    uv run python scripts/retrain_tkg.py              # Normal execution (uses TKG_BACKEND env)
+    uv run python scripts/retrain_tkg.py --backend tirgn  # Override backend for this run
     uv run python scripts/retrain_tkg.py --dry-run    # Verify pipeline without training
     uv run python scripts/retrain_tkg.py --force      # Force retraining even if not scheduled
     uv run python scripts/retrain_tkg.py --check-schedule  # Only check schedule, don't retrain
@@ -19,6 +20,7 @@ Usage:
 
 import argparse
 import logging
+import os
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -115,6 +117,13 @@ def main() -> int:
         help="Use existing data instead of collecting fresh",
     )
     parser.add_argument(
+        "--backend",
+        type=str,
+        choices=["tirgn", "regcn"],
+        default=None,
+        help="Override TKG_BACKEND for this run (default: from env/settings)",
+    )
+    parser.add_argument(
         "--config",
         type=str,
         default="config/retraining.yaml",
@@ -122,6 +131,14 @@ def main() -> int:
     )
 
     args = parser.parse_args()
+
+    # Apply backend override via environment variable before settings are loaded
+    if args.backend is not None:
+        os.environ["TKG_BACKEND"] = args.backend
+        # Reset settings singleton so it picks up the new envvar
+        import src.settings
+        src.settings._settings = None
+        logger.info("Backend override: %s", args.backend)
 
     # Initialize scheduler
     try:
@@ -154,8 +171,10 @@ def main() -> int:
     setup_file_logging(scheduler.log_dir)
 
     # Execute retraining
+    from src.settings import get_settings
+    backend = get_settings().tkg_backend
     logger.info("=" * 70)
-    logger.info("TKG Automated Retraining")
+    logger.info("TKG Automated Retraining (backend: %s)", backend)
     logger.info("=" * 70)
     logger.info(f"Started: {datetime.now().isoformat()}")
 
