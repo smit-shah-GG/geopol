@@ -1,10 +1,8 @@
 """
-JAX training utilities for RE-GCN using jraph.
+JAX training utilities for RE-GCN (jraph-free).
 
-Key improvements over manual implementation:
-- jraph's segment operations are XLA-optimized
-- GraphsTuple handles batching efficiently
-- Vectorized message passing (no Python loops over relations)
+Uses local GraphsTuple and jax.ops.segment_sum instead of the archived
+jraph library. Vectorized message passing via jax.lax.fori_loop.
 """
 
 import json
@@ -120,7 +118,7 @@ def create_temporal_graphs(
     num_relations: int,
 ) -> List[TemporalGraph]:
     """
-    Convert numpy snapshots to jraph TemporalGraph format.
+    Convert numpy snapshots to TemporalGraph format.
 
     Adds inverse relations (r + num_relations for inverse).
 

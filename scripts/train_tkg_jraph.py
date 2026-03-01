@@ -1,11 +1,9 @@
 #!/usr/bin/env python
 """
-Train RE-GCN temporal knowledge graph model using JAX + jraph.
+Train RE-GCN temporal knowledge graph model using JAX (jraph-free).
 
-Uses jraph for efficient graph neural network operations:
-- segment_sum for XLA-optimized message aggregation
-- GraphsTuple for efficient batching
-- Fully vectorized (no Python loops over relations)
+Uses local GraphsTuple and jax.ops.segment_sum instead of the archived
+jraph library. Fully vectorized message passing via jax.lax.fori_loop.
 
 Usage:
     uv run python scripts/train_tkg_jraph.py
@@ -39,7 +37,7 @@ LOG_DIR = Path("logs/training")
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Train RE-GCN temporal knowledge graph model using JAX + jraph"
+        description="Train RE-GCN temporal knowledge graph model using JAX (jraph-free)"
     )
     parser.add_argument(
         "--epochs", type=int, default=100,

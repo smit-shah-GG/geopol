@@ -1,10 +1,14 @@
 """
-RE-GCN implementation using jraph for efficient graph operations.
+RE-GCN implementation using local JAX equivalents (jraph-free).
 
-Key improvements over manual implementation:
-- jraph's segment_sum is XLA-optimized for aggregation
-- GraphsTuple handles batching efficiently
-- No Python loops over relations - fully vectorized
+jraph was archived by Google DeepMind in May 2025. This module replaces
+jraph.GraphsTuple with a local NamedTuple and jraph.segment_sum with
+jax.ops.segment_sum. Behavior is identical.
+
+Key design:
+- Local GraphsTuple NamedTuple replaces jraph.GraphsTuple
+- jax.ops.segment_sum replaces jraph.segment_sum (same XLA kernel)
+- Fully vectorized message passing via jax.lax.fori_loop
 
 Reference:
     Li et al. (2021). Temporal Knowledge Graph Reasoning Based on
@@ -15,15 +19,30 @@ from typing import Callable, List, NamedTuple, Optional, Tuple
 
 import jax
 import jax.numpy as jnp
-import jraph
 from flax import nnx
 
 Array = jax.Array
 
 
+class GraphsTuple(NamedTuple):
+    """Local replacement for jraph.GraphsTuple (archived library).
+
+    Minimal subset used by RE-GCN: nodes, edges, senders, receivers,
+    n_node, n_edge, globals. Same field names as jraph for drop-in
+    compatibility.
+    """
+    nodes: Optional[Array]
+    edges: Optional[Array]
+    senders: Array
+    receivers: Array
+    n_node: Array
+    n_edge: Array
+    globals: Optional[Array] = None
+
+
 class TemporalGraph(NamedTuple):
     """Temporal graph with relation types."""
-    graph: jraph.GraphsTuple
+    graph: GraphsTuple
     relation_types: Array  # (n_edges,) relation type per edge
 
 
@@ -45,7 +64,7 @@ def create_graph(
         node_features: Optional node features (num_nodes, dim)
 
     Returns:
-        TemporalGraph with jraph GraphsTuple
+        TemporalGraph with local GraphsTuple
     """
     n_edge = jnp.array([len(senders)])
     n_node = jnp.array([num_nodes])
@@ -58,7 +77,7 @@ def create_graph(
     else:
         nodes = node_features
 
-    graph = jraph.GraphsTuple(
+    graph = GraphsTuple(
         nodes=nodes,
         edges=edges,
         senders=senders,
@@ -73,10 +92,10 @@ def create_graph(
 
 class RGCNLayer(nnx.Module):
     """
-    Relational Graph Convolution layer using jraph.
+    Relational Graph Convolution layer using JAX segment operations.
 
     Uses basis decomposition: W_r = sum_b(coeff[r,b] * basis[b])
-    Message passing is vectorized using jraph's segment operations.
+    Message passing is vectorized using jax.ops.segment_sum.
     """
 
     def __init__(
@@ -156,7 +175,7 @@ class RGCNLayer(nnx.Module):
             masked_messages = messages * mask
 
             # Aggregate to receivers and add to running total
-            rel_aggregated = jraph.segment_sum(masked_messages, receivers, num_segments=num_nodes)
+            rel_aggregated = jax.ops.segment_sum(masked_messages, receivers, num_segments=num_nodes)
             return aggregated + rel_aggregated
 
         # Initialize accumulator
@@ -167,7 +186,7 @@ class RGCNLayer(nnx.Module):
 
         # Compute in-degree for normalization
         ones = jnp.ones(n_edges)
-        in_degree = jraph.segment_sum(ones, receivers, num_segments=num_nodes)
+        in_degree = jax.ops.segment_sum(ones, receivers, num_segments=num_nodes)
         in_degree = jnp.maximum(in_degree, 1.0)
 
         # Normalize by in-degree
@@ -275,10 +294,10 @@ class SimpleDecoder(nnx.Module):
 
 class REGCNJraph(nnx.Module):
     """
-    RE-GCN using jraph for efficient graph operations.
+    RE-GCN using local JAX graph primitives (jraph-free).
 
     Architecture:
-    1. R-GCN layers for graph structure (using jraph segment ops)
+    1. R-GCN layers for graph structure (using jax.ops.segment_sum)
     2. GRU for temporal evolution
     3. Simple MLP decoder for scoring
     """
