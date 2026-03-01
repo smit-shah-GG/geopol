@@ -5,15 +5,15 @@
 See: .planning/PROJECT.md (updated 2026-02-27)
 
 **Core value:** Explainability -- every forecast must provide clear, traceable reasoning paths
-**Current focus:** Phase 12 in progress. Frontend scaffold delivered (plan 01/07). 6 panel plans remain.
+**Current focus:** Phase 12 in progress. Service layer delivered (plan 02/07). 5 panel plans remain.
 
 ## Current Position
 
 Milestone: v2.0 Operationalization & Forecast Quality
 Phase: 12 of 13 (WM-Derived Frontend) -- IN PROGRESS
-Plan: 01 of 7 (in phase 12) -- COMPLETE
+Plan: 02 of 7 (in phase 12) -- COMPLETE
 Status: In progress
-Last activity: 2026-03-02 -- Completed 12-01-PLAN.md (frontend scaffold + build system)
+Last activity: 2026-03-02 -- Completed 12-02-PLAN.md (CircuitBreaker + ForecastServiceClient)
 
 Progress: [##############################..........] 75% (12/16 phases lifetime)
 v2.0:    [######....] 60% (3/5 phases complete, 12 in progress)
@@ -21,9 +21,9 @@ v2.0:    [######....] 60% (3/5 phases complete, 12 in progress)
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 36
+- Total plans completed: 37
 - Average duration: 14 minutes
-- Total execution time: 8.58 hours
+- Total execution time: 8.61 hours
 
 **By Phase:**
 
@@ -40,11 +40,11 @@ v2.0:    [######....] 60% (3/5 phases complete, 12 in progress)
 | 09-api-foundation | 6 | 33min | 6min |
 | 10-ingest-forecast-pipeline | 4 | 27min | 7min |
 | 11-tkg-predictor-replacement | 3 | 21min | 7min |
-| 12-wm-derived-frontend | 1 | 7min | 7min |
+| 12-wm-derived-frontend | 2 | 9min | 5min |
 
 **Recent Trend:**
-- Last 4 plans: 11-01 (7min), 11-02 (6min), 11-03 (8min), 12-01 (7min)
-- Trend: Consistent (scaffold + integration, reuse-heavy from WM)
+- Last 4 plans: 11-02 (6min), 11-03 (8min), 12-01 (7min), 12-02 (2min)
+- Trend: Accelerating (service layer is pure WM adaptation + typing)
 
 ## Accumulated Context
 
@@ -109,6 +109,9 @@ Key decisions affecting current work:
 - GeoPolAppContext ~8 fields (focused) vs WM's 100+ (2026-03-02, 12-01)
 - Monospace analyst aesthetic: SF Mono, #0a0e14 dark bg, terminal-inspired (2026-03-02, 12-01)
 - TypeScript DTO fields use snake_case matching JSON wire format (2026-03-02, 12-01)
+- POST createForecast bypasses dedup + circuit breaker -- mutations fire every time (2026-03-02, 12-02)
+- CircuitBreaker<unknown> for per-group breakers; casting at call site is type-safe (2026-03-02, 12-02)
+- ForecastServiceClient fulfills FE-01 DataLoaderManager -- separate class would be redundant (2026-03-02, 12-02)
 
 ### Deferred Issues
 
@@ -132,6 +135,6 @@ Key decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-03-02
-Stopped at: Completed 12-01-PLAN.md (frontend scaffold + build system)
+Stopped at: Completed 12-02-PLAN.md (CircuitBreaker + ForecastServiceClient)
 Resume file: None
-Next: 12-02-PLAN.md through 12-07-PLAN.md (6 remaining panel plans in Phase 12)
+Next: 12-03-PLAN.md through 12-07-PLAN.md (5 remaining panel plans in Phase 12)
