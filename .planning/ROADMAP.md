@@ -109,7 +109,7 @@ Phase 9 (API + DB foundation) ─── critical path, everything gates on this
                 └──────────► Phase 13 (monitoring + calibration + hardening)
 ```
 
-- [ ] **Phase 9: API Foundation & Infrastructure** — PostgreSQL, FastAPI skeleton with DTOs and mock fixtures, structured logging, jraph elimination, TKGModelProtocol
+- [x] **Phase 9: API Foundation & Infrastructure** — PostgreSQL, FastAPI skeleton with DTOs and mock fixtures, structured logging, jraph elimination, TKGModelProtocol
 - [ ] **Phase 10: Ingest & Forecast Pipeline** — Micro-batch GDELT ingest, daily forecast automation, real API endpoints replacing mocks, Redis caching
 - [ ] **Phase 11: TKG Predictor Replacement** — TiRGN JAX port replacing RE-GCN for improved accuracy (parallelizable with Phases 10 and 12)
 - [ ] **Phase 12: WM-Derived Frontend** — TypeScript dashboard scaffolded from World Monitor patterns: deck.gl globe, forecast panels, scenario explorer, country briefs, map layers
@@ -133,12 +133,12 @@ Phase 9 (API + DB foundation) ─── critical path, everything gates on this
 **Plans**: 6 plans
 
 Plans:
-- [ ] 09-01-PLAN.md — Dependencies, Docker, PostgreSQL ORM models, Alembic migrations, settings
-- [ ] 09-02-PLAN.md — Pydantic V2 DTOs (contract spec, 8-subsystem health schema) and mock fixtures (SY, UA, MM)
-- [ ] 09-03-PLAN.md — jraph elimination, TKGModelProtocol, structured logging config module
-- [ ] 09-04-PLAN.md — print() to logging conversion sweep (9 production files)
-- [ ] 09-05-PLAN.md — FastAPI app, full subsystem health endpoint (8 checks), routes, auth middleware, error handling
-- [ ] 09-06-PLAN.md — ForecastService persistence bridge, route wiring, multi-process concurrent DB tests, table smoke writes
+- [x] 09-01-PLAN.md — Dependencies, Docker, PostgreSQL ORM models, Alembic migrations, settings
+- [x] 09-02-PLAN.md — Pydantic V2 DTOs (contract spec, 8-subsystem health schema) and mock fixtures (SY, UA, MM)
+- [x] 09-03-PLAN.md — jraph elimination, TKGModelProtocol, structured logging config module
+- [x] 09-04-PLAN.md — print() to logging conversion sweep (9 production files)
+- [x] 09-05-PLAN.md — FastAPI app, full subsystem health endpoint (8 checks), routes, auth middleware, error handling
+- [x] 09-06-PLAN.md — ForecastService persistence bridge, route wiring, multi-process concurrent DB tests, table smoke writes
 
 ### Phase 10: Ingest & Forecast Pipeline
 **Goal**: System continuously ingests GDELT events every 15 minutes and produces daily automated forecasts with outcome tracking. API endpoints serve real forecast data (replacing Phase 9 mock fixtures). Redis caching prevents redundant computation.
@@ -212,10 +212,10 @@ Phase 9 first (critical path). Then Phases 10, 11, 12 in parallel. Phase 13 afte
 | 6. NetworkX Fix | v1.1 | 1/1 | Complete | 2026-01-28 |
 | 7. Bootstrap Pipeline | v1.1 | 2/2 | Complete | 2026-01-30 |
 | 8. Graph Partitioning | v1.1 | 2/2 | Complete | 2026-01-30 |
-| 9. API Foundation | v2.0 | 0/6 | Not started | - |
+| 9. API Foundation | v2.0 | 6/6 | Complete | 2026-03-01 |
 | 10. Ingest & Pipeline | v2.0 | 0/TBD | Not started | - |
 | 11. TKG Replacement | v2.0 | 0/TBD | Not started | - |
 | 12. WM-Derived Frontend | v2.0 | 0/TBD | Not started | - |
 | 13. Calibration & Monitoring | v2.0 | 0/TBD | Not started | - |
 
-**Total:** 8 phases complete (v1.0 + v1.1), 21 plans delivered. v2.0: 5 phases planned, 50 requirements, parallel execution after Phase 9.
+**Total:** 9 phases complete (v1.0 + v1.1 + Phase 9), 27 plans delivered. v2.0: 1/5 phases complete, 48 requirements, Phases 10/11/12 now parallelizable.
