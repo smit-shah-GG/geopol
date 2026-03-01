@@ -19,12 +19,15 @@ Architecture:
     - CPU-optimized configuration (no GPU required)
 """
 
+import logging
 import torch
 from typing import Dict, List, Tuple, Optional, Any, Union
 from pathlib import Path
 import json
 import time
 from dataclasses import dataclass, asdict
+
+logger = logging.getLogger(__name__)
 
 from qdrant_client import QdrantClient
 from qdrant_client.models import (
@@ -111,11 +114,11 @@ class VectorStore:
         try:
             # Simple health check
             collections = self.client.get_collections()
-            print(f"Connected to Qdrant at {self.config.host}:{self.config.port}")
-            print(f"Existing collections: {len(collections.collections)}")
+            logger.info(f"Connected to Qdrant at {self.config.host}:{self.config.port}")
+            logger.debug(f"Existing collections: {len(collections.collections)}")
         except Exception as e:
-            print(f"Warning: Qdrant connection check failed: {e}")
-            print("Qdrant server may not be running. Operations will fail.")
+            logger.warning(f"Qdrant connection check failed: {e}")
+            logger.warning("Qdrant server may not be running. Operations will fail.")
 
     def create_collections(self, recreate: bool = False):
         """
@@ -134,10 +137,10 @@ class VectorStore:
             try:
                 collection_info = self.client.get_collection(collection_name)
                 if recreate:
-                    print(f"Deleting existing collection: {collection_name}")
+                    logger.info(f"Deleting existing collection: {collection_name}")
                     self.client.delete_collection(collection_name)
                 else:
-                    print(f"Collection {collection_name} already exists")
+                    logger.info(f"Collection {collection_name} already exists")
                     continue
             except Exception:
                 # Collection doesn't exist, will create
@@ -150,7 +153,7 @@ class VectorStore:
                 vector_size = self.config.embedding_dim  # Phase embeddings
 
             # Create collection with HNSW configuration
-            print(f"Creating collection: {collection_name} (dim={vector_size})")
+            logger.info(f"Creating collection: {collection_name} (dim={vector_size})")
 
             # HNSW configuration for fast similarity search
             hnsw_config = HnswConfigDiff(
@@ -188,7 +191,7 @@ class VectorStore:
                 quantization_config=quantization_config
             )
 
-            print(f"Created collection: {collection_name}")
+            logger.info(f"Created collection: {collection_name}")
 
             # Create payload indices for filtering
             self._create_payload_indices(collection_name)
@@ -215,7 +218,7 @@ class VectorStore:
                     field_name=field_name,
                     field_schema="keyword" if "entity" in field_name or "type" in field_name else "integer"
                 )
-                print(f"  Created index on {field_name}")
+                logger.debug(f"Created index on {field_name}")
             except Exception as e:
                 # Index might already exist
                 pass
@@ -236,7 +239,7 @@ class VectorStore:
             id_to_entity: Mapping from IDs to entity names
             entity_metadata: Optional metadata for each entity
         """
-        print(f"Uploading {len(entity_to_id)} entity embeddings...")
+        logger.info(f"Uploading {len(entity_to_id)} entity embeddings...")
 
         # Extract embeddings
         points = []
@@ -273,7 +276,7 @@ class VectorStore:
             batch_size=self.config.batch_size
         )
 
-        print(f"Uploaded {len(points)} entity embeddings")
+        logger.info(f"Uploaded {len(points)} entity embeddings")
 
     def upload_relation_embeddings(
         self,
@@ -289,7 +292,7 @@ class VectorStore:
             relation_to_id: Mapping from relation types to IDs
             id_to_relation: Mapping from IDs to relation types
         """
-        print(f"Uploading {len(relation_to_id)} relation embeddings...")
+        logger.info(f"Uploading {len(relation_to_id)} relation embeddings...")
 
         points = []
         for relation_name, relation_id in relation_to_id.items():
@@ -321,7 +324,7 @@ class VectorStore:
             batch_size=self.config.batch_size
         )
 
-        print(f"Uploaded {len(points)} relation embeddings")
+        logger.info(f"Uploaded {len(points)} relation embeddings")
 
     def _batch_upload(
         self,
@@ -348,9 +351,9 @@ class VectorStore:
                     collection_name=collection_name,
                     points=batch
                 )
-                print(f"  Uploaded batch {batch_num}/{total_batches} ({len(batch)} points)")
+                logger.debug(f"Uploaded batch {batch_num}/{total_batches} ({len(batch)} points)")
             except Exception as e:
-                print(f"  Error uploading batch {batch_num}: {e}")
+                logger.error(f"Error uploading batch {batch_num}: {e}")
                 raise
 
     def search_similar_entities(
@@ -452,7 +455,7 @@ class VectorStore:
                     "payload": point.payload
                 }
         except Exception as e:
-            print(f"Error retrieving entity {entity_id}: {e}")
+            logger.error(f"Error retrieving entity {entity_id}: {e}")
 
         return None
 
@@ -475,7 +478,7 @@ class VectorStore:
                 "status": info.status
             }
         except Exception as e:
-            print(f"Error getting collection info: {e}")
+            logger.error(f"Error getting collection info: {e}")
             return {}
 
     def backup_collection(
@@ -490,7 +493,7 @@ class VectorStore:
             collection_name: Name of collection to backup
             backup_path: Path to save backup
         """
-        print(f"Backing up collection {collection_name}...")
+        logger.info(f"Backing up collection {collection_name}...")
 
         # Get all points
         points = []
@@ -534,7 +537,7 @@ class VectorStore:
         with open(backup_path, 'w') as f:
             json.dump(backup_data, f)
 
-        print(f"Backed up {len(points)} points to {backup_path}")
+        logger.info(f"Backed up {len(points)} points to {backup_path}")
 
     def restore_collection(
         self,
@@ -548,7 +551,7 @@ class VectorStore:
             backup_path: Path to backup file
             collection_name: Target collection name (uses backup name if None)
         """
-        print(f"Restoring collection from {backup_path}...")
+        logger.info(f"Restoring collection from {backup_path}...")
 
         # Load backup
         with open(backup_path, 'r') as f:
@@ -570,7 +573,7 @@ class VectorStore:
         # Upload in batches
         self._batch_upload(target_collection, points, self.config.batch_size)
 
-        print(f"Restored {len(points)} points to {target_collection}")
+        logger.info(f"Restored {len(points)} points to {target_collection}")
 
 
 def setup_qdrant_for_embeddings(
@@ -618,8 +621,8 @@ def setup_qdrant_for_embeddings(
     entity_info = store.get_collection_info(config.entity_collection)
     relation_info = store.get_collection_info(config.relation_collection)
 
-    print(f"\nQdrant Setup Complete:")
-    print(f"  Entities: {entity_info.get('points_count', 0)} points")
-    print(f"  Relations: {relation_info.get('points_count', 0)} points")
+    logger.info("Qdrant Setup Complete")
+    logger.info(f"  Entities: {entity_info.get('points_count', 0)} points")
+    logger.info(f"  Relations: {relation_info.get('points_count', 0)} points")
 
     return store

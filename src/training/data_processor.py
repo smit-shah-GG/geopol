@@ -236,8 +236,8 @@ def main():
     df = processor.process_all()
 
     # Show sample
-    print("\nSample TKG events:")
-    print(df[["entity1", "relation", "entity2", "timestamp"]].head(10).to_string())
+    logger.info("Sample TKG events:")
+    logger.info(df[["entity1", "relation", "entity2", "timestamp"]].head(10).to_string())
 
 
 if __name__ == "__main__":

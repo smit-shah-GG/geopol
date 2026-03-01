@@ -14,6 +14,7 @@ Target Performance:
     - Throughput > 10K triples/second on 8-core CPU (faster on GPU)
 """
 
+import logging
 import torch
 import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
@@ -25,6 +26,8 @@ import time
 import json
 import pickle
 from dataclasses import dataclass, asdict
+
+logger = logging.getLogger(__name__)
 
 from src.knowledge_graph.embeddings import RotatEModel, clip_gradients
 
@@ -256,10 +259,10 @@ class EmbeddingTrainer:
         Returns:
             Dictionary with training history (losses, scores, etc.)
         """
-        print(f"Starting training for {self.config.num_epochs} epochs...")
-        print(f"Training batches: {len(train_loader)}")
+        logger.info(f"Starting training for {self.config.num_epochs} epochs...")
+        logger.info(f"Training batches: {len(train_loader)}")
         if val_loader:
-            print(f"Validation batches: {len(val_loader)}")
+            logger.info(f"Validation batches: {len(val_loader)}")
 
         training_start = time.time()
 
@@ -296,11 +299,11 @@ class EmbeddingTrainer:
             # Print progress every 10 epochs
             if (epoch + 1) % 10 == 0:
                 val_loss_str = f"{val_loss:.4f}" if val_loss is not None else "N/A"
-                print(f"Epoch {epoch + 1}/{self.config.num_epochs} | "
-                      f"Train Loss: {train_loss:.4f} | "
-                      f"Val Loss: {val_loss_str} | "
-                      f"LR: {current_lr:.6f} | "
-                      f"Time: {epoch_time:.2f}s")
+                logger.info(f"Epoch {epoch + 1}/{self.config.num_epochs} | "
+                            f"Train Loss: {train_loss:.4f} | "
+                            f"Val Loss: {val_loss_str} | "
+                            f"LR: {current_lr:.6f} | "
+                            f"Time: {epoch_time:.2f}s")
 
             # Checkpointing
             if (epoch + 1) % self.config.checkpoint_every == 0:
@@ -308,15 +311,15 @@ class EmbeddingTrainer:
 
             # Early stopping
             if val_loader and self._should_early_stop(val_loss):
-                print(f"Early stopping at epoch {epoch + 1} "
-                      f"(no improvement for {self.config.early_stopping_patience} epochs)")
+                logger.info(f"Early stopping at epoch {epoch + 1} "
+                            f"(no improvement for {self.config.early_stopping_patience} epochs)")
                 break
 
             self.current_epoch = epoch + 1
 
         training_time = time.time() - training_start
-        print(f"\nTraining completed in {training_time:.2f}s "
-              f"({training_time/60:.2f} minutes)")
+        logger.info(f"Training completed in {training_time:.2f}s "
+                    f"({training_time/60:.2f} minutes)")
 
         return self._format_history()
 
@@ -450,7 +453,7 @@ class EmbeddingTrainer:
         }
 
         torch.save(checkpoint, checkpoint_path)
-        print(f"Checkpoint saved to {checkpoint_path}")
+        logger.info(f"Checkpoint saved to {checkpoint_path}")
 
     def load_checkpoint(self, checkpoint_path: str):
         """
@@ -468,7 +471,7 @@ class EmbeddingTrainer:
         self.training_history = checkpoint['training_history']
         self.current_epoch = checkpoint['epoch']
 
-        print(f"Checkpoint loaded from {checkpoint_path} (epoch {self.current_epoch})")
+        logger.info(f"Checkpoint loaded from {checkpoint_path} (epoch {self.current_epoch})")
 
     def _format_history(self) -> Dict[str, List[float]]:
         """Format training history into columnar dictionary."""
@@ -495,7 +498,7 @@ class EmbeddingTrainer:
             'config': self.config.to_dict(),
             'training_history': self.training_history
         }, save_path)
-        print(f"Model saved to {save_path}")
+        logger.info(f"Model saved to {save_path}")
 
 
 def train_embeddings_from_graph(
@@ -517,16 +520,16 @@ def train_embeddings_from_graph(
     if config is None:
         config = TrainingConfig()
 
-    print("Creating entity and relation mappings...")
+    logger.info("Creating entity and relation mappings...")
     entity_to_id, relation_to_id, id_to_entity, id_to_relation = \
         create_entity_relation_mappings(graph)
 
-    print(f"Entities: {len(entity_to_id)}, Relations: {len(relation_to_id)}")
+    logger.info(f"Entities: {len(entity_to_id)}, Relations: {len(relation_to_id)}")
 
     # Create dataset
-    print("Creating dataset...")
+    logger.info("Creating dataset...")
     dataset = TemporalGraphDataset(graph, entity_to_id, relation_to_id)
-    print(f"Total triples: {len(dataset)}")
+    logger.info(f"Total triples: {len(dataset)}")
 
     # Split into train/val
     val_size = int(config.validation_split * len(dataset))
@@ -553,7 +556,7 @@ def train_embeddings_from_graph(
     )
 
     # Initialize model
-    print("Initializing RotatE model...")
+    logger.info("Initializing RotatE model...")
     model = RotatEModel(
         num_entities=len(entity_to_id),
         num_relations=len(relation_to_id),
@@ -581,6 +584,6 @@ def train_embeddings_from_graph(
                 'id_to_entity': id_to_entity,
                 'id_to_relation': id_to_relation
             }, f)
-        print(f"Mappings saved to {mappings_path}")
+        logger.info(f"Mappings saved to {mappings_path}")
 
     return model, entity_to_id, relation_to_id, history

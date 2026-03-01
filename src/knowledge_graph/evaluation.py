@@ -15,6 +15,7 @@ Target Performance (as per plan):
     - Meaningful clusters in visualization
 """
 
+import logging
 import torch
 import torch.nn.functional as F
 import numpy as np
@@ -23,6 +24,8 @@ from dataclasses import dataclass, asdict
 import time
 from pathlib import Path
 import json
+
+logger = logging.getLogger(__name__)
 
 from sklearn.manifold import TSNE
 import matplotlib.pyplot as plt
@@ -119,7 +122,7 @@ class EmbeddingEvaluator:
         Returns:
             EvaluationMetrics with all metrics
         """
-        print(f"Evaluating link prediction on {len(test_triples)} triples...")
+        logger.info(f"Evaluating link prediction on {len(test_triples)} triples...")
 
         # Build filtering dictionary if needed
         filter_dict = None
@@ -181,7 +184,7 @@ class EmbeddingEvaluator:
 
             # Progress
             if (i + batch_size) % 100 == 0:
-                print(f"  Evaluated {i + batch_size}/{len(test_triples)} triples...")
+                logger.debug(f"Evaluated {i + batch_size}/{len(test_triples)} triples...")
 
         # Compute final metrics
         num_samples = len(test_triples) * 2  # Both directions
@@ -198,7 +201,7 @@ class EmbeddingEvaluator:
             num_test_samples=num_samples
         )
 
-        print("\n" + str(metrics))
+        logger.info(str(metrics))
 
         return metrics
 
@@ -360,7 +363,7 @@ def visualize_embeddings_tsne(
         perplexity: t-SNE perplexity parameter
         n_iter: Number of t-SNE iterations
     """
-    print("Generating t-SNE visualization...")
+    logger.info("Generating t-SNE visualization...")
 
     # Get embeddings
     if isinstance(model, TemporalRotatEModel):
@@ -381,7 +384,7 @@ def visualize_embeddings_tsne(
         num_samples = len(entity_names)
 
     # Run t-SNE
-    print(f"Running t-SNE on {num_samples} entities...")
+    logger.info(f"Running t-SNE on {num_samples} entities...")
     tsne = TSNE(n_components=2, perplexity=min(perplexity, num_samples - 1), max_iter=n_iter)
     embeddings_2d = tsne.fit_transform(embeddings)
 
@@ -435,7 +438,7 @@ def visualize_embeddings_tsne(
     # Save
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     plt.savefig(output_path, dpi=300, bbox_inches='tight')
-    print(f"Visualization saved to {output_path}")
+    logger.info(f"Visualization saved to {output_path}")
     plt.close()
 
 
@@ -461,7 +464,7 @@ def compare_models(
     Returns:
         Dictionary with comparison results
     """
-    print(f"\nComparing {model1_name} vs {model2_name}...")
+    logger.info(f"Comparing {model1_name} vs {model2_name}...")
 
     # Evaluate both models
     evaluator1 = EmbeddingEvaluator(model1)
@@ -483,13 +486,13 @@ def compare_models(
         }
     }
 
-    print(f"\nComparison Results:")
-    print(f"  {model1_name} MRR: {metrics1.mrr:.4f}")
-    print(f"  {model2_name} MRR: {metrics2.mrr:.4f}")
-    print(f"  MRR Improvement: {mrr_improvement:+.1f}%")
-    print(f"\n  {model1_name} Hits@10: {metrics1.hits_at_10:.4f}")
-    print(f"  {model2_name} Hits@10: {metrics2.hits_at_10:.4f}")
-    print(f"  Hits@10 Improvement: {hits10_improvement:+.1f}%")
+    logger.info("Comparison Results:")
+    logger.info(f"  {model1_name} MRR: {metrics1.mrr:.4f}")
+    logger.info(f"  {model2_name} MRR: {metrics2.mrr:.4f}")
+    logger.info(f"  MRR Improvement: {mrr_improvement:+.1f}%")
+    logger.info(f"  {model1_name} Hits@10: {metrics1.hits_at_10:.4f}")
+    logger.info(f"  {model2_name} Hits@10: {metrics2.hits_at_10:.4f}")
+    logger.info(f"  Hits@10 Improvement: {hits10_improvement:+.1f}%")
 
     return comparison
 
@@ -519,4 +522,4 @@ def save_evaluation_results(
     with open(output_path, 'w') as f:
         json.dump(results, f, indent=2)
 
-    print(f"Results saved to {output_path}")
+    logger.info(f"Results saved to {output_path}")
