@@ -171,7 +171,12 @@ Plans:
   2. TiRGN achieves higher MRR than RE-GCN on a held-out GDELT test set (improvement logged and reproducible)
   3. Swapping `TKGPredictor` from RE-GCN to TiRGN requires only a config change — no downstream code modifications to `EnsemblePredictor`, calibration, or the daily pipeline
   4. Weekly automated retraining (via existing scheduler) completes successfully with the TiRGN model
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 11-01-PLAN.md — TiRGN model module (global history encoder, Time-ConvTransE decoder, copy-generation fusion, protocol compliance)
+- [ ] 11-02-PLAN.md — TiRGN training loop with observability (TensorBoard + W&B, early stopping, VRAM monitoring)
+- [ ] 11-03-PLAN.md — Backend dispatch, scheduler integration, config-only swap, integration tests
 
 ### Phase 12: WM-Derived Frontend
 **Goal**: External visitors see a production-quality dashboard with deck.gl globe, forecast panels, interactive scenario exploration, and country briefs — all consuming Geopol's FastAPI backend. Architecturally derived from World Monitor's vanilla TypeScript patterns but purpose-built for geopolitical forecasting.
@@ -220,7 +225,7 @@ Phase 9 first (critical path). Then Phases 10, 11, 12 in parallel. Phase 13 afte
 | 8. Graph Partitioning | v1.1 | 2/2 | Complete | 2026-01-30 |
 | 9. API Foundation | v2.0 | 6/6 | Complete | 2026-03-01 |
 | 10. Ingest & Pipeline | v2.0 | 4/4 | Complete | 2026-03-01 |
-| 11. TKG Replacement | v2.0 | 0/TBD | Not started | - |
+| 11. TKG Replacement | v2.0 | 0/3 | Planned | - |
 | 12. WM-Derived Frontend | v2.0 | 0/TBD | Not started | - |
 | 13. Calibration & Monitoring | v2.0 | 0/TBD | Not started | - |
 
