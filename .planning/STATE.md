@@ -11,19 +11,19 @@ See: .planning/PROJECT.md (updated 2026-02-27)
 
 Milestone: v2.0 Operationalization & Forecast Quality
 Phase: 9 of 13 (API Foundation & Infrastructure)
-Plan: 04 of 6 (in phase 9) -- 09-01, 09-02, 09-03, 09-04 complete
+Plan: 05 of 6 (in phase 9) -- 09-01, 09-02, 09-03, 09-04, 09-05 complete
 Status: In progress
-Last activity: 2026-03-01 -- Completed 09-02-PLAN.md (Pydantic V2 DTOs and mock fixtures)
+Last activity: 2026-03-01 -- Completed 09-05-PLAN.md (FastAPI routes and error handling)
 
 Progress: [####################....................] 50% (8/16 phases lifetime)
-v2.0:    [#.........] ~13% (0/5 phases, plans 01+02+03+04 of 6 in phase 9 complete)
+v2.0:    [##........] ~17% (0/5 phases, plans 01-05 of 6 in phase 9 complete)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 26
+- Total plans completed: 27
 - Average duration: 17 minutes
-- Total execution time: 7.5 hours
+- Total execution time: 7.55 hours
 
 **By Phase:**
 
@@ -37,11 +37,11 @@ v2.0:    [#.........] ~13% (0/5 phases, plans 01+02+03+04 of 6 in phase 9 comple
 | 06-networkx-fix | 1 | 2min | 2min |
 | 07-bootstrap-pipeline | 2 | 12min | 6min |
 | 08-graph-partitioning | 2 | 12min | 6min |
-| 09-api-foundation | 4 | 23min | 6min |
+| 09-api-foundation | 5 | 26min | 5min |
 
 **Recent Trend:**
-- Last 3 plans: 09-01 (6min), 09-04 (7min), 09-02 (6min)
-- Trend: Fast (infrastructure, DTOs, mock fixtures)
+- Last 3 plans: 09-04 (7min), 09-02 (6min), 09-05 (3min)
+- Trend: Fast (infrastructure, routes, mock data)
 
 ## Accumulated Context
 
@@ -64,6 +64,8 @@ Key decisions affecting current work:
 - extra="ignore" in pydantic-settings to coexist with legacy .env vars (2026-03-01, 09-01)
 - DateTime(timezone=True) for all PostgreSQL timestamp columns (2026-03-01, 09-01)
 - Prediction.id as String(36) UUID for cross-system stability (2026-03-01, 09-01)
+- Auth as per-route Depends, not global ASGI middleware -- health endpoint public (2026-03-01, 09-05)
+- Health status derivation: unhealthy only if database down, degraded for other failures (2026-03-01, 09-05)
 
 ### Deferred Issues
 
@@ -86,6 +88,6 @@ Key decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-03-01
-Stopped at: Completed 09-02-PLAN.md
+Stopped at: Completed 09-05-PLAN.md
 Resume file: None
-Next: Execute 09-05-PLAN.md (FastAPI routes and error handling) or 09-06-PLAN.md
+Next: Execute 09-06-PLAN.md (tests and Docker configuration)
