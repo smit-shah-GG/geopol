@@ -1,6 +1,6 @@
 [project]
 name = "geopol"
-version = "1.1.1"
+version = "2.0.0-dev"
 description = "AI-powered geopolitical forecasting system"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -39,15 +39,22 @@ dependencies = [
     "llama-index-vector-stores-chroma>=0.5.5",
     "llama-index-embeddings-huggingface>=0.6.1",
     # Database ORM
-    "sqlalchemy>=2.0.0",
+    "sqlalchemy[asyncio]>=2.0.0",
     # Calibration metrics
     "netcal>=1.3.5",
     "jax[cuda12]>=0.6.2",
     "flax>=0.10.7",
     "optax>=0.2.6",
-    "jraph>=0.0.6.dev0",
     "rapidfuzz>=3.14.3",
     "google-generativeai>=0.8.6",
+    # v2.0 API & Infrastructure
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.34",
+    "asyncpg>=0.30",
+    "alembic>=1.14",
+    "redis[hiredis]>=5.0",
+    "pydantic-settings>=2.0",
+    "python-multipart>=0.0.9",
 ]
 
 [project.optional-dependencies]
