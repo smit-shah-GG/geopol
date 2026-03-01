@@ -75,6 +75,9 @@ Key decisions affecting current work:
 - NullRedis stub enables graceful degradation without Optional branching in hot path (2026-03-01, 10-02)
 - Rate limiter fail-open: Redis failure allows request through (rate limiter must never kill the API) (2026-03-01, 10-02)
 - pytest asyncio_mode=auto configured globally in pyproject.toml (2026-03-01, 10-02)
+- 101 geopolitical feeds from WM's 298-domain list: 31 tier-1 (15-min), 70 tier-2 (60-min) (2026-03-01, 10-03)
+- Separate ChromaDB collection 'rss_articles' with same embedding model as graph_patterns (2026-03-01, 10-03)
+- Paragraph-boundary chunking with sentence fallback; propaganda risk metadata for downstream weighting (2026-03-01, 10-03)
 
 ### Deferred Issues
 
@@ -98,6 +101,6 @@ Key decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-03-01
-Stopped at: Completed 10-02-PLAN.md (API hardening: cache, rate limit, sanitization)
+Stopped at: Completed 10-03-PLAN.md (RSS feed ingestion daemon)
 Resume file: None
-Next: Phase 10 Plan 03 (RSS daemon + RAG enrichment) or Plan 04 (daily forecast pipeline + real endpoints)
+Next: Phase 10 Plan 04 (daily forecast pipeline + real endpoints)
