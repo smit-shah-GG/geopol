@@ -134,6 +134,7 @@ Key decisions affecting current work:
 
 - Docker daemon requires sudo to start -- user must `sudo systemctl start docker` before running containers or Alembic migrations
 - PostgreSQL tests (8 tests in test_forecast_persistence.py and test_concurrent_db.py) skip until Docker is running
+- No frontend UI for user-submitted forecast questions -- POST /api/v1/forecasts exists and ForecastServiceClient.createForecast() is wired, but no input form/modal in the dashboard. Users must use curl or the API directly. Candidate for Phase 13 backlog or future phase.
 
 ### Quick Tasks Completed
 
