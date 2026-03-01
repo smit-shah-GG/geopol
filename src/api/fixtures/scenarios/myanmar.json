@@ -1,0 +1,86 @@
+{
+  "forecast_id": "fc-mm-001",
+  "question": "Will Myanmar's military junta lose control of a major state capital to resistance forces within the next 60 days?",
+  "prediction": "Elevated probability of resistance forces capturing a state capital, driven by the rapid territorial gains of the Three Brotherhood Alliance in northern Shan State and increasing defections from Tatmadaw regional commands.",
+  "probability": 0.45,
+  "confidence": 0.58,
+  "horizon_days": 60,
+  "scenarios": [
+    {
+      "scenario_id": "mm-s1",
+      "description": "The Three Brotherhood Alliance (MNDAA, TNLA, AA) consolidates gains from Operation 1027 and captures Lashio, the Tatmadaw's Northeastern Regional Military Command headquarters, after a sustained siege.",
+      "probability": 0.35,
+      "answers_affirmative": true,
+      "entities": ["Myanmar", "MNDAA", "TNLA", "AA", "NUG", "China"],
+      "timeline": [
+        "T+10d: Alliance forces cut remaining supply lines to Lashio garrison",
+        "T+25d: Tatmadaw airlift attempts fail due to AA air defense acquisitions",
+        "T+40d: Garrison commander negotiates surrender after ammunition exhaustion",
+        "T+45d: NUG declares provisional administration over northern Shan State"
+      ],
+      "evidence_sources": [
+        {
+          "source": "GDELT",
+          "description": "CAMEO 190-195 events in Myanmar's Shan State increased 520% since Operation 1027, with the geographic centroid of violence shifting progressively toward Lashio",
+          "confidence": 0.79,
+          "timestamp": "2026-01-17T04:00:00Z",
+          "gdelt_event_id": "1089178901"
+        },
+        {
+          "source": "TKG pattern",
+          "description": "Entity embedding for Tatmadaw shows declining capability vector (military control indicators) at a rate consistent with pre-fall patterns observed in historical garrison collapses (e.g., Myawaddy, Loikaw)",
+          "confidence": 0.62,
+          "timestamp": null,
+          "gdelt_event_id": null
+        }
+      ],
+      "child_scenarios": []
+    },
+    {
+      "scenario_id": "mm-s2",
+      "description": "Chinese diplomatic intervention enforces a ceasefire on the Three Brotherhood Alliance, halting the offensive short of capturing a state capital in exchange for recognition of autonomous zones.",
+      "probability": 0.40,
+      "answers_affirmative": false,
+      "entities": ["China", "Myanmar", "MNDAA", "TNLA", "AA"],
+      "timeline": [
+        "T+15d: Chinese special envoy delivers ultimatum to alliance leadership in Kunming",
+        "T+20d: Alliance announces 'humanitarian pause' under Chinese mediation",
+        "T+45d: Framework agreement establishes de facto autonomous administration without formal capital capture"
+      ],
+      "evidence_sources": [
+        {
+          "source": "GDELT",
+          "description": "CAMEO 036 (Express intent to meet/negotiate) events between China and Myanmar ethnic armed organizations increased 280% following China's enforcement of the January 2024 ceasefire precedent",
+          "confidence": 0.71,
+          "timestamp": "2026-01-15T02:00:00Z",
+          "gdelt_event_id": "1089156789"
+        },
+        {
+          "source": "RAG match",
+          "description": "Chinese state media editorial from 2026-01-12 emphasizing 'stability along the China-Myanmar border corridor' and 'protection of Chinese nationals and economic interests' — language consistent with pre-intervention signaling in the Jan 2024 ceasefire",
+          "confidence": 0.66,
+          "timestamp": "2026-01-12T10:00:00Z",
+          "gdelt_event_id": null
+        }
+      ],
+      "child_scenarios": []
+    }
+  ],
+  "reasoning_summary": "The forecast is shaped by the unprecedented military success of the Three Brotherhood Alliance since Operation 1027 (Oct 2023), which has fundamentally altered the power balance in northern Myanmar. TKG embeddings show Tatmadaw capability vectors declining at a rate consistent with historical garrison-collapse patterns, while resistance force coordination embeddings are in the strongest cluster ever observed. The primary countervailing factor is Chinese diplomatic leverage — Beijing enforced a ceasefire in January 2024 and retains the ability to constrain alliance operations through supply chain and border crossing control. The moderate confidence (0.58) reflects genuine uncertainty about whether China will allow a capital capture or intervene to prevent it.",
+  "evidence_count": 6,
+  "ensemble_info": {
+    "llm_probability": 0.48,
+    "tkg_probability": 0.40,
+    "weights": {"llm": 0.6, "tkg": 0.4},
+    "temperature_applied": 1.22
+  },
+  "calibration": {
+    "category": "conflict",
+    "temperature": 1.22,
+    "historical_accuracy": 0.68,
+    "brier_score": 0.26,
+    "sample_size": 53
+  },
+  "created_at": "2026-01-20T08:00:00Z",
+  "expires_at": "2026-03-21T08:00:00Z"
+}

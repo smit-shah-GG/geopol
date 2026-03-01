@@ -1,0 +1,159 @@
+{
+  "forecast_id": "fc-sy-001",
+  "question": "Will Turkish-backed forces launch a major ground offensive in NW Syria within the next 30 days?",
+  "prediction": "Moderate probability of a major Turkish-backed ground offensive in northwest Syria, driven by increased cross-border shelling, SNA troop repositioning along the M4 highway corridor, and deteriorating Ankara-Moscow diplomatic relations over Idlib de-escalation zone enforcement.",
+  "probability": 0.62,
+  "confidence": 0.71,
+  "horizon_days": 30,
+  "scenarios": [
+    {
+      "scenario_id": "sy-s1",
+      "description": "Turkish-backed SNA forces launch a multi-axis ground offensive targeting SDF positions east of the M4 highway, with Turkish artillery and drone support providing fire cover.",
+      "probability": 0.42,
+      "answers_affirmative": true,
+      "entities": ["Turkey", "SNA", "SDF", "Russia"],
+      "timeline": [
+        "T+3d: Increased Turkish reconnaissance drone flights over Tel Rifaat and Manbij",
+        "T+7d: SNA mobilization of reserve units from Afrin and al-Bab staging areas",
+        "T+12d: Turkish artillery barrages on SDF fortifications along contact line",
+        "T+15d: Multi-axis SNA ground assault with Turkish SOF advisory teams"
+      ],
+      "evidence_sources": [
+        {
+          "source": "GDELT",
+          "description": "CAMEO 190 (Use conventional military force) events between Turkey and SDF increased 340% in the last 14 days compared to the rolling 90-day average",
+          "confidence": 0.88,
+          "timestamp": "2026-01-18T14:30:00Z",
+          "gdelt_event_id": "1089234567"
+        },
+        {
+          "source": "TKG pattern",
+          "description": "Temporal graph embedding similarity between current Turkey-SDF edge features and the pre-Operation Peace Spring (Oct 2019) pattern exceeds 0.82 cosine threshold",
+          "confidence": 0.76,
+          "timestamp": null,
+          "gdelt_event_id": null
+        },
+        {
+          "source": "RAG match",
+          "description": "Turkish Defense Minister statement on 2026-01-15 referencing 'legitimate security concerns' along southern border — language pattern matches pre-operation rhetoric with 0.91 semantic similarity",
+          "confidence": 0.69,
+          "timestamp": "2026-01-15T09:00:00Z",
+          "gdelt_event_id": null
+        }
+      ],
+      "child_scenarios": [
+        {
+          "scenario_id": "sy-s1-1",
+          "description": "Russia intervenes diplomatically, brokering a ceasefire within 72 hours that freezes the new contact line, effectively legitimizing limited Turkish territorial gains.",
+          "probability": 0.55,
+          "answers_affirmative": true,
+          "entities": ["Russia", "Turkey", "Syria"],
+          "timeline": [
+            "T+16d: Russian military police deploy to new contact line",
+            "T+18d: Ankara-Moscow emergency bilateral talks in Astana format"
+          ],
+          "evidence_sources": [
+            {
+              "source": "GDELT",
+              "description": "CAMEO 036 (Express intent to meet/negotiate) events between Russia and Turkey increased 180% in the last 7 days",
+              "confidence": 0.72,
+              "timestamp": "2026-01-19T11:00:00Z",
+              "gdelt_event_id": "1089245678"
+            }
+          ],
+          "child_scenarios": []
+        },
+        {
+          "scenario_id": "sy-s1-2",
+          "description": "SAA forces backed by Russian airpower counter-attack to prevent SNA from consolidating gains, escalating into a multi-party engagement.",
+          "probability": 0.25,
+          "answers_affirmative": true,
+          "entities": ["Syria", "Russia", "Turkey", "SNA", "Iran"],
+          "timeline": [
+            "T+17d: SAA 25th Special Mission Division repositions from Hama to Idlib front",
+            "T+20d: Russian Su-34 sorties over SNA positions increase to 12/day",
+            "T+25d: Iranian-backed militias reinforce SAA positions near Saraqib junction"
+          ],
+          "evidence_sources": [
+            {
+              "source": "TKG pattern",
+              "description": "Historical pattern: 4 of 6 past Turkish operations triggered SAA counter-mobilization within 5 days (graph recurrence score: 0.67)",
+              "confidence": 0.65,
+              "timestamp": null,
+              "gdelt_event_id": null
+            }
+          ],
+          "child_scenarios": []
+        }
+      ]
+    },
+    {
+      "scenario_id": "sy-s2",
+      "description": "Turkey limits action to intensified cross-border shelling and drone strikes without committing ground forces, maintaining pressure while avoiding a full offensive.",
+      "probability": 0.38,
+      "answers_affirmative": false,
+      "entities": ["Turkey", "SDF", "Russia", "United States"],
+      "timeline": [
+        "T+5d: Turkish drone strikes on PKK/YPG command posts in Kobani and Qamishli",
+        "T+10d: US CENTCOM issues statement warning against destabilizing ground operations",
+        "T+20d: Turkey-Russia joint patrol resumes on M4 highway as de-escalation gesture"
+      ],
+      "evidence_sources": [
+        {
+          "source": "GDELT",
+          "description": "US statements (CAMEO 012: Decline comment) regarding Turkey-Syria operations increased 200% — signals diplomatic pressure against ground offensive",
+          "confidence": 0.64,
+          "timestamp": "2026-01-17T16:00:00Z",
+          "gdelt_event_id": "1089212345"
+        },
+        {
+          "source": "RAG match",
+          "description": "Pentagon briefing transcript from 2026-01-16 emphasizing 'force protection concerns for US personnel in NE Syria' — historical precedent shows this language delays Turkish ground operations by 2-4 weeks",
+          "confidence": 0.58,
+          "timestamp": "2026-01-16T20:00:00Z",
+          "gdelt_event_id": null
+        }
+      ],
+      "child_scenarios": []
+    },
+    {
+      "scenario_id": "sy-s3",
+      "description": "Diplomatic breakthrough via renewed Astana format talks produces a binding agreement on SDF withdrawal from key border areas, making a military offensive unnecessary.",
+      "probability": 0.20,
+      "answers_affirmative": false,
+      "entities": ["Turkey", "Russia", "Iran", "Syria", "SDF"],
+      "timeline": [
+        "T+7d: Russia proposes emergency Astana-format ministerial meeting",
+        "T+14d: Framework agreement on 30km safe zone with SDF withdrawal timeline",
+        "T+25d: Initial SDF pullback from Tel Rifaat under Russian guarantees"
+      ],
+      "evidence_sources": [
+        {
+          "source": "GDELT",
+          "description": "CAMEO 050 (Diplomatic cooperation) events in Astana format increased 90% in the last 30 days, though still below the threshold for successful past negotiations",
+          "confidence": 0.45,
+          "timestamp": "2026-01-12T08:00:00Z",
+          "gdelt_event_id": "1089198765"
+        }
+      ],
+      "child_scenarios": []
+    }
+  ],
+  "reasoning_summary": "The forecast is driven by three converging signals: (1) a sharp spike in CAMEO 19x military events along the Turkey-Syria border matching the pre-Operation Peace Spring temporal pattern, (2) TKG embeddings showing the current Turkey-SDF relationship vector is in the high-conflict region of the embedding space, and (3) rhetorical analysis of Turkish official statements showing escalatory language patterns. The primary restraining factor is US diplomatic pressure and the ongoing Russia-Turkey Astana dialogue, which historically delays but does not prevent Turkish operations. The 0.62 probability reflects this tension between strong escalatory indicators and meaningful diplomatic counterpressure.",
+  "evidence_count": 12,
+  "ensemble_info": {
+    "llm_probability": 0.67,
+    "tkg_probability": 0.55,
+    "weights": {"llm": 0.6, "tkg": 0.4},
+    "temperature_applied": 1.15
+  },
+  "calibration": {
+    "category": "conflict",
+    "temperature": 1.15,
+    "historical_accuracy": 0.74,
+    "brier_score": 0.19,
+    "sample_size": 142
+  },
+  "created_at": "2026-01-20T08:00:00Z",
+  "expires_at": "2026-02-19T08:00:00Z"
+}

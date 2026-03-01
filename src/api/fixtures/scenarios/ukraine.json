@@ -1,0 +1,137 @@
+{
+  "forecast_id": "fc-ua-001",
+  "question": "Will Ukraine and Russia enter formal ceasefire negotiations within the next 90 days?",
+  "prediction": "Low-to-moderate probability of formal ceasefire negotiations beginning, with diplomatic track activity increasing but fundamental preconditions for talks remaining unmet by both sides.",
+  "probability": 0.28,
+  "confidence": 0.65,
+  "horizon_days": 90,
+  "scenarios": [
+    {
+      "scenario_id": "ua-s1",
+      "description": "A major battlefield stalemate combined with mounting economic pressure and a shift in US diplomatic posture catalyzes back-channel contacts that escalate into a formal negotiation framework.",
+      "probability": 0.18,
+      "answers_affirmative": true,
+      "entities": ["Ukraine", "Russia", "United States", "EU", "China"],
+      "timeline": [
+        "T+15d: Back-channel contacts via intermediaries (Turkey, UAE) intensify",
+        "T+30d: US Secretary of State signals openness to 'realistic diplomatic outcomes'",
+        "T+50d: Joint statement from Turkey and China offering co-mediation framework",
+        "T+75d: Preliminary format talks begin in Istanbul or Geneva"
+      ],
+      "evidence_sources": [
+        {
+          "source": "GDELT",
+          "description": "CAMEO 040 (Consult) events between US and Russia increased 150% in the last 30 days, driven by back-channel diplomatic contacts and UN General Assembly sidebar meetings",
+          "confidence": 0.52,
+          "timestamp": "2026-01-10T12:00:00Z",
+          "gdelt_event_id": "1088934567"
+        },
+        {
+          "source": "TKG pattern",
+          "description": "Temporal graph shows Ukraine-Russia relationship embedding trajectory converging toward the 'negotiation precursor' cluster identified from historical Bosnia (1995) and Korea (1953) conflict resolution patterns",
+          "confidence": 0.41,
+          "timestamp": null,
+          "gdelt_event_id": null
+        },
+        {
+          "source": "RAG match",
+          "description": "Chinese Foreign Ministry spokesperson language on Ukraine shifted from 'respecting territorial integrity' to 'pragmatic peace framework' — a rhetorical evolution that preceded China's 12-point peace plan proposal",
+          "confidence": 0.48,
+          "timestamp": "2026-01-08T06:00:00Z",
+          "gdelt_event_id": null
+        }
+      ],
+      "child_scenarios": [
+        {
+          "scenario_id": "ua-s1-1",
+          "description": "Negotiations begin but collapse within the first week over the territorial sovereignty impasse, with Russia demanding recognition of annexed territories and Ukraine refusing any concessions.",
+          "probability": 0.65,
+          "answers_affirmative": true,
+          "entities": ["Ukraine", "Russia"],
+          "timeline": [
+            "T+78d: Opening plenary session with maximalist positions from both sides",
+            "T+82d: Talks suspended after Russia tables 'constitutional neutrality' demand"
+          ],
+          "evidence_sources": [
+            {
+              "source": "TKG pattern",
+              "description": "Historical ceasefire negotiation attempts in this conflict: 3/3 failed at the precondition stage (graph pattern recurrence: 1.0)",
+              "confidence": 0.82,
+              "timestamp": null,
+              "gdelt_event_id": null
+            }
+          ],
+          "child_scenarios": []
+        }
+      ]
+    },
+    {
+      "scenario_id": "ua-s2",
+      "description": "Both sides continue the current attritional warfare pattern, with neither achieving sufficient battlefield leverage to force the other into negotiations. Diplomatic rhetoric remains aspirational without concrete action.",
+      "probability": 0.55,
+      "answers_affirmative": false,
+      "entities": ["Ukraine", "Russia", "NATO", "EU"],
+      "timeline": [
+        "T+30d: Spring thaw limits offensive operations, creating a de facto operational pause",
+        "T+60d: New Western arms package announced, signaling continued military support",
+        "T+90d: Both sides reaffirm maximalist war aims at respective national addresses"
+      ],
+      "evidence_sources": [
+        {
+          "source": "GDELT",
+          "description": "CAMEO 190-195 (Military force) events between Ukraine and Russia remain at sustained high levels with no statistically significant decline trend over the last 90 days",
+          "confidence": 0.78,
+          "timestamp": "2026-01-19T10:00:00Z",
+          "gdelt_event_id": "1089267890"
+        },
+        {
+          "source": "RAG match",
+          "description": "Ukrainian Presidential Office statement from 2026-01-14 reiterating 'no negotiations until full withdrawal from internationally recognized borders' — a precondition Russia explicitly rejects",
+          "confidence": 0.85,
+          "timestamp": "2026-01-14T14:00:00Z",
+          "gdelt_event_id": null
+        }
+      ],
+      "child_scenarios": []
+    },
+    {
+      "scenario_id": "ua-s3",
+      "description": "A major escalation event (tactical nuclear threat, strike on critical infrastructure) forces an emergency international crisis response that creates diplomatic momentum for talks under extreme pressure.",
+      "probability": 0.10,
+      "answers_affirmative": true,
+      "entities": ["Russia", "Ukraine", "United States", "NATO", "UN Security Council"],
+      "timeline": [
+        "T+20d: Escalatory event triggers emergency UN Security Council session",
+        "T+25d: G7 emergency summit issues ultimatum with secondary sanctions threat",
+        "T+40d: Crisis diplomacy produces framework agreement for monitored ceasefire"
+      ],
+      "evidence_sources": [
+        {
+          "source": "TKG pattern",
+          "description": "Escalation risk embeddings for Russia-NATO relationship have been trending toward the high-risk quadrant since Q4 2025, but remain below the critical threshold observed before historical escalation events",
+          "confidence": 0.35,
+          "timestamp": null,
+          "gdelt_event_id": null
+        }
+      ],
+      "child_scenarios": []
+    }
+  ],
+  "reasoning_summary": "The forecast reflects significant diplomatic activity at the back-channel level (CAMEO 04x events up 150%) but recognizes that the fundamental preconditions for formal negotiations remain unmet. Ukraine's territorial integrity demands and Russia's insistence on recognizing annexed territories create an impasse that increased diplomatic contact alone cannot bridge. The TKG model's embedding analysis shows the relationship trajectory moving toward historical negotiation-precursor patterns, but at a pace too slow to produce formal talks within 90 days absent a forcing function. The LLM weights this higher than the TKG (0.31 vs 0.22) because it can reason about the qualitative shifts in US and Chinese diplomatic language that the structural model misses.",
+  "evidence_count": 8,
+  "ensemble_info": {
+    "llm_probability": 0.31,
+    "tkg_probability": 0.22,
+    "weights": {"llm": 0.6, "tkg": 0.4},
+    "temperature_applied": 1.08
+  },
+  "calibration": {
+    "category": "diplomatic",
+    "temperature": 1.08,
+    "historical_accuracy": 0.69,
+    "brier_score": 0.24,
+    "sample_size": 87
+  },
+  "created_at": "2026-01-20T08:00:00Z",
+  "expires_at": "2026-04-20T08:00:00Z"
+}
