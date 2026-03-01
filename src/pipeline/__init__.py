@@ -6,8 +6,18 @@ This package implements the autonomous daily forecast cycle:
 2. BudgetTracker -- Gemini budget management with PendingQuestion queue
 3. OutcomeResolver -- Ground-truth resolution comparing predictions to events
 4. DailyPipeline -- Orchestrator tying all components into a 4-phase daily cycle
-
-Lazy imports: use ``from src.pipeline.<module> import <Class>`` for
-direct imports to avoid circular or missing-module errors during
-incremental development.
 """
+
+from src.pipeline.budget_tracker import BudgetTracker
+from src.pipeline.daily_forecast import DailyPipeline, PipelineResult
+from src.pipeline.outcome_resolver import OutcomeResolver
+from src.pipeline.question_generator import GeneratedQuestion, QuestionGenerator
+
+__all__ = [
+    "BudgetTracker",
+    "DailyPipeline",
+    "GeneratedQuestion",
+    "OutcomeResolver",
+    "PipelineResult",
+    "QuestionGenerator",
+]
