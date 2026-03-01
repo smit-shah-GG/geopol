@@ -5,15 +5,15 @@
 See: .planning/PROJECT.md (updated 2026-02-27)
 
 **Core value:** Explainability -- every forecast must provide clear, traceable reasoning paths
-**Current focus:** Phase 12 in progress. Plans 01-05 complete, 03 (globe) complete. Plans 06+07 remain.
+**Current focus:** Phase 12 in progress. Plans 01-06 complete. Plan 07 (build + deploy) remains.
 
 ## Current Position
 
 Milestone: v2.0 Operationalization & Forecast Quality
 Phase: 12 of 13 (WM-Derived Frontend) -- IN PROGRESS
-Plan: 03 of 7 (in phase 12) -- plans 01,02,03,04,05 COMPLETE
+Plan: 06 of 7 (in phase 12) -- plans 01,02,03,04,05,06 COMPLETE
 Status: In progress
-Last activity: 2026-03-02 -- Completed 12-03-PLAN.md (DeckGLMap globe)
+Last activity: 2026-03-02 -- Completed 12-06-PLAN.md (CountryBriefPage)
 
 Progress: [##############################..........] 75% (12/16 phases lifetime)
 v2.0:    [######....] 60% (3/5 phases complete, 12 in progress)
@@ -21,9 +21,9 @@ v2.0:    [######....] 60% (3/5 phases complete, 12 in progress)
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 40
+- Total plans completed: 41
 - Average duration: 13 minutes
-- Total execution time: 8.91 hours
+- Total execution time: 9.01 hours
 
 **By Phase:**
 
@@ -40,11 +40,11 @@ v2.0:    [######....] 60% (3/5 phases complete, 12 in progress)
 | 09-api-foundation | 6 | 33min | 6min |
 | 10-ingest-forecast-pipeline | 4 | 27min | 7min |
 | 11-tkg-predictor-replacement | 3 | 21min | 7min |
-| 12-wm-derived-frontend | 5 | 27min | 5min |
+| 12-wm-derived-frontend | 6 | 33min | 6min |
 
 **Recent Trend:**
-- Last 4 plans: 12-02 (2min), 12-05 (3min), 12-04 (6min), 12-03 (9min)
-- Trend: Stable velocity; 12-03 slightly longer due to GeoJSON data acquisition + 5 deck.gl layers
+- Last 4 plans: 12-05 (3min), 12-04 (6min), 12-03 (9min), 12-06 (6min)
+- Trend: Stable velocity; 12-06 at 6min for 1231-line component + 615 lines CSS
 
 ## Accumulated Context
 
@@ -126,6 +126,9 @@ Key decisions affecting current work:
 - Natural Earth 110m GeoJSON slimmed to 258KB; LABEL_X/LABEL_Y as centroids (2026-03-02, 12-03)
 - Custom tooltip DOM in DeckGLMap (not deck.gl built-in) for positioning control (2026-03-02, 12-03)
 - HeatmapLayer data empty initially; ready for GDELT events endpoint (2026-03-02, 12-03)
+- Entity graph runs d3.forceSimulation synchronously (200 ticks) -- no animation, stable layout (2026-03-02, 12-06)
+- CAMEO frequency extraction from evidence_sources via regex (2-digit code + CAMEO reference) (2026-03-02, 12-06)
+- entityViewMode as class field for graph/table toggle state (2026-03-02, 12-06)
 
 ### Deferred Issues
 
@@ -149,6 +152,6 @@ Key decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-03-02
-Stopped at: Completed 12-03-PLAN.md (DeckGLMap globe component)
+Stopped at: Completed 12-06-PLAN.md (CountryBriefPage)
 Resume file: None
-Next: Remaining plans 12-06 (main.ts wiring), 12-07 (build + deploy)
+Next: Plan 12-07 (main.ts wiring + build + deploy)
