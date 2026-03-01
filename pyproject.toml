@@ -55,6 +55,11 @@ dependencies = [
     "redis[hiredis]>=5.0",
     "pydantic-settings>=2.0",
     "python-multipart>=0.0.9",
+    # v2.0 Ingest & Forecast Pipeline
+    "aiohttp>=3.9",
+    "cachetools>=5.3",
+    "feedparser>=6.0",
+    "trafilatura>=2.0",
 ]
 
 [project.optional-dependencies]

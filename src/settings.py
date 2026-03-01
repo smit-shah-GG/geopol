@@ -42,6 +42,18 @@ class Settings(BaseSettings):
         "http://localhost:3000",
     ]
 
+    # -- GDELT Ingest --
+    gdelt_poll_interval: int = 900  # 15 minutes in seconds
+    gdelt_backfill_on_start: bool = True
+
+    # -- RSS Ingest --
+    rss_poll_interval_tier1: int = 900  # 15 minutes
+    rss_poll_interval_tier2: int = 3600  # 1 hour
+    rss_article_retention_days: int = 90
+
+    # -- Daily Pipeline --
+    gemini_daily_budget: int = 25  # Max questions per day
+
     # -- Logging --
     log_level: str = "INFO"
     log_json: bool = False

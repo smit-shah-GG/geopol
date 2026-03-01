@@ -143,7 +143,7 @@ class CalibrationWeight(Base):
 
 
 class IngestRun(Base):
-    """Audit record for a micro-batch GDELT ingest cycle."""
+    """Audit record for a micro-batch ingest cycle (GDELT or RSS)."""
 
     __tablename__ = "ingest_runs"
 
@@ -156,7 +156,10 @@ class IngestRun(Base):
     )
     status: Mapped[str] = mapped_column(
         String(20), nullable=False
-    )  # running | success | failed
+    )  # running | success | failed | interrupted
+    daemon_type: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="gdelt"
+    )  # gdelt | rss
     events_fetched: Mapped[int] = mapped_column(Integer, default=0)
     events_new: Mapped[int] = mapped_column(Integer, default=0)
     events_duplicate: Mapped[int] = mapped_column(Integer, default=0)
@@ -164,8 +167,38 @@ class IngestRun(Base):
 
     def __repr__(self) -> str:
         return (
-            f"<IngestRun(id={self.id}, status={self.status!r}, "
-            f"new={self.events_new})>"
+            f"<IngestRun(id={self.id}, daemon={self.daemon_type!r}, "
+            f"status={self.status!r}, new={self.events_new})>"
+        )
+
+
+class PendingQuestion(Base):
+    """Questions queued when Gemini budget is exhausted mid-pipeline.
+
+    The daily forecast pipeline generates questions from GDELT events.
+    When the Gemini API budget ceiling is hit, remaining questions are
+    persisted here and prioritised in the next day's run.
+    """
+
+    __tablename__ = "pending_questions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    question: Mapped[str] = mapped_column(Text, nullable=False)
+    country_iso: Mapped[Optional[str]] = mapped_column(String(3), nullable=True)
+    horizon_days: Mapped[int] = mapped_column(Integer, nullable=False, default=21)
+    category: Mapped[str] = mapped_column(String(32), nullable=False)
+    priority: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow
+    )
+    status: Mapped[str] = mapped_column(
+        String(20), default="pending"
+    )  # pending | processing | completed
+
+    def __repr__(self) -> str:
+        return (
+            f"<PendingQuestion(id={self.id}, category={self.category!r}, "
+            f"status={self.status!r})>"
         )
 
 
