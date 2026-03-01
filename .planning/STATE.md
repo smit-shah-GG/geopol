@@ -5,25 +5,25 @@
 See: .planning/PROJECT.md (updated 2026-02-27)
 
 **Core value:** Explainability -- every forecast must provide clear, traceable reasoning paths
-**Current focus:** Phase 11 complete. TKG Predictor Replacement delivered (3 plans). Phases 12/13 remain.
+**Current focus:** Phase 12 in progress. Frontend scaffold delivered (plan 01/07). 6 panel plans remain.
 
 ## Current Position
 
 Milestone: v2.0 Operationalization & Forecast Quality
-Phase: 11 of 13 (TKG Predictor Replacement) -- COMPLETE
-Plan: 03 of 3 (in phase 11) -- COMPLETE
-Status: Phase complete
-Last activity: 2026-03-01 -- Completed 11-03-PLAN.md (integration + backend dispatch)
+Phase: 12 of 13 (WM-Derived Frontend) -- IN PROGRESS
+Plan: 01 of 7 (in phase 12) -- COMPLETE
+Status: In progress
+Last activity: 2026-03-02 -- Completed 12-01-PLAN.md (frontend scaffold + build system)
 
-Progress: [############################............] 69% (11/16 phases lifetime)
-v2.0:    [######....] 60% (3/5 phases complete)
+Progress: [##############################..........] 75% (12/16 phases lifetime)
+v2.0:    [######....] 60% (3/5 phases complete, 12 in progress)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 35
-- Average duration: 15 minutes
-- Total execution time: 8.47 hours
+- Total plans completed: 36
+- Average duration: 14 minutes
+- Total execution time: 8.58 hours
 
 **By Phase:**
 
@@ -40,10 +40,11 @@ v2.0:    [######....] 60% (3/5 phases complete)
 | 09-api-foundation | 6 | 33min | 6min |
 | 10-ingest-forecast-pipeline | 4 | 27min | 7min |
 | 11-tkg-predictor-replacement | 3 | 21min | 7min |
+| 12-wm-derived-frontend | 1 | 7min | 7min |
 
 **Recent Trend:**
-- Last 4 plans: 10-04 (10min), 11-01 (7min), 11-02 (6min), 11-03 (8min)
-- Trend: Consistent (integration work, test-driven, reuse-heavy)
+- Last 4 plans: 11-01 (7min), 11-02 (6min), 11-03 (8min), 12-01 (7min)
+- Trend: Consistent (scaffold + integration, reuse-heavy from WM)
 
 ## Accumulated Context
 
@@ -103,6 +104,11 @@ Key decisions affecting current work:
 - TiRGN predict_object uses raw_decoder directly (not fused distribution) for inference speed (2026-03-01, 11-03)
 - Scheduler model_tirgn config section alongside existing model section (2026-03-01, 11-03)
 - retrain_tkg.py --backend override resets Settings singleton before scheduler init (2026-03-01, 11-03)
+- localStorage key 'geopol-theme' for theme persistence, 'geopol-panel-spans' for resize state (2026-03-02, 12-01)
+- No i18n, no Tauri, no analytics in Panel -- web-only, English-only (2026-03-02, 12-01)
+- GeoPolAppContext ~8 fields (focused) vs WM's 100+ (2026-03-02, 12-01)
+- Monospace analyst aesthetic: SF Mono, #0a0e14 dark bg, terminal-inspired (2026-03-02, 12-01)
+- TypeScript DTO fields use snake_case matching JSON wire format (2026-03-02, 12-01)
 
 ### Deferred Issues
 
@@ -120,12 +126,12 @@ Key decisions affecting current work:
 - TiRGN JAX port has no published reference implementation (RESOLVED: model architecture ported successfully in 11-01, research doc sufficient)
 - Gemini API cost exposure under public traffic (RESOLVED: rate limiter + Gemini budget tracking in 10-02, enforcement wired to endpoints in 10-04, budget exhaustion returns 429)
 - jraph archived by Google DeepMind (RESOLVED: eliminated in 09-03)
-- Polyglot tax: Python + TypeScript + Rust/Tauri -- three ecosystems for single developer
+- Polyglot tax: Python + TypeScript -- two ecosystems for single developer (Rust/Tauri dropped, web-only)
 - Docker daemon not auto-started -- verification of PostgreSQL/Redis containers and Alembic migration deferred
 
 ## Session Continuity
 
-Last session: 2026-03-01
-Stopped at: Completed 11-03-PLAN.md (integration + backend dispatch) -- Phase 11 complete
+Last session: 2026-03-02
+Stopped at: Completed 12-01-PLAN.md (frontend scaffold + build system)
 Resume file: None
-Next: Phase 12 (TypeScript frontend) or Phase 13 (calibration) -- parallel eligible
+Next: 12-02-PLAN.md through 12-07-PLAN.md (6 remaining panel plans in Phase 12)
