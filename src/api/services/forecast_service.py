@@ -219,6 +219,33 @@ class ForecastService:
             has_more=has_more,
         )
 
+    async def get_top_forecasts(
+        self,
+        limit: int = 5,
+    ) -> list[ForecastResponse]:
+        """Retrieve the top N forecasts sorted by probability descending.
+
+        Only returns non-expired predictions.
+
+        Args:
+            limit: Maximum forecasts to return.
+
+        Returns:
+            List of ForecastResponse DTOs ordered by probability DESC.
+        """
+        from datetime import datetime, timezone
+
+        now = datetime.now(timezone.utc)
+        stmt = (
+            select(Prediction)
+            .where(Prediction.expires_at > now)
+            .order_by(Prediction.probability.desc())
+            .limit(limit)
+        )
+        result = await self.session.execute(stmt)
+        rows = result.scalars().all()
+        return [self.prediction_to_dto(row) for row in rows]
+
     @staticmethod
     def prediction_to_dto(prediction: Prediction) -> ForecastResponse:
         """Convert a Prediction ORM model to a ForecastResponse DTO.

@@ -21,6 +21,7 @@ from collections.abc import AsyncGenerator
 from fastapi import FastAPI
 from sqlalchemy import select
 
+from src.api.deps import _close_redis, get_redis
 from src.api.errors import register_error_handlers
 from src.api.middleware.cors import configure_cors
 from src.db.models import ApiKey
@@ -41,10 +42,12 @@ async def _lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     Startup:
       1. Configure structured logging
       2. Initialize PostgreSQL async engine
-      3. Seed dev API key (development only)
+      3. Initialize Redis client (degrades to NullRedis if unavailable)
+      4. Seed dev API key (development only)
 
     Shutdown:
-      1. Dispose PostgreSQL engine connection pool
+      1. Close Redis connection
+      2. Dispose PostgreSQL engine connection pool
     """
     settings = get_settings()
 
@@ -56,7 +59,11 @@ async def _lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     init_db()
     logger.info("PostgreSQL engine initialized")
 
-    # 3. Dev API key seeding
+    # 3. Redis
+    await get_redis()
+    logger.info("Redis client initialized")
+
+    # 4. Dev API key seeding
     if settings.environment == "development":
         await _seed_dev_api_key()
 
@@ -64,6 +71,7 @@ async def _lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # Shutdown
     logger.info("Geopol API shutting down")
+    await _close_redis()
     await close_db()
 
 
