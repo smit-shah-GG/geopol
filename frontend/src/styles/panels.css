@@ -215,3 +215,254 @@
 [data-theme="light"] .panel-info-tooltip {
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
 }
+
+/* ========================================================================
+   Empty State
+   ======================================================================== */
+
+.empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-xl);
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+  text-align: center;
+}
+
+/* ========================================================================
+   Forecast Cards (ForecastPanel)
+   ======================================================================== */
+
+.forecast-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  padding: var(--space-sm) var(--space-md);
+  border-bottom: 1px solid var(--border-subtle);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.forecast-card:hover {
+  background: var(--bg-elevated);
+}
+
+.forecast-card:last-child {
+  border-bottom: none;
+}
+
+.forecast-question {
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+  line-height: var(--line-height-tight);
+}
+
+.forecast-bar-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.probability-bar {
+  flex: 1;
+  height: 4px;
+  background: var(--border-subtle);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.probability-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width var(--transition-base);
+}
+
+.probability-fill.severity-critical { background: var(--prob-extreme); }
+.probability-fill.severity-high { background: var(--prob-high); }
+.probability-fill.severity-elevated { background: var(--prob-medium); }
+.probability-fill.severity-normal { background: var(--prob-low); }
+.probability-fill.severity-low { background: var(--semantic-neutral); }
+
+.probability-badge {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+  min-width: 44px;
+  text-align: right;
+}
+
+.forecast-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  flex-wrap: wrap;
+}
+
+.forecast-country {
+  letter-spacing: 0.5px;
+}
+
+.forecast-confidence,
+.forecast-scenarios,
+.forecast-time {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ========================================================================
+   Risk Index Rows (RiskIndexPanel)
+   ======================================================================== */
+
+.risk-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  border-bottom: 1px solid var(--border-subtle);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.risk-row:hover {
+  background: var(--bg-elevated);
+}
+
+.risk-row:last-child {
+  border-bottom: none;
+}
+
+.risk-country {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  min-width: 56px;
+  white-space: nowrap;
+}
+
+.risk-score {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  min-width: 28px;
+  text-align: right;
+}
+
+.risk-score.severity-critical { color: var(--semantic-critical); }
+.risk-score.severity-high { color: var(--prob-high); }
+.risk-score.severity-elevated { color: var(--semantic-warning); }
+.risk-score.severity-normal { color: var(--semantic-success); }
+.risk-score.severity-low { color: var(--semantic-neutral); }
+
+.trend-rising { color: var(--semantic-critical); font-weight: 700; }
+.trend-stable { color: var(--text-muted); }
+.trend-falling { color: var(--semantic-success); font-weight: 700; }
+
+.risk-question {
+  flex: 1;
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ========================================================================
+   Event Timeline Rows (EventTimelinePanel)
+   ======================================================================== */
+
+.event-notice {
+  padding: var(--space-xs) var(--space-md);
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  font-style: italic;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.event-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-xs) var(--space-md);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+}
+
+.event-row.odd {
+  background: var(--bg-surface);
+}
+
+.event-row.even {
+  background: transparent;
+}
+
+.event-time {
+  color: var(--text-muted);
+  min-width: 28px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.event-desc {
+  flex: 1;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cameo-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 5px;
+  font-size: 9px;
+  font-weight: 600;
+  border-radius: 2px;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+}
+
+.cameo-cooperative {
+  color: var(--semantic-success);
+  background: rgba(46, 204, 113, 0.1);
+  border: 1px solid rgba(46, 204, 113, 0.2);
+}
+
+.cameo-neutral {
+  color: var(--text-muted);
+  background: rgba(128, 144, 164, 0.1);
+  border: 1px solid rgba(128, 144, 164, 0.2);
+}
+
+.cameo-conflictual {
+  color: var(--semantic-warning);
+  background: rgba(230, 162, 60, 0.1);
+  border: 1px solid rgba(230, 162, 60, 0.2);
+}
+
+.cameo-hostile {
+  color: var(--semantic-critical);
+  background: rgba(230, 57, 70, 0.1);
+  border: 1px solid rgba(230, 57, 70, 0.2);
+}
+
+.goldstein-indicator {
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+  min-width: 32px;
+  text-align: right;
+}
+
+.goldstein-pos { color: var(--semantic-success); }
+.goldstein-neg { color: var(--semantic-critical); }
+.goldstein-zero { color: var(--text-muted); }
+
+.event-country {
+  color: var(--text-muted);
+  font-size: 9px;
+  min-width: 20px;
+  text-align: center;
+}
