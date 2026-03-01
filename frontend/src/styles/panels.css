@@ -1154,3 +1154,619 @@
 [data-theme="light"] .map-tooltip {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
+
+/* ========================================================================
+   CountryBriefPage -- Full-screen Tabbed Modal
+   ======================================================================== */
+
+.country-brief-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  z-index: var(--z-modal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.country-brief-modal {
+  position: fixed;
+  inset: 20px;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  z-index: calc(var(--z-modal) + 1);
+  overflow: hidden;
+}
+
+/* ---- Header ---- */
+
+.country-brief-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-sm) var(--space-lg);
+  background: var(--panel-header-bg);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  min-height: 44px;
+}
+
+.country-brief-header-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  min-width: 0;
+  flex: 1;
+}
+
+.country-brief-flag {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.country-brief-name {
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  color: var(--text-primary);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.country-brief-iso {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+}
+
+.country-brief-risk-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  font-family: var(--font-mono);
+  letter-spacing: 0.5px;
+  border-radius: 2px;
+  color: var(--text-secondary);
+  background: rgba(128, 144, 164, 0.1);
+  border: 1px solid rgba(128, 144, 164, 0.2);
+}
+
+.country-brief-risk-badge.severity-critical {
+  color: var(--semantic-critical);
+  background: rgba(230, 57, 70, 0.12);
+  border-color: rgba(230, 57, 70, 0.25);
+}
+
+.country-brief-risk-badge.severity-high {
+  color: var(--prob-high);
+  background: rgba(230, 126, 34, 0.12);
+  border-color: rgba(230, 126, 34, 0.25);
+}
+
+.country-brief-risk-badge.severity-elevated {
+  color: var(--semantic-warning);
+  background: rgba(230, 162, 60, 0.12);
+  border-color: rgba(230, 162, 60, 0.25);
+}
+
+.country-brief-risk-badge.severity-normal {
+  color: var(--semantic-success);
+  background: rgba(46, 204, 113, 0.12);
+  border-color: rgba(46, 204, 113, 0.25);
+}
+
+.country-brief-close-btn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all var(--transition-fast);
+  line-height: 1;
+}
+
+.country-brief-close-btn:hover {
+  color: var(--text-primary);
+  border-color: var(--text-secondary);
+  background: var(--bg-elevated);
+}
+
+/* ---- Tab Bar ---- */
+
+.country-brief-tabs {
+  display: flex;
+  gap: 0;
+  padding: 0 var(--space-lg);
+  background: var(--panel-header-bg);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  overflow-x: auto;
+}
+
+.tab-button {
+  padding: var(--space-sm) var(--space-md);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all var(--transition-fast);
+}
+
+.tab-button:hover {
+  color: var(--text-secondary);
+  background: rgba(128, 144, 164, 0.05);
+}
+
+.tab-button.tab-active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+/* ---- Tab Content ---- */
+
+.tab-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-lg);
+}
+
+.cb-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-xl);
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+  font-family: var(--font-mono);
+}
+
+.cb-empty-tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-xl);
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+  text-align: center;
+}
+
+/* ---- Overview Grid (2x2) ---- */
+
+.overview-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-md);
+}
+
+.overview-card {
+  background: var(--bg-elevated);
+  padding: var(--space-md) var(--space-lg);
+  border-radius: 4px;
+  border: 1px solid var(--border-subtle);
+}
+
+.overview-card-label {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--text-muted);
+  margin-bottom: var(--space-sm);
+}
+
+.overview-card-value {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xl);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+  margin-bottom: var(--space-xs);
+}
+
+.overview-card-question {
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+  line-height: var(--line-height-tight);
+  margin-bottom: var(--space-xs);
+}
+
+.overview-card-sub {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+.overview-card-empty {
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.overview-confidence {
+  color: var(--text-muted);
+}
+
+.overview-forecast-bar {
+  height: 6px;
+  background: var(--border-subtle);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: var(--space-xs);
+}
+
+.overview-forecast-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 3px;
+  transition: width var(--transition-base);
+}
+
+/* ---- Forecast Detail Cards (Active Forecasts + History tabs) ---- */
+
+.forecast-detail-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  padding: var(--space-md);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  margin-bottom: var(--space-sm);
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+  background: var(--bg-elevated);
+}
+
+.forecast-detail-card:hover {
+  background: var(--panel-bg);
+  border-color: var(--accent-muted);
+}
+
+.forecast-detail-question {
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+  line-height: var(--line-height-tight);
+  font-weight: 600;
+}
+
+.forecast-detail-bar-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.forecast-detail-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  flex-wrap: wrap;
+}
+
+.forecast-detail-confidence {
+  color: var(--text-secondary);
+}
+
+.forecast-detail-dates {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+/* ---- GDELT Events (mock rows) ---- */
+
+.cb-events-notice {
+  padding: var(--space-sm) var(--space-md);
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  font-style: italic;
+  border-bottom: 1px solid var(--border-subtle);
+  margin-bottom: var(--space-sm);
+}
+
+.cb-events-table {
+  font-family: var(--font-mono);
+}
+
+.cb-event-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-xs) var(--space-md);
+  font-size: var(--font-size-xs);
+}
+
+.cb-event-row.cb-event-header {
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.cb-event-row.odd {
+  background: var(--bg-surface);
+}
+
+.cb-event-cell {
+  font-variant-numeric: tabular-nums;
+}
+
+.cb-event-time {
+  min-width: 64px;
+  color: var(--text-muted);
+}
+
+.cb-event-actors {
+  flex: 1;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cb-event-goldstein {
+  min-width: 48px;
+  text-align: right;
+  font-weight: 600;
+}
+
+/* ---- Risk Signals (CAMEO breakdown) ---- */
+
+.risk-signals-table {
+  font-family: var(--font-mono);
+}
+
+.cameo-category-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-xs) var(--space-md);
+  font-size: var(--font-size-xs);
+}
+
+.cameo-category-row.cameo-header {
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.cameo-category-row.odd {
+  background: var(--bg-surface);
+}
+
+.cameo-cell {
+  font-variant-numeric: tabular-nums;
+}
+
+.cameo-cell-code {
+  min-width: 32px;
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+.cameo-cell-name {
+  flex: 1;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cameo-cell-freq {
+  min-width: 36px;
+  text-align: right;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.cameo-cell-goldstein {
+  min-width: 120px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.goldstein-bar-track {
+  display: inline-block;
+  width: 60px;
+  height: 4px;
+  background: var(--border-subtle);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.goldstein-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+}
+
+.cameo-cell-trend {
+  min-width: 24px;
+  text-align: center;
+  font-weight: 700;
+}
+
+.cameo-legend {
+  padding: var(--space-sm) var(--space-md);
+  font-size: 9px;
+  color: var(--text-muted);
+  letter-spacing: 0.3px;
+  border-top: 1px solid var(--border-subtle);
+  margin-top: var(--space-sm);
+}
+
+/* ---- Forecast History ---- */
+
+.history-chart-wrapper {
+  margin-bottom: var(--space-lg);
+}
+
+.history-chart {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+.history-list {
+  margin-top: var(--space-md);
+}
+
+/* ---- Entity Relations ---- */
+
+.view-toggle {
+  display: flex;
+  gap: 0;
+  margin-bottom: var(--space-md);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+  width: fit-content;
+}
+
+.view-toggle-btn {
+  padding: var(--space-xs) var(--space-md);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.view-toggle-btn:hover {
+  color: var(--text-secondary);
+  background: rgba(128, 144, 164, 0.05);
+}
+
+.view-toggle-btn.active {
+  color: var(--accent);
+  background: var(--accent-muted);
+}
+
+.entity-graph-container {
+  margin-bottom: var(--space-md);
+}
+
+.entity-graph-container svg {
+  display: block;
+}
+
+.entity-table {
+  font-family: var(--font-mono);
+}
+
+.entity-table-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-xs) var(--space-md);
+  font-size: var(--font-size-xs);
+}
+
+.entity-table-row.entity-table-header {
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.entity-table-row.odd {
+  background: var(--bg-surface);
+}
+
+.entity-table-cell {
+  font-variant-numeric: tabular-nums;
+}
+
+.entity-cell-name {
+  flex: 1;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.entity-cell-freq {
+  min-width: 36px;
+  text-align: right;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.entity-cell-prob {
+  min-width: 60px;
+  text-align: right;
+  color: var(--text-muted);
+}
+
+/* ---- Calibration (Country Brief reuses CalibrationPanel patterns) ---- */
+
+.cameo-accuracy-table {
+  margin-top: var(--space-lg);
+}
+
+.brier-summary {
+  font-weight: 700;
+  border-top: 1px solid var(--border);
+  margin-top: var(--space-xs);
+  padding-top: var(--space-xs);
+}
+
+/* ---- Light theme country brief overrides ---- */
+
+[data-theme="light"] .country-brief-backdrop {
+  background: rgba(0, 0, 0, 0.6);
+}
+
+[data-theme="light"] .forecast-detail-card {
+  border-color: var(--border);
+}
+
+/* ---- Responsive ---- */
+
+@media (max-width: 768px) {
+  .country-brief-modal {
+    inset: 8px;
+  }
+
+  .overview-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .country-brief-tabs {
+    padding: 0 var(--space-sm);
+  }
+
+  .tab-button {
+    padding: var(--space-xs) var(--space-sm);
+    font-size: 9px;
+  }
+}
