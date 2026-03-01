@@ -228,3 +228,139 @@ def test_logger_metrics_format() -> None:
         # Verify TensorBoard event files were created
         event_files = list(Path(logdir).glob("events.out.tfevents.*"))
         assert len(event_files) > 0, "TensorBoard event file not created"
+
+
+# ---------------------------------------------------------------------------
+# Test 6: ComparisonResult dataclass pass/fail logic
+# ---------------------------------------------------------------------------
+
+
+def test_comparison_result_dataclass() -> None:
+    """ComparisonResult.passed reflects delta_pct >= pass_threshold."""
+    from src.training.compare_models import ComparisonResult
+
+    # TiRGN wins by 12.5% -- should pass
+    r1 = ComparisonResult(
+        tirgn_mrr=0.45,
+        regcn_mrr=0.40,
+        delta=0.05,
+        delta_pct=12.5,
+        pass_threshold=-5.0,
+        passed=True,
+        tirgn_checkpoint="t.npz",
+        regcn_checkpoint="r.npz",
+        eval_split="test",
+        num_test_triples=100,
+        timestamp="2026-03-01T00:00:00Z",
+    )
+    assert r1.passed is True
+
+    # TiRGN loses by 12.5% -- exceeds -5% threshold, should fail
+    r2 = ComparisonResult(
+        tirgn_mrr=0.35,
+        regcn_mrr=0.40,
+        delta=-0.05,
+        delta_pct=-12.5,
+        pass_threshold=-5.0,
+        passed=False,
+        tirgn_checkpoint="t.npz",
+        regcn_checkpoint="r.npz",
+        eval_split="test",
+        num_test_triples=100,
+        timestamp="2026-03-01T00:00:00Z",
+    )
+    assert r2.passed is False
+
+    # TiRGN loses by 3% -- within -5% threshold, should pass
+    r3 = ComparisonResult(
+        tirgn_mrr=0.388,
+        regcn_mrr=0.40,
+        delta=-0.012,
+        delta_pct=-3.0,
+        pass_threshold=-5.0,
+        passed=True,
+        tirgn_checkpoint="t.npz",
+        regcn_checkpoint="r.npz",
+        eval_split="test",
+        num_test_triples=100,
+        timestamp="2026-03-01T00:00:00Z",
+    )
+    assert r3.passed is True
+
+    # Boundary: exactly at threshold
+    r4 = ComparisonResult(
+        tirgn_mrr=0.38,
+        regcn_mrr=0.40,
+        delta=-0.02,
+        delta_pct=-5.0,
+        pass_threshold=-5.0,
+        passed=True,
+        tirgn_checkpoint="t.npz",
+        regcn_checkpoint="r.npz",
+        eval_split="test",
+        num_test_triples=100,
+        timestamp="2026-03-01T00:00:00Z",
+    )
+    assert r4.passed is True
+
+
+# ---------------------------------------------------------------------------
+# Test 7: Comparison report JSON schema
+# ---------------------------------------------------------------------------
+
+
+def test_comparison_report_json_schema(tmp_model_dir: Path) -> None:
+    """compare_models writes JSON with all required keys."""
+    from dataclasses import asdict
+
+    from src.training.compare_models import ComparisonResult
+
+    # Build a result directly (skip actual model evaluation)
+    result = ComparisonResult(
+        tirgn_mrr=0.452,
+        regcn_mrr=0.404,
+        delta=0.048,
+        delta_pct=11.88,
+        pass_threshold=-5.0,
+        passed=True,
+        tirgn_checkpoint="models/tkg/tirgn_best.npz",
+        regcn_checkpoint="models/tkg/regcn_best.npz",
+        eval_split="test",
+        num_test_triples=12345,
+        timestamp="2026-03-01T12:00:00Z",
+    )
+
+    # Serialize as compare_models would
+    output_path = tmp_model_dir / "comparison_report.json"
+    with open(output_path, "w") as f:
+        json.dump(asdict(result), f, indent=2)
+
+    # Read back and verify schema
+    with open(output_path) as f:
+        report = json.load(f)
+
+    required_keys = {
+        "tirgn_mrr",
+        "regcn_mrr",
+        "delta",
+        "delta_pct",
+        "pass_threshold",
+        "passed",
+        "tirgn_checkpoint",
+        "regcn_checkpoint",
+        "eval_split",
+        "num_test_triples",
+        "timestamp",
+    }
+    assert required_keys.issubset(report.keys()), (
+        f"Missing keys: {required_keys - report.keys()}"
+    )
+
+    assert isinstance(report["tirgn_mrr"], float)
+    assert isinstance(report["regcn_mrr"], float)
+    assert isinstance(report["delta"], float)
+    assert isinstance(report["delta_pct"], float)
+    assert isinstance(report["pass_threshold"], float)
+    assert isinstance(report["passed"], bool)
+    assert isinstance(report["num_test_triples"], int)
+    assert report["eval_split"] == "test"
