@@ -1,0 +1,28 @@
+[Unit]
+Description=Geopol GDELT Micro-batch Poller
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=exec
+User=geopol
+WorkingDirectory=/opt/geopol
+ExecStart=/opt/geopol/.venv/bin/python scripts/gdelt_poller.py
+Restart=on-failure
+RestartSec=30
+KillSignal=SIGTERM
+TimeoutStopSec=60
+Environment=PYTHONPATH=/opt/geopol
+
+# Resource limits
+MemoryMax=512M
+CPUQuota=25%
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/geopol/data
+
+[Install]
+WantedBy=multi-user.target
