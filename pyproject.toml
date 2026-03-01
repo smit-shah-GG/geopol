@@ -60,6 +60,8 @@ dependencies = [
     "cachetools>=5.3",
     "feedparser>=6.0",
     "trafilatura>=2.0",
+    # v2.0 TKG Training Observability
+    "tensorboardX>=2.6",
 ]
 
 [project.optional-dependencies]
@@ -70,6 +72,9 @@ dev = [
     "black>=23.0.0",
     "ruff>=0.1.0",
     "mypy>=1.0.0",
+]
+observability = [
+    "wandb>=0.16",
 ]
 
 [build-system]
