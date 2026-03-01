@@ -1,0 +1,22 @@
+[Unit]
+Description=Geopol Daily Forecast Pipeline
+After=network-online.target postgresql.service redis.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/geopol
+ExecStart=/opt/geopol/.venv/bin/python scripts/daily_forecast.py
+EnvironmentFile=/opt/geopol/.env
+TimeoutStartSec=1800
+StandardOutput=journal
+StandardError=journal
+
+# Security hardening
+NoNewPrivileges=yes
+ProtectSystem=strict
+ReadWritePaths=/opt/geopol/data
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target
