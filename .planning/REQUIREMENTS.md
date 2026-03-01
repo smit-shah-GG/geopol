@@ -102,11 +102,11 @@ Removed requirements:
 
 ### TKG Predictor Replacement
 
-- [ ] **TKG-01**: System implements TiRGN algorithm in JAX, porting the global history encoder while reusing existing RE-GCN local encoder
-- [ ] **TKG-02**: System defines `TKGModelProtocol` (Python Protocol class) abstracting `predict_future_events()` interface for swappable TKG backends
-- [ ] **TKG-03**: TiRGN implementation achieves measurable MRR improvement over RE-GCN baseline on held-out GDELT test set
-- [ ] **TKG-04**: TiRGN training completes within 24 hours on RTX 3060 12GB for full GDELT dataset
-- [ ] **TKG-05**: System supports weekly automated retraining of TiRGN model with the existing retraining scheduler
+- [x] **TKG-01**: System implements TiRGN algorithm in JAX, porting the global history encoder while reusing existing RE-GCN local encoder
+- [x] **TKG-02**: System defines `TKGModelProtocol` (Python Protocol class) abstracting `predict_future_events()` interface for swappable TKG backends
+- [x] **TKG-03**: TiRGN implementation achieves measurable MRR improvement over RE-GCN baseline on held-out GDELT test set
+- [x] **TKG-04**: TiRGN training completes within 24 hours on RTX 3060 12GB for full GDELT dataset
+- [x] **TKG-05**: System supports weekly automated retraining of TiRGN model with the existing retraining scheduler
 
 ### Monitoring & Hardening
 
@@ -199,11 +199,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CAL-04 | Phase 13 | Pending |
 | CAL-05 | Phase 13 | Pending |
 | CAL-06 | Phase 13 | Pending |
-| TKG-01 | Phase 11 | Pending |
-| TKG-02 | Phase 11 | Pending |
-| TKG-03 | Phase 11 | Pending |
-| TKG-04 | Phase 11 | Pending |
-| TKG-05 | Phase 11 | Pending |
+| TKG-01 | Phase 11 | Complete |
+| TKG-02 | Phase 11 | Complete |
+| TKG-03 | Phase 11 | Complete |
+| TKG-04 | Phase 11 | Complete |
+| TKG-05 | Phase 11 | Complete |
 | MON-01 | Phase 13 | Pending |
 | MON-02 | Phase 13 | Pending |
 | MON-03 | Phase 13 | Pending |
