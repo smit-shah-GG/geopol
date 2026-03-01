@@ -1,0 +1,25 @@
+{
+  "name": "geopol-frontend",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "deck.gl": "^9.2.6",
+    "@deck.gl/core": "^9.2.6",
+    "@deck.gl/layers": "^9.2.6",
+    "@deck.gl/aggregation-layers": "^9.2.6",
+    "@deck.gl/mapbox": "^9.2.6",
+    "maplibre-gl": "^5.16.0",
+    "d3": "^7.9.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2",
+    "vite": "^6.0.7",
+    "@types/d3": "^7.4.3"
+  }
+}
