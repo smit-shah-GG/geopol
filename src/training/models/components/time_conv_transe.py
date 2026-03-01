@@ -121,12 +121,12 @@ class TimeConvTransEDecoder(nnx.Module):
 
         # Non-periodic: linear function of time
         t_nonperiodic = (
-            self.weight_t_nonperiodic.value * t + self.bias_t_nonperiodic.value
+            self.weight_t_nonperiodic[...] * t + self.bias_t_nonperiodic[...]
         )
 
         # Periodic: sinusoidal function of time
         t_periodic = jnp.sin(
-            self.weight_t_periodic.value * t + self.bias_t_periodic.value
+            self.weight_t_periodic[...] * t + self.bias_t_periodic[...]
         )
 
         return t_nonperiodic, t_periodic
@@ -156,7 +156,7 @@ class TimeConvTransEDecoder(nnx.Module):
 
         # Gather subject and relation embeddings
         subj_emb = entity_emb[subjects]  # (batch, dim)
-        rel_emb = self.rel_emb.value[relations]  # (batch, dim)
+        rel_emb = self.rel_emb[...][relations]  # (batch, dim)
 
         # Compute time embeddings
         t_nonperiodic, t_periodic = self.get_time_encoding(time_indices)
