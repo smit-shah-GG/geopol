@@ -1,0 +1,36 @@
+[Unit]
+Description=Geopol RSS Feed Ingestion Daemon
+Documentation=https://github.com/smit-shah-GG/geopol
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/env uv run python scripts/rss_daemon.py --log-level INFO
+WorkingDirectory=/opt/geopol
+Restart=on-failure
+RestartSec=30
+TimeoutStopSec=30
+
+# Resource limits
+MemoryMax=1G
+MemoryHigh=768M
+CPUQuota=50%
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/geopol/chroma_db /opt/geopol/data
+PrivateTmp=true
+
+# Environment
+EnvironmentFile=-/opt/geopol/.env
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=geopol-rss
+
+[Install]
+WantedBy=multi-user.target
