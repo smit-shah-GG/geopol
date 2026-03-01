@@ -5,15 +5,15 @@
 See: .planning/PROJECT.md (updated 2026-02-27)
 
 **Core value:** Explainability -- every forecast must provide clear, traceable reasoning paths
-**Current focus:** Phase 12 in progress. Wave 3 panels executing in parallel (04+05 complete, 03/06/07 remain).
+**Current focus:** Phase 12 in progress. Plans 01-05 complete, 03 (globe) complete. Plans 06+07 remain.
 
 ## Current Position
 
 Milestone: v2.0 Operationalization & Forecast Quality
 Phase: 12 of 13 (WM-Derived Frontend) -- IN PROGRESS
-Plan: 05 of 7 (in phase 12) -- plans 01,02,04,05 COMPLETE
+Plan: 03 of 7 (in phase 12) -- plans 01,02,03,04,05 COMPLETE
 Status: In progress
-Last activity: 2026-03-02 -- Completed 12-04-PLAN.md (6 dashboard panels)
+Last activity: 2026-03-02 -- Completed 12-03-PLAN.md (DeckGLMap globe)
 
 Progress: [##############################..........] 75% (12/16 phases lifetime)
 v2.0:    [######....] 60% (3/5 phases complete, 12 in progress)
@@ -21,9 +21,9 @@ v2.0:    [######....] 60% (3/5 phases complete, 12 in progress)
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 39
+- Total plans completed: 40
 - Average duration: 13 minutes
-- Total execution time: 8.76 hours
+- Total execution time: 8.91 hours
 
 **By Phase:**
 
@@ -40,11 +40,11 @@ v2.0:    [######....] 60% (3/5 phases complete, 12 in progress)
 | 09-api-foundation | 6 | 33min | 6min |
 | 10-ingest-forecast-pipeline | 4 | 27min | 7min |
 | 11-tkg-predictor-replacement | 3 | 21min | 7min |
-| 12-wm-derived-frontend | 4 | 18min | 5min |
+| 12-wm-derived-frontend | 5 | 27min | 5min |
 
 **Recent Trend:**
-- Last 4 plans: 12-01 (7min), 12-02 (2min), 12-05 (3min), 12-04 (6min)
-- Trend: Stable velocity (panel components are focused DOM/SVG work)
+- Last 4 plans: 12-02 (2min), 12-05 (3min), 12-04 (6min), 12-03 (9min)
+- Trend: Stable velocity; 12-03 slightly longer due to GeoJSON data acquisition + 5 deck.gl layers
 
 ## Accumulated Context
 
@@ -121,6 +121,11 @@ Key decisions affecting current work:
 - EnsembleBreakdownPanel and CalibrationPanel are update-driven (refresh no-op) (2026-03-02, 12-04)
 - Severity thresholds: probability >0.8/0.6/0.4/0.2 for critical/high/elevated/normal/low (2026-03-02, 12-04)
 - Track record sparkline requires >= 3 data points before rendering polyline (2026-03-02, 12-04)
+- DeckGLMap is NOT a Panel subclass -- standalone component for center grid area (2026-03-02, 12-03)
+- Risk color scale: blue [70,130,180] -> gray [128,128,128] -> red [220,50,50] diverging (2026-03-02, 12-03)
+- Natural Earth 110m GeoJSON slimmed to 258KB; LABEL_X/LABEL_Y as centroids (2026-03-02, 12-03)
+- Custom tooltip DOM in DeckGLMap (not deck.gl built-in) for positioning control (2026-03-02, 12-03)
+- HeatmapLayer data empty initially; ready for GDELT events endpoint (2026-03-02, 12-03)
 
 ### Deferred Issues
 
@@ -144,6 +149,6 @@ Key decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-03-02
-Stopped at: Completed 12-04-PLAN.md (6 dashboard panels)
+Stopped at: Completed 12-03-PLAN.md (DeckGLMap globe component)
 Resume file: None
-Next: Remaining plans 12-03 (deck.gl globe), 12-06 (main.ts wiring), 12-07 (build + deploy)
+Next: Remaining plans 12-06 (main.ts wiring), 12-07 (build + deploy)
