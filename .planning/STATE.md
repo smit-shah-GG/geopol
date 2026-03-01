@@ -5,25 +5,25 @@
 See: .planning/PROJECT.md (updated 2026-02-27)
 
 **Core value:** Explainability -- every forecast must provide clear, traceable reasoning paths
-**Current focus:** Phase 9 COMPLETE -- ready for parallel Phases 10/11/12
+**Current focus:** Phase 10 in progress -- GDELT poller daemon complete (Plan 01)
 
 ## Current Position
 
 Milestone: v2.0 Operationalization & Forecast Quality
-Phase: 9 of 13 (API Foundation & Infrastructure) -- COMPLETE
-Plan: 06 of 6 (in phase 9) -- all 6 plans complete
-Status: Phase complete
-Last activity: 2026-03-01 -- Completed 09-06-PLAN.md (ForecastService persistence and concurrent DB)
+Phase: 10 of 13 (Ingest & Forecast Pipeline) -- IN PROGRESS
+Plan: 01 of 4 (in phase 10)
+Status: In progress
+Last activity: 2026-03-01 -- Completed 10-01-PLAN.md (GDELT micro-batch polling daemon)
 
 Progress: [####################....................] 56% (9/16 phases lifetime)
-v2.0:    [##........] 20% (1/5 phases complete, Phases 10/11/12 ready for parallel execution)
+v2.0:    [##........] 20% (1/5 phases complete, Phase 10 Plan 01 done)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 28
-- Average duration: 17 minutes
-- Total execution time: 7.67 hours
+- Total plans completed: 29
+- Average duration: 16 minutes
+- Total execution time: 7.77 hours
 
 **By Phase:**
 
@@ -38,10 +38,11 @@ v2.0:    [##........] 20% (1/5 phases complete, Phases 10/11/12 ready for parall
 | 07-bootstrap-pipeline | 2 | 12min | 6min |
 | 08-graph-partitioning | 2 | 12min | 6min |
 | 09-api-foundation | 6 | 33min | 6min |
+| 10-ingest-forecast-pipeline | 1 | 6min | 6min |
 
 **Recent Trend:**
-- Last 3 plans: 09-05 (3min), 09-06 (7min), 09-04 (7min)
-- Trend: Fast (infrastructure, services, tests)
+- Last 3 plans: 09-06 (7min), 09-04 (7min), 10-01 (6min)
+- Trend: Fast (daemon infrastructure, ORM schema, tests)
 
 ## Accumulated Context
 
@@ -67,6 +68,9 @@ Key decisions affecting current work:
 - Auth as per-route Depends, not global ASGI middleware -- health endpoint public (2026-03-01, 09-05)
 - Health status derivation: unhealthy only if database down, degraded for other failures (2026-03-01, 09-05)
 - ForecastService takes session, does NOT call predict() -- callers invoke predict() then pass results (2026-03-01, 09-06)
+- URL-dedup fast path: events_fetched=0 is a valid successful run when lastupdate.txt URL unchanged (2026-03-01, 10-01)
+- asyncio.to_thread() for all synchronous v1.0 code in async daemons (2026-03-01, 10-01)
+- IngestRun recording tolerates PostgreSQL downtime -- daemon stays up even if metrics DB is down (2026-03-01, 10-01)
 
 ### Deferred Issues
 
@@ -90,6 +94,6 @@ Key decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-03-01
-Stopped at: Completed 09-06-PLAN.md (Phase 9 COMPLETE)
+Stopped at: Completed 10-01-PLAN.md (GDELT micro-batch polling daemon)
 Resume file: None
-Next: Plan Phase 10 (Daily Pipeline), Phase 11 (TKG Predictor), or Phase 12 (Frontend) -- parallel execution enabled
+Next: Phase 10 Plan 02 (RSS daemon), Plan 03 (daily forecast pipeline), or Plan 04 (API hardening)
