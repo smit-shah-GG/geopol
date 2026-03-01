@@ -54,6 +54,9 @@ class Settings(BaseSettings):
     # -- Daily Pipeline --
     gemini_daily_budget: int = 25  # Max questions per day
 
+    # -- TKG Model --
+    tkg_backend: Literal["tirgn", "regcn"] = "regcn"
+
     # -- Logging --
     log_level: str = "INFO"
     log_json: bool = False

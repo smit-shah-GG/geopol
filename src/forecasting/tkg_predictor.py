@@ -2,10 +2,16 @@
 Temporal Knowledge Graph Predictor for future event forecasting.
 
 This module provides high-level interface for TKG-based predictions:
-1. Load/train RE-GCN model on historical graph data
+1. Load/train RE-GCN or TiRGN model on historical graph data
 2. Predict future events via link prediction
 3. Apply temporal decay weighting for older events
 4. Return ranked predictions with confidence scores
+
+Backend selection is controlled by the ``TKG_BACKEND`` environment variable
+(via ``Settings.tkg_backend``).  Default is ``regcn`` for backward
+compatibility; setting ``TKG_BACKEND=tirgn`` loads the TiRGN model instead.
+Switching backend requires a process restart -- there is no per-request model
+selection.
 
 The predictor integrates with NetworkX graphs via DataAdapter and provides
 predictions that can be used for:
@@ -14,6 +20,7 @@ predictions that can be used for:
 - Confidence scoring (how plausible is a given event?)
 """
 
+import json
 import logging
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -24,6 +31,7 @@ import numpy as np
 
 from src.forecasting.tkg_models.data_adapter import DataAdapter
 from src.forecasting.tkg_models.regcn_wrapper import REGCNWrapper
+from src.settings import get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -38,16 +46,17 @@ class TKGPredictor:
     - Multi-hop reasoning over graph patterns
     - Confidence calibration
 
+    The backend (RE-GCN or TiRGN) is selected at construction time via
+    ``Settings.tkg_backend``.  The public API (``predict_future_events``,
+    ``validate_scenario_event``) is identical regardless of backend.
+
     Attributes:
-        model: REGCNWrapper instance
+        model: REGCNWrapper instance (regcn backend) or None (tirgn backend)
         adapter: DataAdapter for format conversion
         history_length: Number of recent time steps to consider (default: 30 days)
         decay_rate: Temporal decay factor for older events (default: 0.95 per day)
         trained: Whether model has been fitted
     """
-
-    # Default path for pretrained model checkpoint
-    DEFAULT_MODEL_PATH = Path("models/tkg/regcn_trained.pt")
 
     # Mapping from semantic relation labels to CAMEO codes
     # CAMEO QuadClass: Q1=Verbal Coop, Q2=Material Coop, Q3=Verbal Conflict, Q4=Material Conflict
@@ -84,10 +93,10 @@ class TKGPredictor:
         ],
     }
 
-    # Entity name aliases (normalized names → GDELT actor names)
+    # Entity name aliases (normalized names -> GDELT actor names)
     # GDELT uses uppercase actor names from news articles
     ENTITY_ALIASES = {
-        # Countries - full name → GDELT name
+        # Countries - full name -> GDELT name
         "russian federation": "RUSSIA",
         "russia": "RUSSIA",
         "united states": "UNITED STATES",
@@ -167,27 +176,56 @@ class TKGPredictor:
         """
         Initialize TKG predictor.
 
+        Backend is determined by ``Settings.tkg_backend`` (env var
+        ``TKG_BACKEND``).  When ``tirgn`` is selected, REGCNWrapper is NOT
+        instantiated; the TiRGN model is loaded lazily from checkpoint.
+
         Args:
-            model: Pre-initialized REGCNWrapper (created if None)
+            model: Pre-initialized REGCNWrapper (created if None, regcn only)
             adapter: Pre-fitted DataAdapter (created if None)
             history_length: Number of recent days to use for training
             decay_rate: Temporal decay per day (0.95 = 5% decay per day)
             embedding_dim: Dimension for embeddings (default: 200)
-            auto_load: If True, automatically load pretrained model from
-                      models/tkg/regcn_trained.pt if it exists
+            auto_load: If True, automatically load pretrained model
         """
-        self.model = model or REGCNWrapper(embedding_dim=embedding_dim)
+        settings = get_settings()
+        self._backend = settings.tkg_backend
         self.adapter = adapter or DataAdapter()
         self.history_length = history_length
         self.decay_rate = decay_rate
         self.trained = False
 
-        logger.info(f"Initialized TKG predictor with {history_length}-day history "
-                   f"and {decay_rate} daily decay rate")
+        # TiRGN-specific state (only populated when _backend == "tirgn")
+        self._tirgn_model = None
+        self._tirgn_snapshots: list = []
+
+        if self._backend == "tirgn":
+            # TiRGN mode: no REGCNWrapper
+            self.model = None
+            logger.info(
+                "TKG backend: TiRGN (history_length=%d, decay_rate=%.2f)",
+                history_length,
+                decay_rate,
+            )
+        else:
+            # RE-GCN mode: existing behavior
+            self.model = model or REGCNWrapper(embedding_dim=embedding_dim)
+            logger.info(
+                "TKG backend: RE-GCN (history_length=%d, decay_rate=%.2f)",
+                history_length,
+                decay_rate,
+            )
 
         # Auto-load pretrained model if available
         if auto_load and model is None:
             self._try_load_pretrained()
+
+    @property
+    def default_model_path(self) -> Path:
+        """Return the default checkpoint path for the active backend."""
+        if self._backend == "tirgn":
+            return Path("models/tkg/tirgn_best.npz")
+        return Path("models/tkg/regcn_trained.pt")
 
     def _try_load_pretrained(self) -> bool:
         """
@@ -196,13 +234,149 @@ class TKGPredictor:
         Returns:
             True if model was loaded, False otherwise
         """
-        if self.DEFAULT_MODEL_PATH.exists():
-            try:
-                self.load_pretrained(self.DEFAULT_MODEL_PATH)
+        path = self.default_model_path
+        if not path.exists():
+            logger.info("No pretrained model at %s", path)
+            return False
+
+        try:
+            if self._backend == "tirgn":
+                return self._load_tirgn_checkpoint(path)
+            else:
+                self.load_pretrained(path)
                 return True
-            except Exception as e:
-                logger.warning(f"Failed to load pretrained model: {e}")
+        except Exception as e:
+            logger.warning("Failed to load pretrained model: %s", e)
         return False
+
+    # ------------------------------------------------------------------
+    # TiRGN checkpoint loading
+    # ------------------------------------------------------------------
+
+    def _load_tirgn_checkpoint(self, npz_path: Path) -> bool:
+        """Load a TiRGN checkpoint (.npz weights + .json metadata).
+
+        Validates that the JSON metadata contains ``model_type == "tirgn"``.
+        If the metadata model_type does not match the configured backend,
+        logs an error and returns False (falls back to baseline).
+
+        Args:
+            npz_path: Path to the ``.npz`` weights file.
+
+        Returns:
+            True if the model was loaded successfully.
+
+        Raises:
+            ValueError: If weight keys in ``.npz`` do not match the model
+                        structure (shape/config mismatch).
+        """
+        import jax
+        import jax.numpy as jnp  # noqa: F401 -- needed for array reconstruction
+        from flax import nnx
+
+        from src.training.models.tirgn_jax import create_tirgn_model
+
+        meta_path = npz_path.with_suffix(".json")
+        if not meta_path.exists():
+            logger.error("TiRGN metadata file not found: %s", meta_path)
+            return False
+
+        with open(meta_path) as f:
+            metadata = json.load(f)
+
+        # Validate model_type discriminator
+        checkpoint_type = metadata.get("model_type")
+        if checkpoint_type != "tirgn":
+            logger.error(
+                "Checkpoint model_type mismatch: expected 'tirgn', got '%s' "
+                "(checkpoint: %s). Falling back to baseline.",
+                checkpoint_type,
+                npz_path,
+            )
+            return False
+
+        config = metadata.get("config", {})
+        num_entities = config.get("num_entities", 0)
+        num_relations = config.get("num_relations", 0)
+        embedding_dim = config.get("embedding_dim", 200)
+        num_layers = config.get("num_layers", 2)
+        history_rate = config.get("history_rate", 0.3)
+        history_window = config.get("history_window", 50)
+
+        if num_entities == 0 or num_relations == 0:
+            logger.error("Checkpoint missing entity/relation counts")
+            return False
+
+        # Restore adapter mappings from metadata
+        entity_to_id = metadata.get("entity_to_id")
+        relation_to_id = metadata.get("relation_to_id")
+        if entity_to_id and relation_to_id:
+            self.adapter.entity_to_id = entity_to_id
+            self.adapter.id_to_entity = {v: k for k, v in entity_to_id.items()}
+            self.adapter.relation_to_id = relation_to_id
+            self.adapter.id_to_relation = {v: k for k, v in relation_to_id.items()}
+            logger.info(
+                "Restored mappings: %d entities, %d relations",
+                len(entity_to_id),
+                len(relation_to_id),
+            )
+
+        # Create fresh model with random weights (correct shape)
+        model = create_tirgn_model(
+            num_entities=num_entities,
+            num_relations=num_relations,
+            embedding_dim=embedding_dim,
+            num_layers=num_layers,
+            history_rate=history_rate,
+            history_window=history_window,
+            seed=0,
+        )
+
+        # Split model to get abstract state structure + graphdef
+        state, graphdef = nnx.split(model)
+
+        # Load saved weights from .npz
+        loaded = np.load(npz_path)
+
+        # Reconstruct state: iterate the fresh model's leaf paths and
+        # replace each leaf with the corresponding array from .npz.
+        # The .npz keys are str(path) for each leaf (same format used
+        # by save_tirgn_checkpoint in train_tirgn.py).
+        leaves_with_paths, treedef = jax.tree_util.tree_flatten_with_path(state)
+
+        restored_leaves = []
+        for key_path, leaf in leaves_with_paths:
+            key_str = str(key_path)
+            if key_str not in loaded:
+                raise ValueError(
+                    f"TiRGN checkpoint missing key '{key_str}' -- "
+                    f"checkpoint and model config are incompatible"
+                )
+            restored_leaves.append(jnp.array(loaded[key_str]))
+
+        restored_state = treedef.unflatten(restored_leaves)
+
+        # Merge restored state back with graphdef to get the model
+        self._tirgn_model = nnx.merge(graphdef, restored_state)
+
+        # Mark as trained
+        self.trained = True
+
+        epoch = metadata.get("epoch", "unknown")
+        metrics = metadata.get("metrics", {})
+        mrr = metrics.get("mrr", "N/A")
+
+        logger.info("TiRGN model loaded successfully")
+        logger.info("  Trained for: %s epochs", epoch)
+        logger.info("  MRR: %s", mrr)
+        logger.info("  Entities: %s", f"{num_entities:,}")
+        logger.info("  Relations: %s", num_relations)
+
+        return True
+
+    # ------------------------------------------------------------------
+    # RE-GCN checkpoint loading (existing behavior)
+    # ------------------------------------------------------------------
 
     def load_pretrained(self, checkpoint_path: Path) -> None:
         """
@@ -396,6 +570,9 @@ class TKGPredictor:
         2. (entity1, relation, ?): Predict target entity
         3. (?, relation, entity2): Predict source entity
 
+        The method dispatches to TiRGN or RE-GCN transparently based on
+        the configured backend.
+
         Args:
             entity1: Source entity (None for wildcard)
             relation: Relation type (None for wildcard)
@@ -426,31 +603,223 @@ class TKGPredictor:
         relation_id = self._relation_to_id(relation) if relation else None
         entity2_id = self._entity_to_id(entity2) if entity2 else None
 
-        # Route to appropriate prediction method
-        if relation is None:
-            # Query: (entity1, ?, entity2) - predict relation
-            predictions = self._predict_relation(entity1_id, entity2_id, k)
-        elif entity2 is None:
-            # Query: (entity1, relation, ?) - predict object
-            predictions = self._predict_object(entity1_id, relation_id, k)
-        elif entity1 is None:
-            # Query: (?, relation, entity2) - predict subject
-            predictions = self._predict_subject(relation_id, entity2_id, k)
+        if self._backend == "tirgn":
+            predictions = self._predict_tirgn(
+                entity1, entity1_id,
+                relation, relation_id,
+                entity2, entity2_id,
+                k,
+            )
         else:
-            # Query: (entity1, relation, entity2) - score triple
-            score = self.model.score_triple(entity1_id, relation_id, entity2_id)
-            return [{
-                'entity1': entity1,
-                'relation': relation,
-                'entity2': entity2,
-                'confidence': score
-            }]
+            # RE-GCN path (original behavior)
+            predictions = self._predict_regcn(
+                entity1, entity1_id,
+                relation, relation_id,
+                entity2, entity2_id,
+                k,
+            )
 
         # Apply temporal decay if requested
         if apply_decay:
             predictions = self._apply_temporal_decay(predictions)
 
         return predictions
+
+    # ------------------------------------------------------------------
+    # RE-GCN prediction (existing logic, extracted to method)
+    # ------------------------------------------------------------------
+
+    def _predict_regcn(
+        self,
+        entity1: Optional[str], entity1_id: Optional[int],
+        relation: Optional[str], relation_id: Optional[int],
+        entity2: Optional[str], entity2_id: Optional[int],
+        k: int,
+    ) -> List[Dict[str, Union[str, float]]]:
+        """Dispatch RE-GCN prediction by query type."""
+        if relation is None:
+            return self._predict_relation(entity1_id, entity2_id, k)
+        elif entity2 is None:
+            return self._predict_object(entity1_id, relation_id, k)
+        elif entity1 is None:
+            return self._predict_subject(relation_id, entity2_id, k)
+        else:
+            # Score a specific triple
+            score = self.model.score_triple(entity1_id, relation_id, entity2_id)
+            return [{
+                'entity1': entity1,
+                'relation': relation,
+                'entity2': entity2,
+                'confidence': score,
+            }]
+
+    # ------------------------------------------------------------------
+    # TiRGN prediction
+    # ------------------------------------------------------------------
+
+    def _predict_tirgn(
+        self,
+        entity1: Optional[str], entity1_id: Optional[int],
+        relation: Optional[str], relation_id: Optional[int],
+        entity2: Optional[str], entity2_id: Optional[int],
+        k: int,
+    ) -> List[Dict[str, Union[str, float]]]:
+        """Predict using TiRGN model via fused distribution scoring.
+
+        For a fully specified triple ``(s, r, o)`` the object-position
+        probability is returned as the confidence.  For wildcard queries
+        (one of entity1, relation, entity2 is None) we score across all
+        candidates in that dimension and return top-k.
+        """
+        import jax.numpy as jnp
+
+        if self._tirgn_model is None:
+            raise ValueError("TiRGN model not loaded. Load checkpoint first.")
+
+        # Evolve entity embeddings through the temporal snapshot sequence
+        entity_emb = self._tirgn_model.evolve_embeddings(
+            self._tirgn_snapshots, training=False
+        )
+
+        if relation is None:
+            # (entity1, ?, entity2): predict relation
+            return self._predict_tirgn_relation(
+                entity_emb, entity1, entity1_id, entity2, entity2_id, k
+            )
+        elif entity2 is None:
+            # (entity1, relation, ?): predict object -- native TiRGN use-case
+            return self._predict_tirgn_object(
+                entity_emb, entity1, entity1_id, relation, relation_id, k
+            )
+        elif entity1 is None:
+            # (?, relation, entity2): predict subject
+            return self._predict_tirgn_subject(
+                entity_emb, relation, relation_id, entity2, entity2_id, k
+            )
+        else:
+            # Fully specified triple: score it
+            query = jnp.array([[entity1_id, relation_id, entity2_id]], dtype=jnp.int32)
+            scores = self._tirgn_model.compute_scores(entity_emb, query)
+            confidence = float(1.0 / (1.0 + jnp.exp(-scores[0])))  # sigmoid
+            return [{
+                'entity1': entity1,
+                'relation': relation,
+                'entity2': entity2,
+                'confidence': confidence,
+            }]
+
+    def _predict_tirgn_object(
+        self,
+        entity_emb,
+        entity1: str, entity1_id: int,
+        relation: str, relation_id: int,
+        k: int,
+    ) -> List[Dict[str, Union[str, float]]]:
+        """Predict target entity for (subject, relation, ?) via TiRGN."""
+        import jax.numpy as jnp
+
+        # Build a dummy triple with object=0 (we want all-entity scores)
+        query = jnp.array([[entity1_id, relation_id, 0]], dtype=jnp.int32)
+        time_idx = jnp.zeros(1, dtype=jnp.int32)
+
+        # Raw decoder gives (1, num_entities) scores
+        all_scores = self._tirgn_model.raw_decoder(
+            entity_emb, query, time_idx, training=False
+        )
+        probs = np.array(all_scores[0])
+
+        # Top-k entities
+        top_k_indices = np.argsort(probs)[::-1][:k]
+
+        results = []
+        for idx in top_k_indices:
+            entity2_name = self.adapter.entity_id_to_string(int(idx))
+            results.append({
+                'entity1': entity1,
+                'relation': relation,
+                'entity2': entity2_name,
+                'confidence': float(probs[idx]),
+            })
+        return results
+
+    def _predict_tirgn_relation(
+        self,
+        entity_emb,
+        entity1: str, entity1_id: int,
+        entity2: str, entity2_id: int,
+        k: int,
+    ) -> List[Dict[str, Union[str, float]]]:
+        """Predict relation for (entity1, ?, entity2) via TiRGN."""
+        import jax.numpy as jnp
+
+        num_relations = len(self.adapter.relation_to_id)
+        best: list[tuple[int, float]] = []
+
+        for rel_id in range(num_relations):
+            query = jnp.array([[entity1_id, rel_id, entity2_id]], dtype=jnp.int32)
+            scores = self._tirgn_model.compute_scores(entity_emb, query)
+            best.append((rel_id, float(scores[0])))
+
+        # Sort by score descending, take top-k
+        best.sort(key=lambda x: x[1], reverse=True)
+
+        results = []
+        for rel_id, score in best[:k]:
+            rel_name = self.adapter.relation_id_to_string(rel_id)
+            confidence = float(1.0 / (1.0 + np.exp(-score)))  # sigmoid
+            results.append({
+                'entity1': entity1,
+                'relation': rel_name,
+                'entity2': entity2,
+                'confidence': confidence,
+            })
+        return results
+
+    def _predict_tirgn_subject(
+        self,
+        entity_emb,
+        relation: str, relation_id: int,
+        entity2: str, entity2_id: int,
+        k: int,
+    ) -> List[Dict[str, Union[str, float]]]:
+        """Predict source entity for (?, relation, entity2) via TiRGN.
+
+        TiRGN does not natively support subject prediction; we iterate
+        over all entities scoring (candidate, relation, entity2) and
+        apply a 0.8x penalty (consistent with RE-GCN behaviour).
+        """
+        import jax.numpy as jnp
+
+        num_entities = len(self.adapter.entity_to_id)
+
+        # Build batch of (candidate, relation, entity2) for all candidates
+        candidates = jnp.arange(num_entities, dtype=jnp.int32)
+        triples = jnp.stack([
+            candidates,
+            jnp.full(num_entities, relation_id, dtype=jnp.int32),
+            jnp.full(num_entities, entity2_id, dtype=jnp.int32),
+        ], axis=-1)
+
+        scores = self._tirgn_model.compute_scores(entity_emb, triples)
+        scores_np = np.array(scores)
+
+        top_k_indices = np.argsort(scores_np)[::-1][:k]
+
+        results = []
+        for idx in top_k_indices:
+            entity1_name = self.adapter.entity_id_to_string(int(idx))
+            confidence = float(1.0 / (1.0 + np.exp(-scores_np[idx])))
+            results.append({
+                'entity1': entity1_name,
+                'relation': relation,
+                'entity2': entity2,
+                'confidence': float(confidence * 0.8),  # Penalty for reversed query
+            })
+        return results
+
+    # ------------------------------------------------------------------
+    # RE-GCN prediction helpers (unchanged from original)
+    # ------------------------------------------------------------------
 
     def _predict_relation(
         self,
@@ -623,7 +992,7 @@ class TKGPredictor:
         if entity_id is not None:
             return entity_id
 
-        # Strip parenthetical suffix (e.g., "Taiwan (ROC)" → "Taiwan")
+        # Strip parenthetical suffix (e.g., "Taiwan (ROC)" -> "Taiwan")
         entity_stripped = re.sub(r'\s*\([^)]*\)\s*$', '', entity).strip()
         if entity_stripped != entity:
             entity_id = self.adapter.entity_to_id.get(entity_stripped.upper())
