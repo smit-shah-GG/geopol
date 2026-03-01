@@ -11,19 +11,19 @@ See: .planning/PROJECT.md (updated 2026-02-27)
 
 Milestone: v2.0 Operationalization & Forecast Quality
 Phase: 9 of 13 (API Foundation & Infrastructure)
-Plan: 03 of ? (in phase 9)
+Plan: 01 of 6 (in phase 9) -- also 09-03 completed in parallel session
 Status: In progress
-Last activity: 2026-03-01 -- Completed 09-03-PLAN.md (jraph elimination, TKGModelProtocol, logging config)
+Last activity: 2026-03-01 -- Completed 09-01-PLAN.md (dependencies, Docker, PostgreSQL ORM, Alembic, settings)
 
 Progress: [####################....................] 50% (8/16 phases lifetime)
-v2.0:    [..........] 0% (0/5 phases, plan 3 of phase 9 complete)
+v2.0:    [#.........] ~6% (0/5 phases, plans 01+03 of 6 in phase 9 complete)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 23
+- Total plans completed: 24
 - Average duration: 18 minutes
-- Total execution time: 7.2 hours
+- Total execution time: 7.3 hours
 
 **By Phase:**
 
@@ -37,12 +37,11 @@ v2.0:    [..........] 0% (0/5 phases, plan 3 of phase 9 complete)
 | 06-networkx-fix | 1 | 2min | 2min |
 | 07-bootstrap-pipeline | 2 | 12min | 6min |
 | 08-graph-partitioning | 2 | 12min | 6min |
-
-| 09-api-foundation | 1 | 4min | 4min |
+| 09-api-foundation | 2 | 10min | 5min |
 
 **Recent Trend:**
-- Last 3 plans: 08-02 (8min), quick-001 (4min), 09-03 (4min)
-- Trend: Fast (targeted implementations)
+- Last 3 plans: quick-001 (4min), 09-03 (4min), 09-01 (6min)
+- Trend: Fast (infrastructure setup)
 
 ## Accumulated Context
 
@@ -60,12 +59,15 @@ Key decisions affecting current work:
 - Headless API-first backend -- FastAPI + Pydantic DTOs as mandatory bridge (2026-02-27)
 - PostgreSQL for forecast persistence -- SQLite retained only for GDELT events/partition index (2026-02-27)
 - Contract-first parallel execution -- DTOs + mock fixtures in Phase 9 enable Phases 10/11/12 in parallel (2026-02-27)
-- RSS feeds from WM's 298-domain list → RAG enrichment in Phase 10 (2026-02-27)
+- RSS feeds from WM's 298-domain list -> RAG enrichment in Phase 10 (2026-02-27)
 - Polymarket comparison for calibration validation in Phase 13 (2026-02-27)
+- extra="ignore" in pydantic-settings to coexist with legacy .env vars (2026-03-01, 09-01)
+- DateTime(timezone=True) for all PostgreSQL timestamp columns (2026-03-01, 09-01)
+- Prediction.id as String(36) UUID for cross-system stability (2026-03-01, 09-01)
 
 ### Deferred Issues
 
-- datetime.utcnow() deprecated warning (Python 3.12+)
+- Docker daemon requires sudo to start -- user must `sudo systemctl start docker` before running containers or Alembic migrations
 
 ### Quick Tasks Completed
 
@@ -78,11 +80,12 @@ Key decisions affecting current work:
 - TiRGN JAX port has no published reference implementation (research-phase may be needed for Phase 11)
 - Gemini API cost exposure under public traffic (rate limiting mandatory before deployment)
 - jraph archived by Google DeepMind (RESOLVED: eliminated in 09-03)
-- Polyglot tax: Python + TypeScript + Rust/Tauri — three ecosystems for single developer
+- Polyglot tax: Python + TypeScript + Rust/Tauri -- three ecosystems for single developer
+- Docker daemon not auto-started -- verification of PostgreSQL/Redis containers and Alembic migration deferred
 
 ## Session Continuity
 
 Last session: 2026-03-01
-Stopped at: Completed 09-03-PLAN.md (jraph elimination, TKGModelProtocol, logging config)
+Stopped at: Completed 09-01-PLAN.md
 Resume file: None
-Next: Continue Phase 9 execution (09-04 logging sweep next)
+Next: Execute 09-02-PLAN.md (Pydantic V2 DTOs and mock fixtures)
