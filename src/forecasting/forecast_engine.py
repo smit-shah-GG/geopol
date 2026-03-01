@@ -15,7 +15,6 @@ The engine:
 """
 
 import logging
-import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -171,14 +170,14 @@ class ForecastEngine:
         # Step 1: Retrieve historical context (if RAG enabled)
         if self.rag_pipeline and use_cache:
             if verbose:
-                print("Retrieving historical context from RAG...", file=sys.stderr)
+                logger.info("Retrieving historical context from RAG...")
             context = self._retrieve_historical_context(question, context or [])
             if verbose:
-                print(f"  Retrieved {len(context)} context items", file=sys.stderr)
+                logger.info(f"Retrieved {len(context)} context items")
 
         # Step 2: Generate ensemble forecast
         if verbose:
-            print("Generating ensemble forecast...", file=sys.stderr)
+            logger.info("Generating ensemble forecast...")
 
         ensemble_pred, forecast = self.ensemble_predictor.predict(
             question=question, context=context

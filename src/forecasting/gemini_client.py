@@ -9,11 +9,14 @@ using the new google-genai SDK. It includes:
 - Structured output handling
 """
 
+import logging
 import os
 import time
 from collections import deque
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
+
+logger = logging.getLogger(__name__)
 
 from google import genai
 from google.genai.types import GenerateContentResponse
@@ -173,7 +176,7 @@ class GeminiClient:
             return response
         except Exception as e:
             # Log error for debugging
-            print(f"Error generating content: {e}")
+            logger.error(f"Error generating content: {e}")
             raise
 
     def generate_with_context_caching(

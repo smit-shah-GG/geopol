@@ -6,9 +6,12 @@ using Gemini's structured output capabilities to ensure consistent formatting.
 """
 
 import json
+import logging
 import uuid
 from datetime import datetime
 from typing import Dict, List, Optional
+
+logger = logging.getLogger(__name__)
 
 from src.forecasting.gemini_client import GeminiClient
 from src.forecasting.models import (
@@ -96,7 +99,7 @@ Be specific, grounded in current events, and maintain logical consistency."""
 
         except Exception as e:
             # Fallback: Generate without schema and parse manually
-            print(f"Structured generation failed: {e}. Trying unstructured generation.")
+            logger.warning(f"Structured generation failed: {e}. Trying unstructured generation.")
             return self._generate_unstructured(question, context, num_scenarios)
 
     def _build_generation_prompt(
@@ -326,7 +329,7 @@ Be specific, grounded in current events, and maintain logical consistency."""
             scenario_data = json.loads(json_text)
             return self._parse_scenario_tree(scenario_data)
         except Exception as e:
-            print(f"Refinement failed: {e}. Returning original tree.")
+            logger.warning(f"Refinement failed: {e}. Returning original tree.")
             return scenario_tree
 
     def _build_refinement_prompt(
