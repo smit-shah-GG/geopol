@@ -5,25 +5,25 @@
 See: .planning/PROJECT.md (updated 2026-02-27)
 
 **Core value:** Explainability -- every forecast must provide clear, traceable reasoning paths
-**Current focus:** Phase 9 - API Foundation & Infrastructure
+**Current focus:** Phase 9 COMPLETE -- ready for parallel Phases 10/11/12
 
 ## Current Position
 
 Milestone: v2.0 Operationalization & Forecast Quality
-Phase: 9 of 13 (API Foundation & Infrastructure)
-Plan: 05 of 6 (in phase 9) -- 09-01, 09-02, 09-03, 09-04, 09-05 complete
-Status: In progress
-Last activity: 2026-03-01 -- Completed 09-05-PLAN.md (FastAPI routes and error handling)
+Phase: 9 of 13 (API Foundation & Infrastructure) -- COMPLETE
+Plan: 06 of 6 (in phase 9) -- all 6 plans complete
+Status: Phase complete
+Last activity: 2026-03-01 -- Completed 09-06-PLAN.md (ForecastService persistence and concurrent DB)
 
-Progress: [####################....................] 50% (8/16 phases lifetime)
-v2.0:    [##........] ~17% (0/5 phases, plans 01-05 of 6 in phase 9 complete)
+Progress: [####################....................] 56% (9/16 phases lifetime)
+v2.0:    [##........] 20% (1/5 phases complete, Phases 10/11/12 ready for parallel execution)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 27
+- Total plans completed: 28
 - Average duration: 17 minutes
-- Total execution time: 7.55 hours
+- Total execution time: 7.67 hours
 
 **By Phase:**
 
@@ -37,11 +37,11 @@ v2.0:    [##........] ~17% (0/5 phases, plans 01-05 of 6 in phase 9 complete)
 | 06-networkx-fix | 1 | 2min | 2min |
 | 07-bootstrap-pipeline | 2 | 12min | 6min |
 | 08-graph-partitioning | 2 | 12min | 6min |
-| 09-api-foundation | 5 | 26min | 5min |
+| 09-api-foundation | 6 | 33min | 6min |
 
 **Recent Trend:**
-- Last 3 plans: 09-04 (7min), 09-02 (6min), 09-05 (3min)
-- Trend: Fast (infrastructure, routes, mock data)
+- Last 3 plans: 09-05 (3min), 09-06 (7min), 09-04 (7min)
+- Trend: Fast (infrastructure, services, tests)
 
 ## Accumulated Context
 
@@ -66,10 +66,12 @@ Key decisions affecting current work:
 - Prediction.id as String(36) UUID for cross-system stability (2026-03-01, 09-01)
 - Auth as per-route Depends, not global ASGI middleware -- health endpoint public (2026-03-01, 09-05)
 - Health status derivation: unhealthy only if database down, degraded for other failures (2026-03-01, 09-05)
+- ForecastService takes session, does NOT call predict() -- callers invoke predict() then pass results (2026-03-01, 09-06)
 
 ### Deferred Issues
 
 - Docker daemon requires sudo to start -- user must `sudo systemctl start docker` before running containers or Alembic migrations
+- PostgreSQL tests (8 tests in test_forecast_persistence.py and test_concurrent_db.py) skip until Docker is running
 
 ### Quick Tasks Completed
 
@@ -88,6 +90,6 @@ Key decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-03-01
-Stopped at: Completed 09-05-PLAN.md
+Stopped at: Completed 09-06-PLAN.md (Phase 9 COMPLETE)
 Resume file: None
-Next: Execute 09-06-PLAN.md (tests and Docker configuration)
+Next: Plan Phase 10 (Daily Pipeline), Phase 11 (TKG Predictor), or Phase 12 (Frontend) -- parallel execution enabled
