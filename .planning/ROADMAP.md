@@ -130,14 +130,15 @@ Phase 9 (API + DB foundation) ─── critical path, everything gates on this
   6. All production code paths emit structured log messages (no `print()` statements remain) with severity, timestamp, and module name
   7. Importing the TKG training module succeeds without jraph installed — all jraph references replaced with local JAX equivalents
   8. `TKGModelProtocol` is defined and both the existing RE-GCN wrapper and a stub TiRGN class satisfy it (verified by `isinstance` or Protocol structural check)
-**Plans**: 5 plans
+**Plans**: 6 plans
 
 Plans:
 - [ ] 09-01-PLAN.md — Dependencies, Docker, PostgreSQL ORM models, Alembic migrations, settings
-- [ ] 09-02-PLAN.md — Pydantic V2 DTOs (contract spec) and mock fixtures (SY, UA, MM)
-- [ ] 09-03-PLAN.md — jraph elimination, TKGModelProtocol, structured logging conversion
-- [ ] 09-04-PLAN.md — FastAPI app, routes, auth middleware, error handling
-- [ ] 09-05-PLAN.md — ForecastService persistence bridge, concurrent DB access tests
+- [ ] 09-02-PLAN.md — Pydantic V2 DTOs (contract spec, 8-subsystem health schema) and mock fixtures (SY, UA, MM)
+- [ ] 09-03-PLAN.md — jraph elimination, TKGModelProtocol, structured logging config module
+- [ ] 09-04-PLAN.md — print() to logging conversion sweep (9 production files)
+- [ ] 09-05-PLAN.md — FastAPI app, full subsystem health endpoint (8 checks), routes, auth middleware, error handling
+- [ ] 09-06-PLAN.md — ForecastService persistence bridge, route wiring, multi-process concurrent DB tests, table smoke writes
 
 ### Phase 10: Ingest & Forecast Pipeline
 **Goal**: System continuously ingests GDELT events every 15 minutes and produces daily automated forecasts with outcome tracking. API endpoints serve real forecast data (replacing Phase 9 mock fixtures). Redis caching prevents redundant computation.
@@ -211,7 +212,7 @@ Phase 9 first (critical path). Then Phases 10, 11, 12 in parallel. Phase 13 afte
 | 6. NetworkX Fix | v1.1 | 1/1 | Complete | 2026-01-28 |
 | 7. Bootstrap Pipeline | v1.1 | 2/2 | Complete | 2026-01-30 |
 | 8. Graph Partitioning | v1.1 | 2/2 | Complete | 2026-01-30 |
-| 9. API Foundation | v2.0 | 0/5 | Not started | - |
+| 9. API Foundation | v2.0 | 0/6 | Not started | - |
 | 10. Ingest & Pipeline | v2.0 | 0/TBD | Not started | - |
 | 11. TKG Replacement | v2.0 | 0/TBD | Not started | - |
 | 12. WM-Derived Frontend | v2.0 | 0/TBD | Not started | - |
