@@ -5,25 +5,25 @@
 See: .planning/PROJECT.md (updated 2026-02-27)
 
 **Core value:** Explainability -- every forecast must provide clear, traceable reasoning paths
-**Current focus:** Phase 10 in progress -- GDELT poller daemon complete (Plan 01)
+**Current focus:** Phase 10 in progress -- Plans 01-03 complete (GDELT poller, API hardening, RSS daemon)
 
 ## Current Position
 
 Milestone: v2.0 Operationalization & Forecast Quality
 Phase: 10 of 13 (Ingest & Forecast Pipeline) -- IN PROGRESS
-Plan: 01 of 4 (in phase 10)
+Plan: 03 of 4 (in phase 10)
 Status: In progress
-Last activity: 2026-03-01 -- Completed 10-01-PLAN.md (GDELT micro-batch polling daemon)
+Last activity: 2026-03-01 -- Completed 10-03-PLAN.md (RSS feed ingestion daemon)
 
 Progress: [####################....................] 56% (9/16 phases lifetime)
-v2.0:    [##........] 20% (1/5 phases complete, Phase 10 Plan 01 done)
+v2.0:    [##........] 20% (1/5 phases complete, Phase 10 Plans 01-03 done)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 29
+- Total plans completed: 31
 - Average duration: 16 minutes
-- Total execution time: 7.77 hours
+- Total execution time: 7.95 hours
 
 **By Phase:**
 
@@ -38,11 +38,11 @@ v2.0:    [##........] 20% (1/5 phases complete, Phase 10 Plan 01 done)
 | 07-bootstrap-pipeline | 2 | 12min | 6min |
 | 08-graph-partitioning | 2 | 12min | 6min |
 | 09-api-foundation | 6 | 33min | 6min |
-| 10-ingest-forecast-pipeline | 1 | 6min | 6min |
+| 10-ingest-forecast-pipeline | 3 | 17min | 6min |
 
 **Recent Trend:**
-- Last 3 plans: 09-06 (7min), 09-04 (7min), 10-01 (6min)
-- Trend: Fast (daemon infrastructure, ORM schema, tests)
+- Last 3 plans: 10-01 (6min), 10-02 (5min), 10-03 (6min)
+- Trend: Fast (daemon infrastructure, RSS pipeline, tests)
 
 ## Accumulated Context
 
@@ -71,6 +71,10 @@ Key decisions affecting current work:
 - URL-dedup fast path: events_fetched=0 is a valid successful run when lastupdate.txt URL unchanged (2026-03-01, 10-01)
 - asyncio.to_thread() for all synchronous v1.0 code in async daemons (2026-03-01, 10-01)
 - IngestRun recording tolerates PostgreSQL downtime -- daemon stays up even if metrics DB is down (2026-03-01, 10-01)
+- Cache key generators centralize all prefixing; get/set use keys as-is -- prevents double-prefix bugs (2026-03-01, 10-02)
+- NullRedis stub enables graceful degradation without Optional branching in hot path (2026-03-01, 10-02)
+- Rate limiter fail-open: Redis failure allows request through (rate limiter must never kill the API) (2026-03-01, 10-02)
+- pytest asyncio_mode=auto configured globally in pyproject.toml (2026-03-01, 10-02)
 
 ### Deferred Issues
 
@@ -86,7 +90,7 @@ Key decisions affecting current work:
 ### Blockers/Concerns
 
 - TiRGN JAX port has no published reference implementation (research-phase may be needed for Phase 11)
-- Gemini API cost exposure under public traffic (rate limiting mandatory before deployment)
+- Gemini API cost exposure under public traffic (PARTIALLY RESOLVED: rate limiter + Gemini budget tracking in 10-02; enforcement wired to endpoints in 10-04)
 - jraph archived by Google DeepMind (RESOLVED: eliminated in 09-03)
 - Polyglot tax: Python + TypeScript + Rust/Tauri -- three ecosystems for single developer
 - Docker daemon not auto-started -- verification of PostgreSQL/Redis containers and Alembic migration deferred
@@ -94,6 +98,6 @@ Key decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-03-01
-Stopped at: Completed 10-01-PLAN.md (GDELT micro-batch polling daemon)
+Stopped at: Completed 10-02-PLAN.md (API hardening: cache, rate limit, sanitization)
 Resume file: None
-Next: Phase 10 Plan 02 (RSS daemon), Plan 03 (daily forecast pipeline), or Plan 04 (API hardening)
+Next: Phase 10 Plan 03 (RSS daemon + RAG enrichment) or Plan 04 (daily forecast pipeline + real endpoints)
