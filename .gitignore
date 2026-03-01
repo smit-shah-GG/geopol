@@ -41,8 +41,9 @@ ENV/
 .env.local
 .env.*.local
 
-# Data & Database
+# Data & Database (runtime data -- NOT frontend static assets)
 data/
+!frontend/public/data/
 *.db
 *.sqlite
 *.sqlite3
