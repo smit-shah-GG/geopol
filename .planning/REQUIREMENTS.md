@@ -44,24 +44,24 @@ Removed requirements:
 
 ### Infrastructure & Persistence
 
-- [ ] **INFRA-01**: System persists all forecasts (question, prediction, probability, reasoning chain, timestamps) in PostgreSQL `predictions` table, queryable via SQL and exposed through FastAPI endpoints
-- [ ] **INFRA-02**: System persists outcome records comparing past predictions against GDELT ground truth in PostgreSQL `outcome_records` table
-- [ ] **INFRA-03**: System persists per-CAMEO calibration weights in PostgreSQL `calibration_weights` table
-- [ ] **INFRA-04**: System tracks micro-batch ingest runs in PostgreSQL `ingest_runs` table with status, event counts, and timestamps
-- [ ] **INFRA-05**: System eliminates archived jraph dependency, replacing with raw JAX ops (local NamedTuple for GraphsTuple, `jax.ops.segment_sum`)
-- [ ] **INFRA-06**: System runs FastAPI server, ingest daemon, and prediction pipeline as separate OS processes communicating through PostgreSQL (GDELT event store remains SQLite with WAL mode)
-- [ ] **INFRA-07**: System uses structured logging (Python `logging` module) replacing all `print()` statements in production code paths
-- [ ] **INFRA-08**: PostgreSQL connections use connection pooling (asyncpg pool or SQLAlchemy async); SQLite GDELT store retains WAL mode with `busy_timeout=30000ms`
+- [x] **INFRA-01**: System persists all forecasts (question, prediction, probability, reasoning chain, timestamps) in PostgreSQL `predictions` table, queryable via SQL and exposed through FastAPI endpoints
+- [x] **INFRA-02**: System persists outcome records comparing past predictions against GDELT ground truth in PostgreSQL `outcome_records` table
+- [x] **INFRA-03**: System persists per-CAMEO calibration weights in PostgreSQL `calibration_weights` table
+- [x] **INFRA-04**: System tracks micro-batch ingest runs in PostgreSQL `ingest_runs` table with status, event counts, and timestamps
+- [x] **INFRA-05**: System eliminates archived jraph dependency, replacing with raw JAX ops (local NamedTuple for GraphsTuple, `jax.ops.segment_sum`)
+- [x] **INFRA-06**: System runs FastAPI server, ingest daemon, and prediction pipeline as separate OS processes communicating through PostgreSQL (GDELT event store remains SQLite with WAL mode)
+- [x] **INFRA-07**: System uses structured logging (Python `logging` module) replacing all `print()` statements in production code paths
+- [x] **INFRA-08**: PostgreSQL connections use connection pooling (asyncpg pool or SQLAlchemy async); SQLite GDELT store retains WAL mode with `busy_timeout=30000ms`
 
 ### API Layer
 
-- [ ] **API-01**: FastAPI server (`src/api/`) with versioned routes (`/api/v1/`), health endpoint, and OpenAPI schema auto-generated from Pydantic DTOs
-- [ ] **API-02**: Pydantic DTOs: `ForecastResponse`, `ScenarioDTO`, `CalibrationDTO`, `CountryRiskSummary`, `EnsembleInfoDTO`, `EvidenceDTO` — matching the contract spec in `WORLDMONITOR_INTEGRATION.md` lines 328-382
-- [ ] **API-03**: API key authentication middleware validating `X-API-Key` header; CORS middleware configured for frontend origins
-- [ ] **API-04**: Redis forecast response caching with three-tier hierarchy: in-memory LRU (100 entries, 10-min TTL) → Redis (1-hour TTL for summaries, 6-hour for full forecasts) → PostgreSQL (cold storage)
-- [ ] **API-05**: Input sanitization on `POST /api/v1/forecasts` preventing prompt injection; no system internals (API keys, file paths, model config) leaked in responses
-- [ ] **API-06**: Rate limiting on `POST /api/v1/forecasts` (on-demand generation) with Gemini API daily budget enforcement; requests rejected when budget exhausted
-- [ ] **API-07**: Mock/fixture responses for all endpoints — hardcoded realistic `ForecastResponse` objects (Syria, Ukraine, Myanmar scenarios) enabling contract-first frontend development before Phase 10 delivers real data
+- [x] **API-01**: FastAPI server (`src/api/`) with versioned routes (`/api/v1/`), health endpoint, and OpenAPI schema auto-generated from Pydantic DTOs
+- [x] **API-02**: Pydantic DTOs: `ForecastResponse`, `ScenarioDTO`, `CalibrationDTO`, `CountryRiskSummary`, `EnsembleInfoDTO`, `EvidenceDTO` — matching the contract spec in `WORLDMONITOR_INTEGRATION.md` lines 328-382
+- [x] **API-03**: API key authentication middleware validating `X-API-Key` header; CORS middleware configured for frontend origins
+- [x] **API-04**: Redis forecast response caching with three-tier hierarchy: in-memory LRU (100 entries, 10-min TTL) → Redis (1-hour TTL for summaries, 6-hour for full forecasts) → PostgreSQL (cold storage)
+- [x] **API-05**: Input sanitization on `POST /api/v1/forecasts` preventing prompt injection; no system internals (API keys, file paths, model config) leaked in responses
+- [x] **API-06**: Rate limiting on `POST /api/v1/forecasts` (on-demand generation) with Gemini API daily budget enforcement; requests rejected when budget exhausted
+- [x] **API-07**: Mock/fixture responses for all endpoints — hardcoded realistic `ForecastResponse` objects (Syria, Ukraine, Myanmar scenarios) enabling contract-first frontend development before Phase 10 delivers real data
 
 ### Frontend (WM-Derived TypeScript Dashboard)
 
@@ -76,29 +76,29 @@ Removed requirements:
 
 ### Micro-batch Ingest
 
-- [ ] **INGEST-01**: System polls GDELT 15-minute update feed (`lastupdate.txt`) on a configurable schedule via daemon process
-- [ ] **INGEST-02**: System performs incremental graph update appending only new events, avoiding full graph rebuild (O(N_new) not O(N_total))
-- [ ] **INGEST-03**: System deduplicates events across micro-batches and daily dumps using GDELT `GlobalEventID`
-- [ ] **INGEST-04**: System handles missing/late GDELT feed updates gracefully with exponential backoff and logged warnings
-- [ ] **INGEST-05**: Ingest daemon tracks per-run metrics (events fetched, events new, events duplicate, duration) in `ingest_runs` table
-- [ ] **INGEST-06**: Ingest daemon polls WM-curated RSS feed list (298 domains) on 15-minute cycle, extracts article text via `trafilatura`, chunks and indexes into ChromaDB for RAG enrichment — giving the LLM full narrative context beyond GDELT's terse event descriptions
+- [x] **INGEST-01**: System polls GDELT 15-minute update feed (`lastupdate.txt`) on a configurable schedule via daemon process
+- [x] **INGEST-02**: System performs incremental graph update appending only new events, avoiding full graph rebuild (O(N_new) not O(N_total))
+- [x] **INGEST-03**: System deduplicates events across micro-batches and daily dumps using GDELT `GlobalEventID`
+- [x] **INGEST-04**: System handles missing/late GDELT feed updates gracefully with exponential backoff and logged warnings
+- [x] **INGEST-05**: Ingest daemon tracks per-run metrics (events fetched, events new, events duplicate, duration) in `ingest_runs` table
+- [x] **INGEST-06**: Ingest daemon polls WM-curated RSS feed list (298 domains) on 15-minute cycle, extracts article text via `trafilatura`, chunks and indexes into ChromaDB for RAG enrichment — giving the LLM full narrative context beyond GDELT's terse event descriptions
 
 ### Daily Forecast Automation
 
-- [ ] **AUTO-01**: System runs daily forecast pipeline on a configurable schedule (default 06:00) via systemd timer
-- [ ] **AUTO-02**: Daily pipeline generates forecast questions from recent high-significance events in the knowledge graph
-- [ ] **AUTO-03**: Daily pipeline runs full Gemini+TKG ensemble prediction for each generated question and persists results
-- [ ] **AUTO-04**: Daily pipeline resolves outcomes for past predictions by comparing against subsequent GDELT events within a configurable time window
-- [ ] **AUTO-05**: Daily pipeline handles failures with retry logic and sends alerts on consecutive failures
+- [x] **AUTO-01**: System runs daily forecast pipeline on a configurable schedule (default 06:00) via systemd timer
+- [x] **AUTO-02**: Daily pipeline generates forecast questions from recent high-significance events in the knowledge graph
+- [x] **AUTO-03**: Daily pipeline runs full Gemini+TKG ensemble prediction for each generated question and persists results
+- [x] **AUTO-04**: Daily pipeline resolves outcomes for past predictions by comparing against subsequent GDELT events within a configurable time window
+- [x] **AUTO-05**: Daily pipeline handles failures with retry logic and sends alerts on consecutive failures
 
 ### Dynamic Calibration
 
-- [ ] **CAL-01**: System computes per-CAMEO-category ensemble alpha weights from accumulated outcome data, replacing fixed alpha=0.6
-- [ ] **CAL-02**: System uses hierarchical fallback: 4 super-categories (Verbal Coop, Material Coop, Verbal Conflict, Material Conflict) -> 20 CAMEO root codes as data accumulates
-- [ ] **CAL-03**: System falls back to global alpha weight when insufficient outcome data exists for a category (configurable minimum sample threshold)
-- [ ] **CAL-04**: System optimizes alpha weights via scipy L-BFGS-B minimizing Brier score per category
-- [ ] **CAL-05**: Ensemble predictor dynamically loads per-CAMEO weights from `calibration_weights` table at prediction time
-- [ ] **CAL-06**: System fetches Polymarket prediction market data for geopolitical questions and displays side-by-side comparison with Geopol's calibrated forecasts — tracking which source is more accurate over time
+- [x] **CAL-01**: System computes per-CAMEO-category ensemble alpha weights from accumulated outcome data, replacing fixed alpha=0.6
+- [x] **CAL-02**: System uses hierarchical fallback: 4 super-categories (Verbal Coop, Material Coop, Verbal Conflict, Material Conflict) -> 20 CAMEO root codes as data accumulates
+- [x] **CAL-03**: System falls back to global alpha weight when insufficient outcome data exists for a category (configurable minimum sample threshold)
+- [x] **CAL-04**: System optimizes alpha weights via scipy L-BFGS-B minimizing Brier score per category
+- [x] **CAL-05**: Ensemble predictor dynamically loads per-CAMEO weights from `calibration_weights` table at prediction time
+- [x] **CAL-06**: System fetches Polymarket prediction market data for geopolitical questions and displays side-by-side comparison with Geopol's calibrated forecasts — tracking which source is more accurate over time
 
 ### TKG Predictor Replacement
 
@@ -110,11 +110,11 @@ Removed requirements:
 
 ### Monitoring & Hardening
 
-- [ ] **MON-01**: System monitors GDELT feed freshness and alerts when no new data arrives for >1 hour
-- [ ] **MON-02**: System monitors calibration drift (Brier score trend) and alerts when prediction quality degrades beyond threshold
-- [ ] **MON-03**: System monitors Gemini API usage and cost, with daily budget cap enforcement
-- [ ] **MON-04**: System exposes health endpoint reporting status of all subsystems (ingest daemon, last prediction, graph freshness, API budget remaining)
-- [ ] **MON-05**: System logs all errors and warnings to structured log files with rotation
+- [x] **MON-01**: System monitors GDELT feed freshness and alerts when no new data arrives for >1 hour
+- [x] **MON-02**: System monitors calibration drift (Brier score trend) and alerts when prediction quality degrades beyond threshold
+- [x] **MON-03**: System monitors Gemini API usage and cost, with daily budget cap enforcement
+- [x] **MON-04**: System exposes health endpoint reporting status of all subsystems (ingest daemon, last prediction, graph freshness, API budget remaining)
+- [x] **MON-05**: System logs all errors and warnings to structured log files with rotation
 
 ## Future Requirements (Backlog)
 
@@ -193,22 +193,22 @@ Which phases cover which requirements. Updated during roadmap creation.
 | AUTO-03 | Phase 10 | Complete |
 | AUTO-04 | Phase 10 | Complete |
 | AUTO-05 | Phase 10 | Complete |
-| CAL-01 | Phase 13 | Pending |
-| CAL-02 | Phase 13 | Pending |
-| CAL-03 | Phase 13 | Pending |
-| CAL-04 | Phase 13 | Pending |
-| CAL-05 | Phase 13 | Pending |
-| CAL-06 | Phase 13 | Pending |
+| CAL-01 | Phase 13 | Complete |
+| CAL-02 | Phase 13 | Complete |
+| CAL-03 | Phase 13 | Complete |
+| CAL-04 | Phase 13 | Complete |
+| CAL-05 | Phase 13 | Complete |
+| CAL-06 | Phase 13 | Complete |
 | TKG-01 | Phase 11 | Complete |
 | TKG-02 | Phase 11 | Complete |
 | TKG-03 | Phase 11 | Complete |
 | TKG-04 | Phase 11 | Complete |
 | TKG-05 | Phase 11 | Complete |
-| MON-01 | Phase 13 | Pending |
-| MON-02 | Phase 13 | Pending |
-| MON-03 | Phase 13 | Pending |
-| MON-04 | Phase 13 | Pending |
-| MON-05 | Phase 13 | Pending |
+| MON-01 | Phase 13 | Complete |
+| MON-02 | Phase 13 | Complete |
+| MON-03 | Phase 13 | Complete |
+| MON-04 | Phase 13 | Complete |
+| MON-05 | Phase 13 | Complete |
 
 **Coverage:**
 - v2.0 requirements: 50 total (8 INFRA + 7 API + 8 FE + 6 INGEST + 5 AUTO + 6 CAL + 5 TKG + 5 MON)

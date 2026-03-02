@@ -4,7 +4,7 @@
 
 - v1.0 MVP -- Phases 1-5 (shipped 2026-01-23)
 - v1.1 Tech Debt Remediation -- Phases 6-8 (shipped 2026-01-30)
-- v2.0 Operationalization & Forecast Quality -- Phases 9-13 (in progress)
+- v2.0 Operationalization & Forecast Quality -- Phases 9-13 (shipped 2026-03-02)
 
 ## Phases
 
@@ -87,7 +87,7 @@ Plans:
 
 </details>
 
-### v2.0 Operationalization & Forecast Quality (In Progress)
+### v2.0 Operationalization & Forecast Quality (SHIPPED 2026-03-02)
 
 **Milestone Goal:** Transform research prototype into publicly demonstrable system with a WM-derived TypeScript dashboard, headless FastAPI backend, automated operations, upgraded TKG predictor, and self-improving calibration.
 
@@ -113,7 +113,7 @@ Phase 9 (API + DB foundation) ─── critical path, everything gates on this
 - [x] **Phase 10: Ingest & Forecast Pipeline** — Micro-batch GDELT ingest, daily forecast automation, real API endpoints replacing mocks, Redis caching
 - [x] **Phase 11: TKG Predictor Replacement** — TiRGN JAX port replacing RE-GCN for improved accuracy (parallelizable with Phases 10 and 12)
 - [x] **Phase 12: WM-Derived Frontend** — TypeScript dashboard scaffolded from World Monitor patterns: deck.gl globe, forecast panels, scenario explorer, country briefs, map layers
-- [ ] **Phase 13: Calibration, Monitoring & Hardening** — Dynamic per-CAMEO calibration from accumulated outcome data, system health observability, alerting, operational resilience
+- [x] **Phase 13: Calibration, Monitoring & Hardening** — Dynamic per-CAMEO calibration from accumulated outcome data, system health observability, alerting, operational resilience
 
 ## Phase Details
 
@@ -218,13 +218,13 @@ Plans:
 **Plans**: 7 plans
 
 Plans:
-- [ ] 13-01-PLAN.md — DB schema extensions (3 new tables, widened CalibrationWeight, Prediction.cameo_root_code) + settings
-- [ ] 13-02-PLAN.md — Calibration optimizer (L-BFGS-B), weight loader (hierarchical fallback), cold-start priors
-- [ ] 13-03-PLAN.md — Monitoring package (alert manager, feed/drift/budget/disk monitors)
-- [ ] 13-04-PLAN.md — Structured log rotation + systemd service units
-- [ ] 13-05-PLAN.md — Polymarket client, matcher, comparison service
-- [ ] 13-06-PLAN.md — Integration wiring (ensemble dynamic alpha, health enrichment, pipeline hooks)
-- [ ] 13-07-PLAN.md — Calibration API routes, daily digest, frontend CalibrationPanel Polymarket display
+- [x] 13-01-PLAN.md — DB schema extensions (3 new tables, widened CalibrationWeight, Prediction.cameo_root_code) + settings
+- [x] 13-02-PLAN.md — Calibration optimizer (L-BFGS-B), weight loader (hierarchical fallback), cold-start priors
+- [x] 13-03-PLAN.md — Monitoring package (alert manager, feed/drift/budget/disk monitors)
+- [x] 13-04-PLAN.md — Structured log rotation + systemd service units
+- [x] 13-05-PLAN.md — Polymarket client, matcher, comparison service
+- [x] 13-06-PLAN.md — Integration wiring (ensemble dynamic alpha, health enrichment, pipeline hooks)
+- [x] 13-07-PLAN.md — Calibration API routes, daily digest, frontend CalibrationPanel Polymarket display
 
 ## Progress
 
@@ -245,6 +245,6 @@ Phase 9 first (critical path). Then Phases 10, 11, 12 in parallel. Phase 13 afte
 | 10. Ingest & Pipeline | v2.0 | 4/4 | Complete | 2026-03-01 |
 | 11. TKG Replacement | v2.0 | 3/3 | Complete | 2026-03-01 |
 | 12. WM-Derived Frontend | v2.0 | 7/7 | Complete | 2026-03-02 |
-| 13. Calibration & Monitoring | v2.0 | 0/7 | Not started | - |
+| 13. Calibration & Monitoring | v2.0 | 7/7 | Complete | 2026-03-02 |
 
-**Total:** 12 phases complete (v1.0 + v1.1 + Phases 9-12), 42 plans delivered. v2.0: 4/5 phases complete, 48 requirements, Phase 13 remains (7 plans in 3 waves).
+**Total:** 13 phases complete (v1.0 + v1.1 + v2.0), 49 plans delivered. v2.0: 5/5 phases complete, 50 requirements satisfied.
