@@ -1,0 +1,25 @@
+# Template service file. Edit paths for your deployment.
+#
+# Daily forecast timer -- triggers geopol-daily-forecast.service at
+# 06:00 UTC every day.  Persistent=true ensures a missed run (e.g.
+# after reboot) fires as soon as possible.
+#
+# Install:
+#   sudo cp geopol-daily-forecast.timer /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now geopol-daily-forecast.timer
+#
+# Verify:
+#   systemctl list-timers geopol-daily-forecast.timer
+
+[Unit]
+Description=GeoPolFC Daily Forecast Timer
+Documentation=https://github.com/smit-shah-GG/geopol
+
+[Timer]
+OnCalendar=*-*-* 06:00:00 UTC
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target

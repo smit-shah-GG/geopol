@@ -1,0 +1,42 @@
+# Template service file. Edit paths for your deployment.
+#
+# Daily forecast pipeline -- oneshot service triggered by the companion
+# timer unit.  Runs question generation, TKG + LLM prediction, ensemble
+# aggregation, and outcome resolution in a single pass.
+#
+# Install:
+#   sudo cp geopol-daily-forecast.service /etc/systemd/system/
+#   sudo cp geopol-daily-forecast.timer /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now geopol-daily-forecast.timer
+
+[Unit]
+Description=GeoPolFC Daily Forecast Pipeline
+After=network-online.target postgresql.service redis.service
+Wants=network-online.target
+Documentation=https://github.com/smit-shah-GG/geopol
+
+[Service]
+Type=oneshot
+User=geopol
+Group=geopol
+WorkingDirectory=/opt/geopol
+EnvironmentFile=/opt/geopol/.env
+Environment=PYTHONUNBUFFERED=1
+
+ExecStart=/opt/geopol/.venv/bin/python -m src.pipeline.daily_forecast
+
+# Allow up to 1 hour for full pipeline (TKG inference + LLM calls)
+TimeoutStartSec=3600
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/geopol/data
+PrivateTmp=true
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=geopol-daily-forecast

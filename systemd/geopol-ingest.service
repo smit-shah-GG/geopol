@@ -1,0 +1,45 @@
+# Template service file. Edit paths for your deployment.
+#
+# GDELT ingest daemon -- polls GDELT every 15 minutes, ingests new events
+# into SQLite, pushes graph updates to PostgreSQL.
+#
+# Install:
+#   sudo cp geopol-ingest.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now geopol-ingest.service
+
+[Unit]
+Description=GeoPolFC GDELT Ingest Daemon
+After=network-online.target postgresql.service redis.service
+Wants=network-online.target
+Documentation=https://github.com/smit-shah-GG/geopol
+
+[Service]
+Type=simple
+User=geopol
+Group=geopol
+WorkingDirectory=/opt/geopol
+EnvironmentFile=/opt/geopol/.env
+Environment=PYTHONUNBUFFERED=1
+
+ExecStart=/opt/geopol/.venv/bin/python -m src.ingest.gdelt_daemon
+
+Restart=on-failure
+RestartSec=30
+StartLimitIntervalSec=600
+StartLimitBurst=5
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/geopol/data
+PrivateTmp=true
+
+# Logging -- stdout/stderr captured by journald, file rotation via logging_config
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=geopol-ingest
+
+[Install]
+WantedBy=multi-user.target

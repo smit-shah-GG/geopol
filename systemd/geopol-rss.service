@@ -1,0 +1,46 @@
+# Template service file. Edit paths for your deployment.
+#
+# RSS poller daemon -- fetches geopolitical RSS feeds at tier-based
+# intervals (15 min tier-1, 60 min tier-2), chunks and embeds articles
+# into ChromaDB for RAG enrichment.
+#
+# Install:
+#   sudo cp geopol-rss.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now geopol-rss.service
+
+[Unit]
+Description=GeoPolFC RSS Feed Poller Daemon
+After=network-online.target postgresql.service
+Wants=network-online.target
+Documentation=https://github.com/smit-shah-GG/geopol
+
+[Service]
+Type=simple
+User=geopol
+Group=geopol
+WorkingDirectory=/opt/geopol
+EnvironmentFile=/opt/geopol/.env
+Environment=PYTHONUNBUFFERED=1
+
+ExecStart=/opt/geopol/.venv/bin/python -m src.ingest.rss_daemon
+
+Restart=on-failure
+RestartSec=60
+StartLimitIntervalSec=600
+StartLimitBurst=5
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/geopol/data
+PrivateTmp=true
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=geopol-rss
+
+[Install]
+WantedBy=multi-user.target
