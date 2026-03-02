@@ -38,40 +38,60 @@ class GeminiClient:
     """
     Client for interacting with Gemini API with built-in rate limiting and retry logic.
 
+    Resolves configuration from Settings (.env) first, then falls back to
+    explicit constructor args and OS environment variables.  On 503/overload
+    errors the client automatically retries with a fallback model before
+    raising.
+
     Attributes:
-        model_name: The Gemini model to use (default: gemini-3-pro-preview / Gemini 3.0 Pro)
-        max_rpm: Maximum requests per minute (default: 5 for free tier)
+        model_name: Primary Gemini model (default from Settings).
+        fallback_model_name: Fallback model for 503 errors (default from Settings).
+        max_rpm: Maximum requests per minute (default: 5 for free tier).
     """
 
     def __init__(
         self,
         api_key: Optional[str] = None,
-        model_name: str = "models/gemini-3-pro-preview",  # Gemini 3.0 Pro
+        model_name: Optional[str] = None,
+        fallback_model_name: Optional[str] = None,
         max_rpm: int = 5,
     ):
         """
         Initialize Gemini client.
 
+        Resolution order for api_key:
+            1. Explicit ``api_key`` argument
+            2. ``Settings.gemini_api_key`` (loaded from .env by pydantic-settings)
+            3. ``GEMINI_API_KEY`` environment variable
+
         Args:
-            api_key: Google AI API key. If None, reads from GEMINI_API_KEY env var.
-            model_name: Name of the Gemini model to use.
+            api_key: Google AI API key.
+            model_name: Primary model (default: Settings.gemini_model).
+            fallback_model_name: Fallback model (default: Settings.gemini_fallback_model).
             max_rpm: Maximum requests per minute (rate limit).
 
         Raises:
-            ValueError: If no API key is provided or found in environment.
+            ValueError: If no API key is resolved from any source.
         """
-        # Get API key from environment if not provided
+        from src.settings import get_settings
+
+        settings = get_settings()
+
+        # Resolve API key: explicit > Settings > env var
         if api_key is None:
-            api_key = os.getenv("GEMINI_API_KEY")
-            if not api_key:
-                raise ValueError(
-                    "No API key provided. Set GEMINI_API_KEY environment variable "
-                    "or pass api_key parameter."
-                )
+            api_key = settings.gemini_api_key or os.getenv("GEMINI_API_KEY") or ""
+        if not api_key:
+            raise ValueError(
+                "No API key provided. Set GEMINI_API_KEY in .env, "
+                "environment, or pass api_key parameter."
+            )
+
+        # Resolve model names from Settings
+        self.model_name = model_name or settings.gemini_model
+        self.fallback_model_name = fallback_model_name or settings.gemini_fallback_model
 
         # Initialize the client with the new SDK
         self.client = genai.Client(api_key=api_key)
-        self.model_name = model_name
         self.max_rpm = max_rpm
 
         # Request tracking for rate limiting (sliding window)
@@ -79,6 +99,12 @@ class GeminiClient:
 
         # Initialize model with caching support
         self._init_model()
+
+        logger.info(
+            "GeminiClient initialized (primary=%s, fallback=%s)",
+            self.model_name,
+            self.fallback_model_name,
+        )
 
     def _init_model(self) -> None:
         """Initialize the Gemini model with proper configuration."""
@@ -117,12 +143,6 @@ class GeminiClient:
         # Track this request
         self._request_times.append(now)
 
-    @retry(
-        retry=retry_if_exception_type((Exception,)),
-        stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=1, min=4, max=60),
-        reraise=True,
-    )
     def generate_content(
         self,
         prompt: str,
@@ -131,7 +151,11 @@ class GeminiClient:
         generation_config: Optional[Dict[str, Any]] = None,
     ) -> GenerateContentResponse:
         """
-        Generate content from Gemini with retry logic.
+        Generate content from Gemini with retry + model fallback.
+
+        Tries the primary model with exponential-backoff retries.  If all
+        retries fail with 503/UNAVAILABLE, transparently falls back to
+        ``self.fallback_model_name`` with its own retry cycle.
 
         Args:
             prompt: The user prompt to send to Gemini.
@@ -144,7 +168,7 @@ class GeminiClient:
 
         Raises:
             RateLimitExceeded: If rate limit would be exceeded.
-            Exception: For other API errors after retries exhausted.
+            Exception: For other API errors after retries exhausted on both models.
         """
         # Check rate limit before making request
         self._check_rate_limit()
@@ -153,31 +177,78 @@ class GeminiClient:
         if generation_config:
             config = generation_config
         else:
-            # Create config dict from default parameters
             config = self.default_generation_params.copy()
-
-            # If response schema is provided, ensure JSON response
             if response_schema:
                 config["response_mime_type"] = "application/json"
                 config["response_schema"] = response_schema
 
-        # Build the request - combine system instruction with prompt if provided
+        # Build contents
         if system_instruction:
             contents = [f"{system_instruction}\n\n{prompt}"]
         else:
             contents = [prompt]
 
+        # Try primary model
         try:
-            response = self.client.models.generate_content(
-                model=self.model_name,
+            return self._call_model(self.model_name, contents, config)
+        except Exception as primary_exc:
+            if not self._is_overloaded(primary_exc) or not self.fallback_model_name:
+                raise
+
+            logger.warning(
+                "Primary model %s unavailable after retries, falling back to %s",
+                self.model_name,
+                self.fallback_model_name,
+            )
+
+            # Try fallback model
+            try:
+                return self._call_model(self.fallback_model_name, contents, config)
+            except Exception as fallback_exc:
+                logger.error(
+                    "Fallback model %s also failed: %s",
+                    self.fallback_model_name,
+                    fallback_exc,
+                )
+                raise
+
+    @retry(
+        retry=retry_if_exception_type((Exception,)),
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=4, max=60),
+        reraise=True,
+    )
+    def _call_model(
+        self,
+        model_name: str,
+        contents: List[str],
+        config: Dict[str, Any],
+    ) -> GenerateContentResponse:
+        """Call a specific model with tenacity retries."""
+        try:
+            return self.client.models.generate_content(
+                model=model_name,
                 contents=contents,
                 config=config,
             )
-            return response
         except Exception as e:
-            # Log error for debugging
-            logger.error(f"Error generating content: {e}")
+            logger.error("Error from %s: %s", model_name, e)
             raise
+
+    @staticmethod
+    def _is_overloaded(exc: Exception) -> bool:
+        """Check if an exception indicates model overload (503/UNAVAILABLE)."""
+        msg = str(exc).lower()
+        return "503" in msg or "unavailable" in msg or "overloaded" in msg
+
+    def generate(self, prompt: str, **kwargs: Any) -> str:
+        """Convenience wrapper: generate content and return text string.
+
+        Used by pipeline components (QuestionGenerator, OutcomeResolver) that
+        expect a plain string response rather than the raw API response object.
+        """
+        response = self.generate_content(prompt, **kwargs)
+        return response.text
 
     def generate_with_context_caching(
         self,

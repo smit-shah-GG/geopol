@@ -105,6 +105,21 @@ async def _run(args: argparse.Namespace) -> int:
     llm_orchestrator = None
     tkg_predictor = None
 
+    # TKG predictor (auto-loads checkpoint from models/tkg/)
+    try:
+        from src.forecasting.tkg_predictor import TKGPredictor
+
+        tkg_predictor = await asyncio.to_thread(TKGPredictor)
+        if tkg_predictor.trained:
+            logger.info(
+                "TKG predictor initialized (backend=%s)", tkg_predictor._backend
+            )
+        else:
+            logger.warning("TKG predictor created but no trained model found")
+            tkg_predictor = None
+    except Exception as exc:
+        logger.warning("TKG predictor init failed: %s", exc)
+
     if gemini_client is not None:
         try:
             from src.forecasting.rag_pipeline import RAGPipeline
@@ -118,10 +133,10 @@ async def _run(args: argparse.Namespace) -> int:
             from src.forecasting.graph_validator import GraphValidator
             from src.forecasting.reasoning_orchestrator import ReasoningOrchestrator
 
-            graph_validator = GraphValidator()
+            graph_validator = GraphValidator(tkg_predictor=tkg_predictor)
             llm_orchestrator = ReasoningOrchestrator(
-                gemini_client=gemini_client,
-                scenario_generator=scenario_gen,
+                client=gemini_client,
+                generator=scenario_gen,
                 rag_pipeline=rag_pipeline,
                 graph_validator=graph_validator,
             )

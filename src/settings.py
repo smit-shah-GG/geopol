@@ -51,6 +51,11 @@ class Settings(BaseSettings):
     rss_poll_interval_tier2: int = 3600  # 1 hour
     rss_article_retention_days: int = 90
 
+    # -- Gemini LLM --
+    gemini_api_key: str = ""
+    gemini_model: str = "models/gemini-3-pro-preview"
+    gemini_fallback_model: str = "models/gemini-2.5-pro"
+
     # -- Daily Pipeline --
     gemini_daily_budget: int = 25  # Max questions per day
 
