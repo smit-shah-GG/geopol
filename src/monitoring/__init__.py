@@ -10,7 +10,7 @@ from datetime import datetime
 from pathlib import Path
 import pandas as pd
 
-from .constants import GDELT100_THRESHOLD
+from src.constants import GDELT100_THRESHOLD
 
 logger = logging.getLogger(__name__)
 
