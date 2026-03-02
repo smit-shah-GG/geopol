@@ -5,25 +5,25 @@
 See: .planning/PROJECT.md (updated 2026-02-27)
 
 **Core value:** Explainability -- every forecast must provide clear, traceable reasoning paths
-**Current focus:** Phase 12 in progress. Plans 01-06 complete. Plan 07 (build + deploy) remains.
+**Current focus:** Phase 13 in progress. Plan 01 (schema + settings foundation) complete. Plans 02-07 remain.
 
 ## Current Position
 
 Milestone: v2.0 Operationalization & Forecast Quality
-Phase: 12 of 13 (WM-Derived Frontend) -- COMPLETE
-Plan: 07 of 7 (in phase 12) -- ALL PLANS COMPLETE
-Status: Ready for Phase 13
-Last activity: 2026-03-02 -- Completed 12-07-PLAN.md (Integration wiring)
+Phase: 13 of 13 (Calibration, Monitoring & Hardening)
+Plan: 01 of 7 (in phase 13)
+Status: In progress
+Last activity: 2026-03-02 -- Completed 13-01-PLAN.md (Schema & settings foundation)
 
 Progress: [#################################.........] 81% (13/16 phases lifetime)
-v2.0:    [#######...] 80% (4/5 phases complete, 13 next)
+v2.0:    [########..] 80% (4/5 phases complete, 13 in progress)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 42
+- Total plans completed: 43
 - Average duration: 13 minutes
-- Total execution time: 9.04 hours
+- Total execution time: 9.09 hours
 
 **By Phase:**
 
@@ -41,10 +41,11 @@ v2.0:    [#######...] 80% (4/5 phases complete, 13 next)
 | 10-ingest-forecast-pipeline | 4 | 27min | 7min |
 | 11-tkg-predictor-replacement | 3 | 21min | 7min |
 | 12-wm-derived-frontend | 7 | 36min | 5min |
+| 13-calibration-monitoring-hardening | 1 | 3min | 3min |
 
 **Recent Trend:**
-- Last 4 plans: 12-05 (3min), 12-04 (6min), 12-03 (9min), 12-06 (6min)
-- Trend: Stable velocity; 12-06 at 6min for 1231-line component + 615 lines CSS
+- Last 4 plans: 12-06 (6min), 12-07 (5min), 13-01 (3min)
+- Trend: Sustained high velocity on schema/config tasks
 
 ## Accumulated Context
 
@@ -129,6 +130,9 @@ Key decisions affecting current work:
 - Entity graph runs d3.forceSimulation synchronously (200 ticks) -- no animation, stable layout (2026-03-02, 12-06)
 - CAMEO frequency extraction from evidence_sources via regex (2-digit code + CAMEO reference) (2026-03-02, 12-06)
 - entityViewMode as class field for graph/table toggle state (2026-03-02, 12-06)
+- CalibrationWeight.cameo_code widened to String(30) -- hierarchical keys (root codes, super-categories, global) without separate table (2026-03-02, 13-01)
+- PolymarketSnapshot uses ForeignKey to polymarket_comparisons.id -- first real FK in schema (2026-03-02, 13-01)
+- smtp_password as plain str not SecretStr -- consistent with existing extra=ignore pydantic-settings pattern (2026-03-02, 13-01)
 
 ### Deferred Issues
 
@@ -153,6 +157,6 @@ Key decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-03-02
-Stopped at: Completed 12-07-PLAN.md (Integration wiring, Phase 12 COMPLETE)
+Stopped at: Completed 13-01-PLAN.md (Schema & settings foundation)
 Resume file: None
-Next: Phase 13 (Deploy + Calibration, 5 plans)
+Next: 13-02-PLAN.md (Calibration weight recompute)
