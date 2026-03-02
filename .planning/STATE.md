@@ -5,15 +5,15 @@
 See: .planning/PROJECT.md (updated 2026-02-27)
 
 **Core value:** Explainability -- every forecast must provide clear, traceable reasoning paths
-**Current focus:** Phase 13 in progress. Plans 01-03 complete. Plans 04-07 remain.
+**Current focus:** Phase 13 in progress. Plans 01-04 complete. Plans 05-07 remain.
 
 ## Current Position
 
 Milestone: v2.0 Operationalization & Forecast Quality
 Phase: 13 of 13 (Calibration, Monitoring & Hardening)
-Plan: 03 of 7 (in phase 13)
+Plan: 04 of 7 (in phase 13)
 Status: In progress
-Last activity: 2026-03-02 -- Completed 13-03-PLAN.md (Monitoring package)
+Last activity: 2026-03-02 -- Completed 13-04-PLAN.md (Logging & systemd units)
 
 Progress: [#################################.........] 81% (13/16 phases lifetime)
 v2.0:    [########..] 80% (4/5 phases complete, 13 in progress)
@@ -21,9 +21,9 @@ v2.0:    [########..] 80% (4/5 phases complete, 13 in progress)
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 45
-- Average duration: 13 minutes
-- Total execution time: 9.21 hours
+- Total plans completed: 46
+- Average duration: 12 minutes
+- Total execution time: 9.28 hours
 
 **By Phase:**
 
@@ -41,11 +41,11 @@ v2.0:    [########..] 80% (4/5 phases complete, 13 in progress)
 | 10-ingest-forecast-pipeline | 4 | 27min | 7min |
 | 11-tkg-predictor-replacement | 3 | 21min | 7min |
 | 12-wm-derived-frontend | 7 | 36min | 5min |
-| 13-calibration-monitoring-hardening | 3 | 10min | 3min |
+| 13-calibration-monitoring-hardening | 4 | 14min | 4min |
 
 **Recent Trend:**
-- Last 4 plans: 13-01 (3min), 13-02 (3min), 13-03 (4min)
-- Trend: Sustained high velocity on monitoring/calibration tasks
+- Last 4 plans: 13-01 (3min), 13-02 (3min), 13-03 (4min), 13-04 (4min)
+- Trend: Sustained high velocity on infrastructure/monitoring tasks
 
 ## Accumulated Context
 
@@ -143,6 +143,10 @@ Key decisions affecting current work:
 - BudgetMonitor is read-only reporter, BudgetTracker remains enforcer (2026-03-02, 13-03)
 - DiskMonitor emergency_cleanup targets only .csv/.zip/.gz files, never .db (2026-03-02, 13-03)
 - Minimum 20 resolved predictions for drift detection (2026-03-02, 13-03)
+- File handler always uses JSON format regardless of stderr json_format -- structured disk logs mandatory (2026-03-02, 13-04)
+- File handler level DEBUG unconditionally -- disk captures everything for post-incident analysis (2026-03-02, 13-04)
+- systemd units include NoNewPrivileges, ProtectSystem=strict, ProtectHome, PrivateTmp for defense-in-depth (2026-03-02, 13-04)
+- Daily forecast timer: Persistent=true + RandomizedDelaySec=300 for resilient scheduling (2026-03-02, 13-04)
 
 ### Deferred Issues
 
@@ -167,6 +171,6 @@ Key decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-03-02
-Stopped at: Completed 13-03-PLAN.md (Monitoring package)
+Stopped at: Completed 13-04-PLAN.md (Logging & systemd units)
 Resume file: None
-Next: 13-04-PLAN.md (Logging & hardening)
+Next: 13-05-PLAN.md (Polymarket comparison)
