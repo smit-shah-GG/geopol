@@ -195,13 +195,13 @@ Plans:
 **Plans**: 7 plans
 
 Plans:
-- [ ] 12-01-PLAN.md — Project scaffold (Vite, TypeScript, Panel base class, AppContext, h() helper, theme system, API types)
-- [ ] 12-02-PLAN.md — ForecastServiceClient with CircuitBreaker (typed API access, resilience, deduplication)
-- [ ] 12-03-PLAN.md — DeckGLMap globe with 5 map layers (choropleth, markers, arcs, heatmap, scenario zones)
-- [ ] 12-04-PLAN.md — Dashboard panels (ForecastPanel, RiskIndexPanel, EventTimelinePanel, EnsembleBreakdownPanel, SystemHealthPanel, CalibrationPanel)
-- [ ] 12-05-PLAN.md — ScenarioExplorer modal (d3-hierarchy tree visualization, evidence sidebar)
-- [ ] 12-06-PLAN.md — Country Brief Page (6-tab full-screen modal with entity graph, calibration charts)
-- [ ] 12-07-PLAN.md — Integration wiring (main.ts, panel layout, RefreshScheduler, end-to-end verification)
+- [x] 12-01-PLAN.md — Project scaffold (Vite, TypeScript, Panel base class, AppContext, h() helper, theme system, API types)
+- [x] 12-02-PLAN.md — ForecastServiceClient with CircuitBreaker (typed API access, resilience, deduplication)
+- [x] 12-03-PLAN.md — DeckGLMap globe with 5 map layers (choropleth, markers, arcs, heatmap, scenario zones)
+- [x] 12-04-PLAN.md — Dashboard panels (ForecastPanel, RiskIndexPanel, EventTimelinePanel, EnsembleBreakdownPanel, SystemHealthPanel, CalibrationPanel)
+- [x] 12-05-PLAN.md — ScenarioExplorer modal (d3-hierarchy tree visualization, evidence sidebar)
+- [x] 12-06-PLAN.md — Country Brief Page (6-tab full-screen modal with entity graph, calibration charts)
+- [x] 12-07-PLAN.md — Integration wiring (main.ts, panel layout, RefreshScheduler, end-to-end verification)
 
 ### Phase 13: Calibration, Monitoring & Hardening
 **Goal**: System self-improves its ensemble weights from accumulated outcome data, health is continuously observable, operational failures trigger alerts, and the system runs unattended for days without degradation
@@ -215,7 +215,16 @@ Plans:
   5. Stopping the GDELT feed for >1 hour triggers a logged alert; Brier score degradation beyond a configured threshold triggers a calibration drift alert
   6. All errors and warnings across all subsystems are written to structured log files with automatic rotation (no unbounded log growth)
   7. Polymarket prediction market data is fetched for at least 5 geopolitical questions that overlap with Geopol forecasts, and a comparison table shows Geopol probability vs. market probability for each
-**Plans**: TBD
+**Plans**: 7 plans
+
+Plans:
+- [ ] 13-01-PLAN.md — DB schema extensions (3 new tables, widened CalibrationWeight, Prediction.cameo_root_code) + settings
+- [ ] 13-02-PLAN.md — Calibration optimizer (L-BFGS-B), weight loader (hierarchical fallback), cold-start priors
+- [ ] 13-03-PLAN.md — Monitoring package (alert manager, feed/drift/budget/disk monitors)
+- [ ] 13-04-PLAN.md — Structured log rotation + systemd service units
+- [ ] 13-05-PLAN.md — Polymarket client, matcher, comparison service
+- [ ] 13-06-PLAN.md — Integration wiring (ensemble dynamic alpha, health enrichment, pipeline hooks)
+- [ ] 13-07-PLAN.md — Calibration API routes, daily digest, frontend CalibrationPanel Polymarket display
 
 ## Progress
 
@@ -236,6 +245,6 @@ Phase 9 first (critical path). Then Phases 10, 11, 12 in parallel. Phase 13 afte
 | 10. Ingest & Pipeline | v2.0 | 4/4 | Complete | 2026-03-01 |
 | 11. TKG Replacement | v2.0 | 3/3 | Complete | 2026-03-01 |
 | 12. WM-Derived Frontend | v2.0 | 7/7 | Complete | 2026-03-02 |
-| 13. Calibration & Monitoring | v2.0 | 0/TBD | Not started | - |
+| 13. Calibration & Monitoring | v2.0 | 0/7 | Not started | - |
 
-**Total:** 12 phases complete (v1.0 + v1.1 + Phases 9-12), 42 plans delivered. v2.0: 4/5 phases complete, 48 requirements, Phase 13 remains.
+**Total:** 12 phases complete (v1.0 + v1.1 + Phases 9-12), 42 plans delivered. v2.0: 4/5 phases complete, 48 requirements, Phase 13 remains (7 plans in 3 waves).
