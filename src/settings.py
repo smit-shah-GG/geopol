@@ -61,6 +61,33 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     log_json: bool = False
 
+    # -- Calibration --
+    calibration_min_samples: int = 10
+    calibration_max_deviation: float = 0.20
+    calibration_recompute_day: int = 0  # 0=Monday (weekday index)
+
+    # -- Monitoring / Alerting --
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_username: str = ""
+    smtp_password: str = ""
+    smtp_sender: str = ""
+    alert_recipient: str = ""
+    alert_cooldown_minutes: int = 60
+    feed_staleness_hours: float = 1.0
+    drift_threshold_pct: float = 10.0
+    disk_warning_pct: float = 80.0
+    disk_critical_pct: float = 90.0
+
+    # -- Polymarket --
+    polymarket_enabled: bool = True
+    polymarket_poll_interval: int = 3600  # 1 hour in seconds
+    polymarket_match_threshold: float = 0.6
+
+    # -- Logging (file rotation) --
+    log_dir: str = "data/logs"
+    log_retention_days: int = 30
+
     @property
     def is_production(self) -> bool:
         return self.environment == "production"
