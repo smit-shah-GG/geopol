@@ -153,7 +153,7 @@ Removed requirements:
 ### Backend API
 
 - [ ] **BAPI-01**: Remove mock fixture fallback in `forecasts.py` -- return empty results when PostgreSQL has no data for a country; fixes Myanmar-under-Syria bleed-through
-- [ ] **BAPI-02**: Real country risk aggregation endpoint (`GET /api/v1/countries`) returns per-country forecast_count, risk_score (from max/avg probability), trend (rising/stable/falling), and top_forecast -- all computed from `predictions` table
+- [ ] **BAPI-02**: Real country risk aggregation endpoint (`GET /api/v1/countries`) returns per-country forecast_count, risk_score (composite 0-100 index combining count + probability + Goldstein severity, with exponential time decay), trend (rising/stable/falling via 7-day delta), and top_forecast (most recent) -- all computed from `predictions` table
 - [ ] **BAPI-03**: Question submission queue: new `forecast_requests` table, `POST /api/v1/forecasts/submit` accepting natural language question, LLM parsing to structured form (country_iso, horizon_days, category), `GET /api/v1/forecasts/requests` for status listing
 - [ ] **BAPI-04**: Full-text search endpoint `GET /api/v1/forecasts/search?q=...&category=...&country=...` using PostgreSQL `ts_vector` + GIN index on `predictions.question`
 

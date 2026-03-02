@@ -258,7 +258,7 @@ Phase 14 (backend API hardening) --- unblocks real data for frontend
 **Requirements**: BAPI-01, BAPI-02, BAPI-03, BAPI-04
 **Success Criteria** (what must be TRUE):
   1. `GET /api/v1/forecasts/country/MM` returns an empty result set (not Syria's forecasts) when no Myanmar predictions exist in PostgreSQL -- the fixture fallback code path is deleted, not disabled
-  2. `GET /api/v1/countries` returns a JSON array where each entry has `country_iso`, `forecast_count`, `risk_score`, `trend`, and `top_forecast` -- all computed from the `predictions` table via SQL aggregation, not hardcoded
+  2. `GET /api/v1/countries` returns a JSON array where each entry has `country_iso`, `forecast_count`, `risk_score` (composite 0-100 index: count + probability + Goldstein severity with exponential time decay), `trend` (rising/stable/falling via 7-day delta), and `top_forecast` (most recent) -- all computed from the `predictions` table via SQL aggregation, not hardcoded
   3. `POST /api/v1/forecasts/submit` accepts a natural language question, returns a `request_id` and LLM-parsed structured form (country_iso, horizon_days, category), and the request appears in the `forecast_requests` table with status `pending`
   4. `GET /api/v1/forecasts/search?q=conflict&country=UA` returns forecasts matching the query using PostgreSQL `ts_vector` full-text search with sub-200ms response time on 1000+ predictions
   5. `GET /api/v1/forecasts/requests` returns the user's submitted questions with current status (pending/processing/complete/failed) and links to completed forecast results
@@ -274,6 +274,9 @@ Phase 14 (backend API hardening) --- unblocks real data for frontend
   3. Clicking a forecast card inline-expands to show ensemble weights, top evidence summaries, calibration metadata, and a "View Full Analysis" button that opens the ScenarioExplorer modal
   4. Typing in the search bar filters visible forecasts in real-time by question text, country, or category; results update as the user types (debounced) against the BAPI-04 search endpoint
   5. The "My Forecasts" section shows user-submitted questions with status badges (pending/processing/complete) and clicking a completed forecast navigates to its full result
+  6. Scenario tree node labels display short text (~40 chars) by default; hovering over a node shows a tooltip with the full scenario description
+  7. An Event Feed panel renders recent GDELT events and RSS article headlines in a compact timeline format with timestamps and source attribution
+  8. A Sources panel displays active data sources (GDELT, RSS tiers, Polymarket) with health/staleness indicators showing last-updated time and status
 **Plans**: TBD
 
 ### Phase 16: Globe & Forecasts Screens

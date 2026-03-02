@@ -26,12 +26,14 @@ Explainability — every forecast must provide clear, traceable reasoning paths 
 
 - Three-screen URL-routed frontend (`/dashboard`, `/globe`, `/forecasts`) replacing single-screen layout
 - Progressive disclosure on forecast cards (inline expand → full ScenarioExplorer modal)
-- Real country risk aggregation from PostgreSQL predictions (replacing hardcoded mock data)
+- Real country risk aggregation from PostgreSQL predictions — composite 0-100 index (count + probability + Goldstein severity), 7-day delta trend, time decay
 - Question submission queue with LLM parsing and async backend processing
 - Full-text forecast search (question text, country, category filters)
 - Globe contextual drill-down (country click → panel with forecasts, timeline, events)
+- Globe choropleth from real aggregate risk scores; layer toggle controls for markers, arcs, heatmap, scenario zones
 - Scenario tree node text rendering fix (tooltip hover for full descriptions)
 - Kill mock fixture fallback in forecasts.py — empty results when no real data
+- Dashboard panels: My Forecasts (submission status), Event Feed (GDELT + RSS), Sources (data source health)
 
 ## Current Milestone: v2.1 Production UX & Live Data Integration
 
