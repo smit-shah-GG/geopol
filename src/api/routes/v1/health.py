@@ -107,37 +107,25 @@ def _check_gdelt_store(settings: Settings) -> SubsystemStatus:
 
 
 def _check_graph_partitions(settings: Settings) -> SubsystemStatus:
-    """Query partition count from the SQLite partition index."""
+    """Check if the knowledge graph file exists."""
     now = datetime.now(timezone.utc)
     try:
-        # The partition index uses the same SQLite base path with a different file
-        # Convention: data/partition_index.db alongside data/events.db
-        index_path = Path(settings.gdelt_db_path).parent / "partition_index.db"
-        if not index_path.exists():
+        graph_path = Path("data/graphs/knowledge_graph.graphml")
+        if not graph_path.exists():
             return SubsystemStatus(
                 name="graph_partitions",
                 healthy=False,
-                detail="Partition index DB not found",
+                detail="Knowledge graph not found (run bootstrap)",
                 checked_at=now,
             )
 
-        import sqlite3
-
-        conn = sqlite3.connect(str(index_path))
-        try:
-            cursor = conn.cursor()
-            cursor.execute(
-                "SELECT COUNT(*) FROM partition_meta"
-            )
-            count = cursor.fetchone()[0]
-            return SubsystemStatus(
-                name="graph_partitions",
-                healthy=count > 0,
-                detail=f"{count} partitions indexed",
-                checked_at=now,
-            )
-        finally:
-            conn.close()
+        size_mb = graph_path.stat().st_size / (1024 * 1024)
+        return SubsystemStatus(
+            name="graph_partitions",
+            healthy=True,
+            detail=f"GraphML ({size_mb:.1f} MB)",
+            checked_at=now,
+        )
     except Exception as exc:
         logger.warning("Health check: graph_partitions unhealthy: %s", exc)
         return SubsystemStatus(
@@ -152,16 +140,31 @@ def _check_tkg_model() -> SubsystemStatus:
     """Check if a TKG model checkpoint file exists."""
     now = datetime.now(timezone.utc)
     try:
-        # Convention: model checkpoints in data/models/
-        model_dir = Path("data/models")
+        model_dir = Path("models/tkg")
         if model_dir.exists():
-            checkpoints = list(model_dir.glob("*.pkl")) + list(model_dir.glob("*.params"))
+            # JAX checkpoints (.npz) or PyTorch (.pt)
+            checkpoints = (
+                list(model_dir.glob("*.npz"))
+                + list(model_dir.glob("*.pt"))
+            )
             if checkpoints:
                 latest = max(checkpoints, key=lambda p: p.stat().st_mtime)
+                size_mb = latest.stat().st_size / (1024 * 1024)
+                # Read metadata if available
+                meta_path = latest.with_suffix(".json")
+                detail = f"Latest: {latest.name} ({size_mb:.1f} MB)"
+                if meta_path.exists():
+                    import json
+
+                    with open(meta_path) as f:
+                        meta = json.load(f)
+                    mrr = meta.get("metrics", {}).get("mrr")
+                    if mrr is not None:
+                        detail += f", MRR={mrr:.4f}"
                 return SubsystemStatus(
                     name="tkg_model",
                     healthy=True,
-                    detail=f"Latest: {latest.name}",
+                    detail=detail,
                     checked_at=now,
                 )
         return SubsystemStatus(

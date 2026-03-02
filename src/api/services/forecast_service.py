@@ -107,7 +107,7 @@ class ForecastService:
             horizon_days=horizon_days,
             category=ensemble_prediction.category or "conflict",
             reasoning_summary=forecast_output.reasoning_summary,
-            evidence_count=len(forecast_output.evidence_sources),
+            evidence_count=sum(len(s.get("evidence_sources", [])) for s in scenarios_json),
             scenarios_json=scenarios_json,
             ensemble_info_json=ensemble_info_json,
             calibration_json=calibration_json,
@@ -322,6 +322,19 @@ class ForecastService:
 
 def _scenario_to_dict(scenario: Scenario) -> dict:
     """Convert a Scenario Pydantic model to a JSON-serializable dict for storage."""
+    # Extract evidence from reasoning path steps
+    evidence: list[dict] = []
+    seen: set[str] = set()
+    for step in scenario.reasoning_path:
+        for ev_text in step.evidence:
+            if ev_text not in seen:
+                seen.add(ev_text)
+                evidence.append({
+                    "source": "reasoning_chain",
+                    "description": ev_text,
+                    "confidence": step.confidence,
+                })
+
     return {
         "scenario_id": scenario.scenario_id,
         "description": scenario.description,
@@ -329,7 +342,7 @@ def _scenario_to_dict(scenario: Scenario) -> dict:
         "answers_affirmative": scenario.answers_affirmative,
         "entities": [e.name for e in scenario.entities],
         "timeline": [te.description for te in scenario.timeline],
-        "evidence_sources": [],  # Evidence stored separately, not per-scenario in v1
+        "evidence_sources": evidence,
         "child_scenarios": [],  # Flat storage -- child_ids track hierarchy
     }
 
