@@ -24,30 +24,32 @@ Explainability — every forecast must provide clear, traceable reasoning paths 
 
 ### Active
 
-- WM-derived TypeScript dashboard as public-facing frontend with deck.gl globe, forecast panels, scenario explorer, country briefs, and calibration visualizations
-- Headless FastAPI backend serving forecast data via versioned REST API with Pydantic DTOs
-- Scheduled daily forecast automation with cron/systemd orchestration
-- System health monitoring: data freshness, calibration drift, pipeline status
-- TKG predictor replacement: research and implement best-accuracy JAX-compatible algorithm (candidates: HisMatch, TiRGN, others) optimized for weekly retraining on large datasets
-- Micro-batch GDELT ingest on 15-minute cycle to keep knowledge graph current between daily prediction runs
-- Dynamic per-CAMEO-category ensemble calibration: outcome feedback loop replacing fixed 60/40 alpha with learned weights per CAMEO root category
+- Three-screen URL-routed frontend (`/dashboard`, `/globe`, `/forecasts`) replacing single-screen layout
+- Progressive disclosure on forecast cards (inline expand → full ScenarioExplorer modal)
+- Real country risk aggregation from PostgreSQL predictions (replacing hardcoded mock data)
+- Question submission queue with LLM parsing and async backend processing
+- Full-text forecast search (question text, country, category filters)
+- Globe contextual drill-down (country click → panel with forecasts, timeline, events)
+- Scenario tree node text rendering fix (tooltip hover for full descriptions)
+- Kill mock fixture fallback in forecasts.py — empty results when no real data
 
-## Current Milestone: v2.0 Operationalization & Forecast Quality
+## Current Milestone: v2.1 Production UX & Live Data Integration
 
-**Goal:** Transform the research prototype into a publicly demonstrable system with a WM-derived TypeScript dashboard, headless FastAPI backend, automated operations, while upgrading the TKG predictor and closing the calibration feedback loop.
+**Goal:** Restructure the single-screen dashboard into a three-screen URL-routed application with progressive disclosure, real data-driven country risk, user-submitted forecast questions, and full-text search — transforming the v2.0 demo into a usable analytical tool.
 
-**Architecture:** Geopol is a headless Python forecast engine. Its frontend is a TypeScript dashboard architecturally derived from World Monitor (vanilla TS + deck.gl + Panel system) but purpose-built for geopolitical forecasting. WM is used as a reference architecture and code quarry — not as a runtime dependency. See `WORLDMONITOR_INTEGRATION.md` for DTO contract spec and `.planning/research/WM_AS_REPOSITORY.md` for salvageability analysis.
+**Architecture:** Same headless API + TypeScript frontend stack from v2.0. No new infrastructure — extends existing FastAPI endpoints and TypeScript Panel system. New backend: question submission queue (PostgreSQL `forecast_requests` table), real country risk aggregation from `predictions` table, full-text search endpoint. Frontend: three URL-routed screens replacing the single-screen layout.
 
-**Execution model:** Parallel after Phase 9. The API DTOs and mock fixtures established in Phase 9 serve as the contract that backend (Phase 10) and frontend (Phase 12) develop against independently.
+**Design document:** `.planning/research/FRONTEND_REDESIGN.md`
 
 **Target features:**
-- WM-derived TypeScript frontend: deck.gl globe with forecast risk choropleth, forecast panels, interactive scenario explorer, country brief pages with forecast/evidence/calibration tabs
-- Headless FastAPI backend: versioned REST API, Pydantic DTOs, Redis caching, API key auth
-- Scheduled daily forecast automation
-- System health monitoring: data freshness, calibration drift, pipeline status
-- TKG predictor replacement: best-accuracy JAX-compatible algorithm, weekly-retrainable on large GDELT data
-- Micro-batch GDELT ingest: 15-minute update cycle keeping graph current, predictions remain daily
-- Dynamic calibration: per-CAMEO-category ensemble weights learned from outcome feedback loop, replacing static alpha=0.6
+- Three-screen URL-routed architecture: `/dashboard` (information-dense, no globe), `/globe` (geospatial exploration with contextual drill-down), `/forecasts` (question submission queue + history)
+- Progressive disclosure on forecast cards: click-expand reveals ensemble weights, evidence summary, calibration metadata → "View Full Analysis" opens ScenarioExplorer
+- Kill mock fixture fallback — return empty results when no data exists; fix Myanmar-under-Syria bleed-through
+- Real country risk aggregation from PostgreSQL predictions table (not hardcoded mock list)
+- Question submission queue: natural language → LLM-parsed structured form → async processing → results
+- Full-text search over active forecasts (question text, country, category)
+- Scenario tree node text rendering fix (tooltip on hover for full text)
+- Globe contextual drill-down: country click → slide-in panel with forecasts, risk timeline, event sparkline
 
 ### Out of Scope
 
@@ -110,7 +112,7 @@ Key technical inspirations:
 
 ## Current State
 
-**Version:** v1.1 (shipped 2026-01-30) — v2.0 in progress
+**Version:** v2.0 (shipped 2026-03-02) — v2.1 in progress
 
 **Tech Stack:**
 - **Backend**: Python 3.11+ with uv package management
@@ -130,8 +132,8 @@ Key technical inspirations:
 
 **Codebase:**
 - ~100 Python source files, 40,257 lines
-- 8 phases, 21 plans delivered across 2 milestones (v1.0 + v1.1)
-- v2.0: 5 phases planned, 48 requirements, parallel execution after Phase 9
+- 13 phases, 49 plans delivered across 3 milestones (v1.0 + v1.1 + v2.0)
+- v2.1: defining requirements and roadmap
 
 **Known Issues:**
 - datetime.utcnow() deprecated in Python 3.12+ (minor, in bootstrap code)
@@ -140,4 +142,4 @@ Key technical inspirations:
 - World Monitor (`/home/kondraki/personal/worldmonitor/`) — TypeScript OSINT dashboard used as frontend reference architecture. See `.planning/research/WM_AS_REPOSITORY.md`.
 
 ---
-*Last updated: 2026-02-27 — v2.0 restructured: WM-derived TypeScript frontend replaces Streamlit, headless FastAPI backend, parallel execution model, PostgreSQL for forecast persistence*
+*Last updated: 2026-03-02 — v2.0 shipped; v2.1 started: three-screen frontend redesign, real country risk, question submission queue*

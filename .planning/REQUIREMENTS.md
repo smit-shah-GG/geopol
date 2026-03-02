@@ -19,6 +19,11 @@
 - [x] Production bootstrap script connecting data ingestion -> graph build -> RAG indexing
 - [x] Graph partitioning for scalability beyond 1M events
 
+### v2.0 Operationalization & Forecast Quality (shipped 2026-03-02)
+
+50 requirements delivered: 8 INFRA + 7 API + 8 FE + 6 INGEST + 5 AUTO + 6 CAL + 5 TKG + 5 MON.
+See detailed v2.0 requirements section below for full list.
+
 ## Removed Requirements
 
 ### WEB-* (Streamlit Frontend) — Removed 2026-02-27
@@ -116,6 +121,42 @@ Removed requirements:
 - [x] **MON-04**: System exposes health endpoint reporting status of all subsystems (ingest daemon, last prediction, graph freshness, API budget remaining)
 - [x] **MON-05**: System logs all errors and warnings to structured log files with rotation
 
+## v2.1 Requirements
+
+**Defined:** 2026-03-02
+**Core Value:** Explainability -- every forecast must provide clear, traceable reasoning paths
+**Milestone Goal:** Restructure the single-screen dashboard into a three-screen URL-routed application with progressive disclosure, real data-driven country risk, user-submitted forecast questions, and full-text search -- transforming the v2.0 demo into a usable analytical tool.
+**Design document:** `.planning/research/FRONTEND_REDESIGN.md`
+
+### Screen Architecture
+
+- [ ] **SCREEN-01**: Frontend uses URL-based routing (`/dashboard`, `/globe`, `/forecasts`) with browser history support -- each screen is bookmarkable and shareable
+- [ ] **SCREEN-02**: Dashboard screen (`/dashboard`) uses scrollable column layout with collapsible sections, no globe -- freed space allocated to feeds, sources, search, and expanded forecast cards
+- [ ] **SCREEN-03**: Globe screen (`/globe`) renders full-viewport deck.gl globe with contextual overlay panels that appear on interaction
+- [ ] **SCREEN-04**: Forecasts screen (`/forecasts`) displays question submission form with LLM-parsed confirmation and queue showing pending/processing/complete status
+
+### Forecast UX
+
+- [ ] **FUX-01**: Clicking a forecast card inline-expands to reveal probability bar, ensemble weights (α LLM / β TKG), evidence count + top 2-3 evidence summaries, horizon/expiry, calibration metadata, and a "View Full Analysis" button that opens ScenarioExplorer modal
+- [ ] **FUX-02**: Scenario tree node labels show short text (~40 chars) by default with tooltip on hover revealing full scenario description
+- [ ] **FUX-03**: Full-text search UI over active forecasts filtering by question text, country, and category -- usable at 30+ forecasts
+- [ ] **FUX-04**: "My Forecasts" section on Dashboard showing user-submitted questions with status badges (pending → processing → complete) and links to completed results
+- [ ] **FUX-05**: Event Feed panel showing GDELT event stream and RSS article headlines in compact timeline format
+- [ ] **FUX-06**: Sources panel showing active data sources (GDELT, RSS tiers, Polymarket) with health/staleness indicators
+
+### Globe Interaction
+
+- [ ] **GLOBE-01**: Country click on globe opens slide-in panel showing all forecasts for that country, risk timeline, and GDELT event sparkline
+- [ ] **GLOBE-02**: Choropleth layer colors countries by real aggregate risk score derived from predictions table (not mock data)
+- [ ] **GLOBE-03**: Layer toggle UI controls for forecast markers, conflict arcs, heatmap, and scenario zone layers
+
+### Backend API
+
+- [ ] **BAPI-01**: Remove mock fixture fallback in `forecasts.py` -- return empty results when PostgreSQL has no data for a country; fixes Myanmar-under-Syria bleed-through
+- [ ] **BAPI-02**: Real country risk aggregation endpoint (`GET /api/v1/countries`) returns per-country forecast_count, risk_score (from max/avg probability), trend (rising/stable/falling), and top_forecast -- all computed from `predictions` table
+- [ ] **BAPI-03**: Question submission queue: new `forecast_requests` table, `POST /api/v1/forecasts/submit` accepting natural language question, LLM parsing to structured form (country_iso, horizon_days, category), `GET /api/v1/forecasts/requests` for status listing
+- [ ] **BAPI-04**: Full-text search endpoint `GET /api/v1/forecasts/search?q=...&category=...&country=...` using PostgreSQL `ts_vector` + GIN index on `predictions.question`
+
 ## Future Requirements (Backlog)
 
 Tracked ideas not yet assigned to a milestone. Includes WM-derived features for future cherry-picking.
@@ -124,12 +165,12 @@ Tracked ideas not yet assigned to a milestone. Includes WM-derived features for 
 
 - **WM-FEAT-01**: Variant system — regional forecast builds (MENA, Europe, Asia-Pacific, Africa) from single codebase via `VITE_VARIANT`
 - **WM-FEAT-02**: Prediction markets panel — Polymarket data alongside Geopol forecasts for calibration comparison
-- **WM-FEAT-03**: Command palette (⌘K) — search forecasts, countries, entities
+- **WM-FEAT-03**: Command palette (⌘K) — search forecasts, countries, entities *(partially addressed by FUX-03 in v2.1)*
 - **WM-FEAT-04**: Playback mode — replay how forecasts evolved over time (time travel)
 - **WM-FEAT-05**: i18n / RTL — multi-language forecast display
 - **WM-FEAT-06**: Virtual scrolling — for large forecast history lists
 - **WM-FEAT-07**: Export (JSON, CSV, PNG) — forecast report generation
-- **WM-FEAT-08**: URL state binding — shareable deep links (`?country=SY&forecast=abc123`)
+- **WM-FEAT-08**: URL state binding — shareable deep links (`?country=SY&forecast=abc123`) *(partially addressed by SCREEN-01 URL routing in v2.1)*
 - **WM-FEAT-09**: Tauri desktop — native desktop app with keychain secrets and local API sidecar
 - **WM-FEAT-10**: PWA offline support — cached forecasts viewable without network
 
@@ -152,6 +193,11 @@ Explicitly excluded. Documented to prevent scope creep.
 | Multi-source data (v2.0) | Deferred until micro-batch architecture proven and TKG replacement validated |
 | Real-time prediction (v2.0) | Micro-batch ingest yes, but predictions remain daily; real-time would require incremental TKG inference |
 | World Monitor live integration | WM used as reference architecture and code quarry, not as a runtime dependency; no service-to-service HTTP calls between WM and Geopol |
+| Mobile/responsive layout (v2.1) | Three screens + globe = poor mobile experience; desktop-first |
+| Real-time collaboration (v2.1) | Multiple users viewing same forecast; single-user system |
+| Forecast comparison view (v2.1) | Side-by-side two forecasts; out of scope for this milestone |
+| Historical forecast replay (v2.1) | Time travel through past forecasts; see WM-FEAT-04 backlog |
+| SSE/WebSocket streaming (v2.1) | Partial results as pipeline progresses; defer unless UX testing shows wait is intolerable |
 
 ## Traceability
 
@@ -210,19 +256,43 @@ Which phases cover which requirements. Updated during roadmap creation.
 | MON-04 | Phase 13 | Complete |
 | MON-05 | Phase 13 | Complete |
 
-**Coverage:**
+**v2.0 Coverage:**
 - v2.0 requirements: 50 total (8 INFRA + 7 API + 8 FE + 6 INGEST + 5 AUTO + 6 CAL + 5 TKG + 5 MON)
 - Mapped to phases: 50/50
 - Unmapped: 0
 
-**Phase distribution:**
+**v2.0 Phase distribution:**
 - Phase 9: 11 requirements (INFRA-01..08, API-01..03, API-07)
 - Phase 10: 14 requirements (INGEST-01..06, AUTO-01..05, API-04..06)
 - Phase 11: 5 requirements (TKG-01..05)
 - Phase 12: 8 requirements (FE-01..08)
 - Phase 13: 11 requirements (CAL-01..06, MON-01..05)
 
+**v2.1 Coverage:**
+- v2.1 requirements: 17 total (4 SCREEN + 6 FUX + 3 GLOBE + 4 BAPI)
+- Mapped to phases: 0/17 (roadmap pending)
+- Unmapped: 17
+
+| SCREEN-01 | — | Pending |
+| SCREEN-02 | — | Pending |
+| SCREEN-03 | — | Pending |
+| SCREEN-04 | — | Pending |
+| FUX-01 | — | Pending |
+| FUX-02 | — | Pending |
+| FUX-03 | — | Pending |
+| FUX-04 | — | Pending |
+| FUX-05 | — | Pending |
+| FUX-06 | — | Pending |
+| GLOBE-01 | — | Pending |
+| GLOBE-02 | — | Pending |
+| GLOBE-03 | — | Pending |
+| BAPI-01 | — | Pending |
+| BAPI-02 | — | Pending |
+| BAPI-03 | — | Pending |
+| BAPI-04 | — | Pending |
+
 ---
 *Requirements defined: 2026-02-14*
 *Restructured: 2026-02-27 — WM-derived frontend replaces Streamlit; API layer added; PostgreSQL replaces SQLite for forecast persistence; CAL-* moved to Phase 13; parallel execution model adopted*
 *Updated: 2026-02-27 — Added INGEST-06 (RSS feed → RAG enrichment from WM's 298-domain feed list) and CAL-06 (Polymarket calibration comparison)*
+*Updated: 2026-03-02 — v2.0 shipped; v2.1 requirements defined (17 requirements across 4 categories)*
