@@ -72,6 +72,32 @@ Return ONLY the JSON array. No markdown, no explanation.
 """
 
 
+_COUNTRY_GENERATION_PROMPT = """\
+You are a geopolitical forecasting analyst. Generate exactly one binary \
+(yes/no) forecast question for EACH of the following countries. Base your \
+questions on current geopolitical context and recent events.
+
+TARGET COUNTRIES (ISO codes):
+{country_codes}
+
+{events_section}
+
+Each question must:
+1. Be answerable with a probability between 0 and 1.
+2. Have a clear resolution criterion (specific observable outcome).
+3. Be about a plausible near-term development for that country.
+4. Have a time horizon between 7 and 90 days.
+
+Return ONLY a JSON array with EXACTLY one object per country. Fields:
+- "question": the yes/no forecast question (string)
+- "country_iso": ISO 3166-1 alpha-2 country code (string, uppercase, must match input)
+- "horizon_days": forecast horizon in days (integer, 7-90)
+- "category": one of "conflict", "diplomatic", "economic" (string)
+
+Return ONLY the JSON array. No markdown, no explanation.
+"""
+
+
 class QuestionGenerator:
     """Generate forecast questions from recent GDELT events via Gemini.
 
@@ -175,6 +201,80 @@ class QuestionGenerator:
 
         logger.info("Generated %d forecast questions from %d events", len(questions), len(filtered))
         return questions
+
+    async def generate_for_countries(
+        self,
+        country_codes: list[str],
+        batch_size: int = 8,
+    ) -> list[GeneratedQuestion]:
+        """Generate one forecast question per country.
+
+        Batches countries to stay within token limits and rate limits.
+        Includes recent GDELT events as optional context.
+
+        Args:
+            country_codes: ISO 3166-1 alpha-2 codes to target.
+            batch_size: Countries per LLM call (keeps prompt manageable).
+
+        Returns:
+            List of GeneratedQuestion instances, one per country (best effort).
+        """
+        # Fetch recent events for context (shared across batches)
+        cutoff = datetime.now() - timedelta(hours=72)
+        cutoff_str = cutoff.strftime("%Y-%m-%d")
+        events = await asyncio.to_thread(
+            self.event_storage.get_events,
+            start_date=cutoff_str,
+            min_mentions=5,
+            limit=50,
+        )
+        events_text = self._format_events(events[:20]) if events else ""
+        events_section = (
+            f"RECENT GLOBAL EVENTS (for context):\n{events_text}"
+            if events_text
+            else ""
+        )
+
+        all_questions: list[GeneratedQuestion] = []
+
+        for i in range(0, len(country_codes), batch_size):
+            batch = country_codes[i : i + batch_size]
+            codes_str = ", ".join(batch)
+
+            prompt = _COUNTRY_GENERATION_PROMPT.format(
+                country_codes=codes_str,
+                events_section=events_section,
+            )
+
+            try:
+                response = await asyncio.to_thread(
+                    self.gemini_client.generate, prompt=prompt
+                )
+                questions = self._parse_response(response)
+
+                # Validate country codes match the requested batch
+                for q in questions:
+                    if q.country_iso in batch:
+                        all_questions.append(q)
+                    else:
+                        logger.warning(
+                            "LLM returned country %s not in batch %s, keeping anyway",
+                            q.country_iso,
+                            codes_str,
+                        )
+                        all_questions.append(q)
+
+                logger.info(
+                    "Country batch %d-%d: requested %d, got %d questions",
+                    i,
+                    i + len(batch),
+                    len(batch),
+                    len(questions),
+                )
+            except Exception as exc:
+                logger.error("Country batch generation failed: %s", exc)
+
+        return all_questions
 
     def _format_events(self, events: list) -> str:
         """Format GDELT events into a text block for the LLM prompt."""

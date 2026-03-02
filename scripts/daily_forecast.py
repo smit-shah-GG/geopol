@@ -52,6 +52,11 @@ def _parse_args() -> argparse.Namespace:
         action="store_true",
         help="Generate questions only, do not predict or persist",
     )
+    parser.add_argument(
+        "--seed-countries",
+        action="store_true",
+        help="Generate one forecast per tracked country (bypasses normal pipeline)",
+    )
     return parser.parse_args()
 
 
@@ -178,6 +183,16 @@ async def _run(args: argparse.Namespace) -> int:
         )
         return 1
 
+    # -- Seed countries mode: generate one forecast per tracked country --
+    if args.seed_countries:
+        return await _run_seed_countries(
+            question_generator=question_generator,
+            ensemble_predictor=ensemble_predictor,
+            session_factory=session_factory,
+            budget_tracker=budget_tracker,
+            logger=logger,
+        )
+
     pipeline = DailyPipeline(
         question_generator=question_generator,
         budget_tracker=budget_tracker,
@@ -211,6 +226,110 @@ async def _run(args: argparse.Namespace) -> int:
             "Pipeline completed with errors: %s", "; ".join(result.errors)
         )
         return 1
+
+
+async def _run_seed_countries(
+    question_generator,
+    ensemble_predictor,
+    session_factory,
+    budget_tracker,
+    logger,
+) -> int:
+    """Generate one forecast per tracked country.
+
+    Queries the countries endpoint mock list for now; will switch to
+    a DB query when country risk is computed from real data.
+    """
+    import time
+
+    from src.api.services.forecast_service import ForecastService
+
+    # Countries to seed — the tracked set from the countries endpoint.
+    # This list will eventually come from a DB query of all countries
+    # with GDELT activity in the last 30 days.
+    SEED_COUNTRIES = [
+        "SY", "UA", "MM", "IR", "TW", "SD", "KP", "VE",  # high-risk
+        "RU", "CN", "US", "IL", "PS", "LB", "YE", "ET",   # major actors + conflict zones
+        "TR", "SA", "PK", "AF", "IQ", "LY", "NG", "CD",   # regional hotspots
+        "GB", "FR", "DE", "IN", "BR", "MX", "ZA", "EG",   # major powers + regional anchors
+    ]
+
+    # Filter out countries that already have active (non-expired) forecasts
+    from datetime import datetime, timezone
+
+    from sqlalchemy import func, select
+
+    from src.db.models import Prediction
+
+    async with session_factory() as session:
+        result = await session.execute(
+            select(Prediction.country_iso)
+            .where(Prediction.expires_at > datetime.now(timezone.utc))
+            .group_by(Prediction.country_iso)
+        )
+        existing = {row[0] for row in result.all()}
+
+    needed = [c for c in SEED_COUNTRIES if c not in existing]
+
+    if not needed:
+        logger.info("All %d tracked countries already have active forecasts", len(SEED_COUNTRIES))
+        return 0
+
+    logger.info(
+        "Seeding %d countries (%d already have forecasts): %s",
+        len(needed),
+        len(existing),
+        ", ".join(needed),
+    )
+
+    start = time.monotonic()
+
+    # Generate questions for all needed countries
+    questions = await question_generator.generate_for_countries(needed)
+    logger.info("Generated %d questions for %d countries", len(questions), len(needed))
+
+    # Predict and persist each
+    produced = 0
+    errors = 0
+    for q in questions:
+        try:
+            ensemble_pred, forecast_output = await asyncio.to_thread(
+                ensemble_predictor.predict,
+                question=q.question,
+                category=q.category,
+            )
+
+            async with session_factory() as session:
+                service = ForecastService(session)
+                await service.persist_forecast(
+                    forecast_output=forecast_output,
+                    ensemble_prediction=ensemble_pred,
+                    country_iso=q.country_iso,
+                    horizon_days=q.horizon_days,
+                )
+                await session.commit()
+
+            await budget_tracker.increment()
+            produced += 1
+            logger.info(
+                "Seeded: p=%.3f country=%s q='%s'",
+                forecast_output.probability,
+                q.country_iso,
+                q.question[:60],
+            )
+        except Exception as exc:
+            errors += 1
+            logger.error("Failed to seed %s: %s", q.country_iso, exc)
+
+    duration = time.monotonic() - start
+    logger.info(
+        "Seed complete: %d/%d produced, %d errors, %.1fs",
+        produced,
+        len(questions),
+        errors,
+        duration,
+    )
+    return 0 if errors == 0 else 1
 
 
 def main() -> None:
