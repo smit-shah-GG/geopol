@@ -257,9 +257,9 @@ Phase 14 (backend API hardening) --- unblocks real data for frontend
 **Depends on**: Phase 13 (v2.0 complete)
 **Requirements**: BAPI-01, BAPI-02, BAPI-03, BAPI-04
 **Success Criteria** (what must be TRUE):
-  1. `GET /api/v1/forecasts/country/MM` returns an empty result set (not Syria's forecasts) when no Myanmar predictions exist in PostgreSQL -- the fixture fallback code path is deleted, not disabled
+  1. `GET /api/v1/forecasts/country/MM` returns an empty result set (not Syria's forecasts) when no Myanmar predictions exist in PostgreSQL -- the fixture fallback code path is gated behind `USE_FIXTURES=1` (default off), not active in production
   2. `GET /api/v1/countries` returns a JSON array where each entry has `country_iso`, `forecast_count`, `risk_score` (composite 0-100 index: count + probability + Goldstein severity with exponential time decay), `trend` (rising/stable/falling via 7-day delta), and `top_forecast` (most recent) -- all computed from the `predictions` table via SQL aggregation, not hardcoded
-  3. `POST /api/v1/forecasts/submit` accepts a natural language question, returns a `request_id` and LLM-parsed structured form (country_iso, horizon_days, category), and the request appears in the `forecast_requests` table with status `pending`
+  3. `POST /api/v1/forecasts/submit` accepts a natural language question, returns a `request_id` and LLM-parsed structured form (country_iso_list, horizon_days, category) supporting multi-country questions, and the request appears in the `forecast_requests` table with status `pending`
   4. `GET /api/v1/forecasts/search?q=conflict&country=UA` returns forecasts matching the query using PostgreSQL `ts_vector` full-text search with sub-200ms response time on 1000+ predictions
   5. `GET /api/v1/forecasts/requests` returns the user's submitted questions with current status (pending/processing/complete/failed) and links to completed forecast results
 **Plans**: 4 plans
