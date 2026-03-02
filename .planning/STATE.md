@@ -5,15 +5,15 @@
 See: .planning/PROJECT.md (updated 2026-02-27)
 
 **Core value:** Explainability -- every forecast must provide clear, traceable reasoning paths
-**Current focus:** Phase 13 in progress. Plans 01-02 complete. Plans 03-07 remain.
+**Current focus:** Phase 13 in progress. Plans 01-03 complete. Plans 04-07 remain.
 
 ## Current Position
 
 Milestone: v2.0 Operationalization & Forecast Quality
 Phase: 13 of 13 (Calibration, Monitoring & Hardening)
-Plan: 02 of 7 (in phase 13)
+Plan: 03 of 7 (in phase 13)
 Status: In progress
-Last activity: 2026-03-02 -- Completed 13-02-PLAN.md (Calibration weight recompute)
+Last activity: 2026-03-02 -- Completed 13-03-PLAN.md (Monitoring package)
 
 Progress: [#################################.........] 81% (13/16 phases lifetime)
 v2.0:    [########..] 80% (4/5 phases complete, 13 in progress)
@@ -21,9 +21,9 @@ v2.0:    [########..] 80% (4/5 phases complete, 13 in progress)
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 44
+- Total plans completed: 45
 - Average duration: 13 minutes
-- Total execution time: 9.14 hours
+- Total execution time: 9.21 hours
 
 **By Phase:**
 
@@ -41,11 +41,11 @@ v2.0:    [########..] 80% (4/5 phases complete, 13 in progress)
 | 10-ingest-forecast-pipeline | 4 | 27min | 7min |
 | 11-tkg-predictor-replacement | 3 | 21min | 7min |
 | 12-wm-derived-frontend | 7 | 36min | 5min |
-| 13-calibration-monitoring-hardening | 2 | 6min | 3min |
+| 13-calibration-monitoring-hardening | 3 | 10min | 3min |
 
 **Recent Trend:**
-- Last 4 plans: 12-07 (5min), 13-01 (3min), 13-02 (3min)
-- Trend: Sustained high velocity on calibration subsystem tasks
+- Last 4 plans: 13-01 (3min), 13-02 (3min), 13-03 (4min)
+- Trend: Sustained high velocity on monitoring/calibration tasks
 
 ## Accumulated Context
 
@@ -138,6 +138,11 @@ Key decisions affecting current work:
 - Guardrails use relative deviation (20%) not absolute -- more conservative at extreme alpha values (2026-03-02, 13-02)
 - Under-sampled CAMEO codes aggregate to super-category for optimization (2026-03-02, 13-02)
 - WeightLoader TTL uses time.monotonic() -- immune to NTP clock adjustments (2026-03-02, 13-02)
+- monitoring.py converted to monitoring/ package -- legacy DataQualityMonitor in __init__.py, imports unchanged (2026-03-02, 13-03)
+- DriftMonitor uses PostgreSQL-backed rolling Brier vs legacy JSON-file DriftDetector (2026-03-02, 13-03)
+- BudgetMonitor is read-only reporter, BudgetTracker remains enforcer (2026-03-02, 13-03)
+- DiskMonitor emergency_cleanup targets only .csv/.zip/.gz files, never .db (2026-03-02, 13-03)
+- Minimum 20 resolved predictions for drift detection (2026-03-02, 13-03)
 
 ### Deferred Issues
 
@@ -162,6 +167,6 @@ Key decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-03-02
-Stopped at: Completed 13-02-PLAN.md (Calibration weight recompute)
+Stopped at: Completed 13-03-PLAN.md (Monitoring package)
 Resume file: None
-Next: 13-03-PLAN.md (Alert manager)
+Next: 13-04-PLAN.md (Logging & hardening)
