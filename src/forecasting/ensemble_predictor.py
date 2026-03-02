@@ -8,20 +8,26 @@ This module implements weighted voting between:
 The ensemble:
 - Normalizes probability distributions from both models
 - Applies configurable weights (default: 0.6 LLM, 0.4 TKG)
+- Supports dynamic per-CAMEO weights via WeightLoader (v2.0)
 - Performs temperature scaling for confidence calibration
 - Tracks component contributions for explainability
 - Provides graceful degradation if one model fails
 """
 
+from __future__ import annotations
+
 import logging
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
 
 import numpy as np
 
 from src.forecasting.models import ForecastOutput, Scenario
 from src.forecasting.reasoning_orchestrator import ReasoningOrchestrator
 from src.forecasting.tkg_predictor import TKGPredictor
+
+if TYPE_CHECKING:
+    from src.calibration.weight_loader import WeightLoader
 
 logger = logging.getLogger(__name__)
 
@@ -77,6 +83,7 @@ class EnsemblePredictor:
         alpha: float = 0.6,
         temperature: float = 1.0,
         temperature_scaler=None,
+        weight_loader: Optional[WeightLoader] = None,
     ):
         """
         Initialize ensemble predictor.
@@ -84,13 +91,18 @@ class EnsemblePredictor:
         Args:
             llm_orchestrator: ReasoningOrchestrator instance
             tkg_predictor: TKGPredictor instance
-            alpha: Weight for LLM (0.0-1.0), TKG gets (1-alpha)
+            alpha: Default weight for LLM (0.0-1.0), TKG gets (1-alpha).
+                   Used as fallback when no WeightLoader is provided or
+                   when no alpha_override is passed to predict().
             temperature: Default temperature for confidence calibration (>0)
                         - T < 1: Sharpen (more confident)
                         - T = 1: No change
                         - T > 1: Smooth (less confident)
             temperature_scaler: Optional TemperatureScaler instance for learned
                                category-specific temperature scaling
+            weight_loader: Optional WeightLoader for dynamic per-CAMEO
+                          weight resolution. When provided, callers should
+                          pass alpha_override from resolve_alpha() to predict().
 
         Raises:
             ValueError: If alpha not in [0, 1] or temperature <= 0
@@ -105,11 +117,13 @@ class EnsemblePredictor:
         self.alpha = alpha
         self.temperature = temperature
         self.temperature_scaler = temperature_scaler
+        self.weight_loader = weight_loader
 
         logger.info(
             f"Initialized ensemble with α={alpha:.2f} (LLM), "
             f"β={1-alpha:.2f} (TKG), T={temperature:.2f}, "
-            f"learned_scaling={'yes' if temperature_scaler else 'no'}"
+            f"learned_scaling={'yes' if temperature_scaler else 'no'}, "
+            f"dynamic_weights={'yes' if weight_loader else 'no'}"
         )
 
     def predict(
@@ -120,6 +134,8 @@ class EnsemblePredictor:
         relation: Optional[str] = None,
         entity2: Optional[str] = None,
         category: Optional[str] = None,
+        alpha_override: Optional[float] = None,
+        cameo_root_code: Optional[str] = None,
     ) -> Tuple[EnsemblePrediction, ForecastOutput]:
         """
         Generate ensemble forecast combining LLM and TKG predictions.
@@ -132,6 +148,10 @@ class EnsemblePredictor:
             entity2: Target entity for TKG query (extracted from LLM if None)
             category: Optional event category (conflict/diplomatic/economic) for
                      category-specific temperature scaling. Auto-inferred if None.
+            alpha_override: Dynamic alpha from WeightLoader.resolve_alpha().
+                           When provided, overrides self.alpha for this prediction.
+            cameo_root_code: CAMEO root code for this prediction. Logged for
+                            traceability alongside alpha resolution.
 
         Returns:
             Tuple of:
@@ -144,6 +164,27 @@ class EnsemblePredictor:
         # Infer category if not provided
         if category is None:
             category = self._infer_category(question)
+
+        # Resolve the alpha to use for this prediction
+        if alpha_override is not None:
+            effective_alpha = alpha_override
+            logger.info(
+                "Using dynamic alpha=%.4f (override, cameo=%s, category=%s)",
+                effective_alpha,
+                cameo_root_code or "none",
+                category,
+            )
+        elif self.weight_loader is not None:
+            # WeightLoader exists but no override provided -- caller should
+            # have called resolve_alpha() first. Fall back with warning.
+            effective_alpha = self.alpha
+            logger.warning(
+                "WeightLoader configured but no alpha_override provided; "
+                "falling back to default alpha=%.4f",
+                self.alpha,
+            )
+        else:
+            effective_alpha = self.alpha
 
         # Get LLM prediction
         logger.info("Calling LLM (Gemini API)...")
@@ -161,9 +202,9 @@ class EnsemblePredictor:
         tkg_pred = self._get_tkg_prediction(entity1, relation, entity2)
         logger.info(f"TKG prediction: {'available' if tkg_pred.available else 'not available'}")
 
-        # Combine predictions with temperature scaling
+        # Combine predictions with temperature scaling using resolved alpha
         final_prob, final_conf, raw_conf, calibrated_conf, temp_used = self._combine_predictions(
-            llm_pred, tkg_pred, category
+            llm_pred, tkg_pred, category, alpha=effective_alpha
         )
 
         # Create ensemble prediction metadata
@@ -174,7 +215,7 @@ class EnsemblePredictor:
             calibrated_confidence=calibrated_conf,
             llm_prediction=llm_pred,
             tkg_prediction=tkg_pred,
-            weights_used=(self.alpha, 1 - self.alpha),
+            weights_used=(effective_alpha, 1 - effective_alpha),
             temperature=temp_used,
             category=category,
         )
@@ -518,6 +559,7 @@ class EnsemblePredictor:
         llm_pred: ComponentPrediction,
         tkg_pred: ComponentPrediction,
         category: Optional[str] = None,
+        alpha: Optional[float] = None,
     ) -> Tuple[float, float, float, float, float]:
         """
         Combine LLM and TKG predictions using weighted voting with temperature scaling.
@@ -532,20 +574,25 @@ class EnsemblePredictor:
             llm_pred: LLM component prediction
             tkg_pred: TKG component prediction
             category: Event category for category-specific temperature scaling
+            alpha: LLM weight to use. Falls back to self.alpha if None.
 
         Returns:
             Tuple of (final_probability, final_confidence, raw_confidence,
                      calibrated_confidence, temperature_used)
         """
+        a = alpha if alpha is not None else self.alpha
+
         # Case 1: Both available - weighted average
         if llm_pred.available and tkg_pred.available:
-            prob = self.alpha * llm_pred.probability + (1 - self.alpha) * tkg_pred.probability
-            conf = self.alpha * llm_pred.confidence + (1 - self.alpha) * tkg_pred.confidence
+            prob = a * llm_pred.probability + (1 - a) * tkg_pred.probability
+            conf = a * llm_pred.confidence + (1 - a) * tkg_pred.confidence
 
             logger.info(
-                f"Ensemble: LLM={llm_pred.probability:.3f}, "
-                f"TKG={tkg_pred.probability:.3f}, "
-                f"Combined={prob:.3f}"
+                "Ensemble: LLM=%.3f, TKG=%.3f, alpha=%.4f, Combined=%.3f",
+                llm_pred.probability,
+                tkg_pred.probability,
+                a,
+                prob,
             )
 
         # Case 2: Only LLM available
@@ -626,12 +673,13 @@ class EnsemblePredictor:
 
         llm = ensemble_pred.llm_prediction
         tkg = ensemble_pred.tkg_prediction
+        alpha_used, beta_used = ensemble_pred.weights_used
 
         # Component status
         if llm.available and tkg.available:
             parts.append(
-                f"Combined LLM (α={self.alpha:.2f}, P={llm.probability:.3f}) "
-                f"and TKG (β={1-self.alpha:.2f}, P={tkg.probability:.3f})"
+                f"Combined LLM (α={alpha_used:.4f}, P={llm.probability:.3f}) "
+                f"and TKG (β={beta_used:.4f}, P={tkg.probability:.3f})"
             )
         elif llm.available:
             parts.append(f"Used LLM only (TKG unavailable: {tkg.error})")
