@@ -332,8 +332,8 @@ class TKGPredictor:
             seed=0,
         )
 
-        # Split model to get abstract state structure + graphdef
-        state, graphdef = nnx.split(model)
+        # Split model to get graphdef + abstract state structure
+        graphdef, state = nnx.split(model)
 
         # Load saved weights from .npz
         loaded = np.load(npz_path)

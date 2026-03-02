@@ -32,6 +32,7 @@ from flax import nnx
 from src.training.models.components.global_history import (
     HistoryVocab,
     build_history_vocabulary,
+    get_history_mask,
 )
 from src.training.models.tirgn_jax import TiRGN, create_tirgn_model
 from src.training.train_jax import (
@@ -147,8 +148,15 @@ def save_tirgn_checkpoint(
     """
     path.parent.mkdir(parents=True, exist_ok=True)
 
-    state, _ = nnx.split(model)
-    state_dict = jax.tree.map(lambda x: np.array(x), state)
+    _, state = nnx.split(model)
+
+    def _to_numpy(x: jax.Array) -> np.ndarray:
+        """Convert JAX array to numpy, handling typed PRNG keys."""
+        if hasattr(x, "dtype") and jnp.issubdtype(x.dtype, jax.dtypes.prng_key):
+            return np.array(jax.random.key_data(x))
+        return np.array(x)
+
+    state_dict = jax.tree.map(_to_numpy, state)
 
     config_section: dict[str, Any] = {
         "num_entities": model.num_entities,
@@ -284,7 +292,7 @@ def train_tirgn(
         seed=0,
     )
 
-    state, _ = nnx.split(model)
+    _, state = nnx.split(model)
     total_params = sum(x.size for x in jax.tree_util.tree_leaves(state))
     logger.info("Total parameters: %d", total_params)
 
@@ -318,6 +326,29 @@ def train_tirgn(
     # ------------------------------------------------------------------
     # 6. Training loop
     # ------------------------------------------------------------------
+    # ------------------------------------------------------------------
+    # 6a. JIT-compiled training step
+    # ------------------------------------------------------------------
+    # History masks are precomputed outside JIT (Python-level vocab lookup),
+    # then passed as JAX arrays. snapshots captured in closure are static
+    # (NamedTuples of JAX arrays with fixed structure) — traced once, cached.
+
+    @nnx.jit
+    def train_step(
+        model: TiRGN,
+        optimizer: nnx.Optimizer,
+        pos_jax: jax.Array,
+        history_mask: jax.Array | None,
+    ) -> jax.Array:
+        def loss_fn(model: TiRGN) -> jax.Array:
+            return model.compute_loss(
+                snapshots, pos_jax, None, history_mask=history_mask
+            )
+
+        loss, grads = nnx.value_and_grad(loss_fn)(model)
+        optimizer.update(model, grads)
+        return loss
+
     logger.info("=" * 70)
     logger.info("TRAINING STARTED")
     logger.info("=" * 70)
@@ -342,22 +373,18 @@ def train_tirgn(
             batch_end = min(batch_start + config.batch_size, len(train_shuffled))
             pos_batch = train_shuffled[batch_start:batch_end]
 
-            # Generate negatives (protocol compat -- TiRGN ignores them but
-            # we pass them through for interface consistency)
-            neg_batch = negative_sampling(
-                pos_batch, num_entities, config.num_negatives
+            pos_jax = jnp.array(pos_batch, dtype=jnp.int32)
+
+            # Precompute history mask OUTSIDE JIT boundary (Python-level
+            # vocab lookup is not traceable by XLA)
+            history_mask = get_history_mask(
+                history_vocab,
+                pos_batch[:, 0],
+                pos_batch[:, 1],
+                num_entities,
             )
 
-            pos_jax = jnp.array(pos_batch, dtype=jnp.int32)
-            neg_jax = jnp.array(neg_batch, dtype=jnp.int32)
-
-            def loss_fn(model: TiRGN) -> jax.Array:
-                return model.compute_loss(
-                    snapshots, pos_jax, neg_jax, history_vocab=history_vocab
-                )
-
-            loss, grads = nnx.value_and_grad(loss_fn)(model)
-            optimizer.update(model, grads)
+            loss = train_step(model, optimizer, pos_jax, history_mask)
 
             epoch_loss += float(loss)
             num_batches += 1

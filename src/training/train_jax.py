@@ -266,10 +266,15 @@ def save_checkpoint(
     path.parent.mkdir(parents=True, exist_ok=True)
 
     # Extract state from model
-    state, graphdef = nnx.split(model)
+    graphdef, state = nnx.split(model)
 
-    # Convert to serializable format
-    state_dict = jax.tree.map(lambda x: np.array(x), state)
+    # Convert to serializable format (handle typed PRNG keys in JAX 0.9+)
+    def _to_numpy(x: jax.Array) -> np.ndarray:
+        if hasattr(x, "dtype") and jnp.issubdtype(x.dtype, jax.dtypes.prng_key):
+            return np.array(jax.random.key_data(x))
+        return np.array(x)
+
+    state_dict = jax.tree.map(_to_numpy, state)
 
     checkpoint = {
         "epoch": epoch,
@@ -351,7 +356,7 @@ def train_regcn(
     )
 
     # Count parameters
-    state, _ = nnx.split(model)
+    _, state = nnx.split(model)
     total_params = sum(x.size for x in jax.tree_util.tree_leaves(state))
     logger.info(f"Total parameters: {total_params:,}")
 

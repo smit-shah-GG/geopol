@@ -382,15 +382,17 @@ class TiRGN(nnx.Module):
         if time_indices is None:
             time_indices = jnp.zeros(pos_triples.shape[0], dtype=jnp.int32)
 
-        # Build history mask if vocabulary is available
-        history_mask = None
-        history_vocab: HistoryVocab | None = kwargs.get("history_vocab", None)
-        if history_vocab is not None:
-            subjects_np = np.asarray(pos_triples[:, 0])
-            relations_np = np.asarray(pos_triples[:, 1])
-            history_mask = get_history_mask(
-                history_vocab, subjects_np, relations_np, self.num_entities
-            )
+        # Use pre-computed mask if provided (JIT-compatible path), otherwise
+        # fall back to building from vocabulary (eager-only, causes host roundtrip)
+        history_mask = kwargs.get("history_mask", None)
+        if history_mask is None:
+            history_vocab: HistoryVocab | None = kwargs.get("history_vocab", None)
+            if history_vocab is not None:
+                subjects_np = np.asarray(pos_triples[:, 0])
+                relations_np = np.asarray(pos_triples[:, 1])
+                history_mask = get_history_mask(
+                    history_vocab, subjects_np, relations_np, self.num_entities
+                )
 
         # Compute fused distribution
         fused_probs = self._compute_fused_distribution(
