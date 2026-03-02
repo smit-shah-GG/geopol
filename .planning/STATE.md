@@ -5,15 +5,15 @@
 See: .planning/PROJECT.md (updated 2026-02-27)
 
 **Core value:** Explainability -- every forecast must provide clear, traceable reasoning paths
-**Current focus:** Phase 13 in progress. Plans 01-05 complete. Plans 06, 07 remain.
+**Current focus:** Phase 13 in progress. Plans 01-05, 07 complete. Plan 06 remains.
 
 ## Current Position
 
 Milestone: v2.0 Operationalization & Forecast Quality
 Phase: 13 of 13 (Calibration, Monitoring & Hardening)
-Plan: 05 of 7 (in phase 13)
+Plan: 07 of 7 (in phase 13)
 Status: In progress
-Last activity: 2026-03-02 -- Completed 13-05-PLAN.md (Polymarket comparison subsystem)
+Last activity: 2026-03-02 -- Completed 13-07-PLAN.md (Polymarket API + Digest + CalibrationPanel)
 
 Progress: [#################################.........] 81% (13/16 phases lifetime)
 v2.0:    [########..] 80% (4/5 phases complete, 13 in progress)
@@ -21,9 +21,9 @@ v2.0:    [########..] 80% (4/5 phases complete, 13 in progress)
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 47
+- Total plans completed: 48
 - Average duration: 12 minutes
-- Total execution time: 9.33 hours
+- Total execution time: 9.40 hours
 
 **By Phase:**
 
@@ -41,11 +41,11 @@ v2.0:    [########..] 80% (4/5 phases complete, 13 in progress)
 | 10-ingest-forecast-pipeline | 4 | 27min | 7min |
 | 11-tkg-predictor-replacement | 3 | 21min | 7min |
 | 12-wm-derived-frontend | 7 | 36min | 5min |
-| 13-calibration-monitoring-hardening | 5 | 17min | 3min |
+| 13-calibration-monitoring-hardening | 6 | 21min | 4min |
 
 **Recent Trend:**
-- Last 4 plans: 13-02 (3min), 13-03 (4min), 13-04 (4min), 13-05 (3min)
-- Trend: Sustained high velocity on calibration/polymarket subsystem
+- Last 4 plans: 13-03 (4min), 13-04 (4min), 13-05 (3min), 13-07 (4min)
+- Trend: Sustained high velocity on calibration/monitoring/API integration
 
 ## Accumulated Context
 
@@ -152,6 +152,10 @@ Key decisions affecting current work:
 - Resolved market outcome by price convergence (>=0.95 or <=0.05) with winner field fallback (2026-03-02, 13-05)
 - Individual tag fetch failures non-fatal in PolymarketClient -- remaining tags still processed (2026-03-02, 13-05)
 - LLM match response validated against candidate ID set -- hallucinated prediction IDs rejected (2026-03-02, 13-05)
+- PolymarketComparisonService reused via __new__ + asynccontextmanager session wrapper for read-only API queries (2026-03-02, 13-07)
+- Digest sections all optional -- missing subsystem data renders placeholder, never blocks email (2026-03-02, 13-07)
+- seeking_more_matches threshold: active_count < 5 hardcoded (2026-03-02, 13-07)
+- Polymarket delta column directional coloring (positive=Geopol higher, negative=market higher) for active comparisons (2026-03-02, 13-07)
 
 ### Deferred Issues
 
@@ -176,6 +180,6 @@ Key decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-03-02
-Stopped at: Completed 13-04-PLAN.md (Logging & systemd units)
+Stopped at: Completed 13-07-PLAN.md (Polymarket API + Digest + CalibrationPanel)
 Resume file: None
-Next: 13-05-PLAN.md (Polymarket comparison)
+Next: 13-06-PLAN.md (Integration wiring -- final plan in phase 13)
