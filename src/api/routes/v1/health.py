@@ -1,20 +1,22 @@
 """
 Full subsystem inventory health endpoint.
 
-Reports status of all 8 canonical subsystems. Each check is wrapped
+Reports status of all 10 canonical subsystems. Each check is wrapped
 in try/except -- the health endpoint NEVER crashes regardless of
 backend availability. A down subsystem is reported as unhealthy, not
 as a 500 error.
 
 Subsystems:
-    1. database       -- async SELECT 1 on PostgreSQL
-    2. redis          -- PING on Redis
-    3. gdelt_store    -- GDELT SQLite file existence check
-    4. graph_partitions -- partition count from SQLite partition index
-    5. tkg_model      -- model checkpoint file existence
-    6. last_ingest    -- most recent ingest_runs row
-    7. last_prediction -- most recent predictions row
-    8. api_budget     -- placeholder stub (always healthy)
+    1.  database           -- async SELECT 1 on PostgreSQL
+    2.  redis              -- PING on Redis
+    3.  gdelt_store        -- GDELT SQLite file existence check
+    4.  graph_partitions   -- partition count from SQLite partition index
+    5.  tkg_model          -- model checkpoint file existence
+    6.  last_ingest        -- most recent ingest_runs row (stale >24h)
+    7.  last_prediction    -- most recent predictions row (stale >48h)
+    8.  api_budget         -- real Gemini budget via BudgetMonitor
+    9.  disk_usage         -- root partition usage via DiskMonitor
+    10. calibration_freshness -- recency of calibration_weight_history
 """
 
 from __future__ import annotations
@@ -23,13 +25,14 @@ import logging
 from datetime import datetime, timezone
 from pathlib import Path
 
+import psutil
 from fastapi import APIRouter, Depends
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.deps import get_db
 from src.api.schemas.health import HealthResponse, SubsystemStatus
-from src.db.models import IngestRun, Prediction
+from src.db.models import CalibrationWeightHistory, IngestRun, Prediction
 from src.settings import Settings, get_settings
 
 logger = logging.getLogger(__name__)
@@ -174,7 +177,7 @@ def _check_tkg_model() -> SubsystemStatus:
 
 
 async def _check_last_ingest(db: AsyncSession) -> SubsystemStatus:
-    """Query the most recent ingest_runs row."""
+    """Query the most recent ingest_runs row with staleness check."""
     now = datetime.now(timezone.utc)
     try:
         result = await db.execute(
@@ -188,12 +191,15 @@ async def _check_last_ingest(db: AsyncSession) -> SubsystemStatus:
                 detail="No ingest runs recorded",
                 checked_at=now,
             )
-        age_hours = (now - row.started_at.replace(tzinfo=timezone.utc if row.started_at.tzinfo is None else row.started_at.tzinfo)).total_seconds() / 3600
+        started = row.started_at
+        if started.tzinfo is None:
+            started = started.replace(tzinfo=timezone.utc)
+        age_hours = (now - started).total_seconds() / 3600
         healthy = age_hours < 24  # Stale if older than 24h
         return SubsystemStatus(
             name="last_ingest",
             healthy=healthy,
-            detail=f"Last run: {row.started_at.isoformat()} ({row.status}, {age_hours:.1f}h ago)",
+            detail=f"Last run: {started.isoformat()} ({row.status}, {age_hours:.1f}h ago)",
             checked_at=now,
         )
     except Exception as exc:
@@ -218,12 +224,15 @@ async def _check_last_prediction(db: AsyncSession) -> SubsystemStatus:
                 detail="No predictions recorded",
                 checked_at=now,
             )
-        age_hours = (now - row.created_at.replace(tzinfo=timezone.utc if row.created_at.tzinfo is None else row.created_at.tzinfo)).total_seconds() / 3600
+        created = row.created_at
+        if created.tzinfo is None:
+            created = created.replace(tzinfo=timezone.utc)
+        age_hours = (now - created).total_seconds() / 3600
         healthy = age_hours < 48  # Stale if older than 48h
         return SubsystemStatus(
             name="last_prediction",
             healthy=healthy,
-            detail=f"Last: {row.created_at.isoformat()} ({age_hours:.1f}h ago)",
+            detail=f"Last: {created.isoformat()} ({age_hours:.1f}h ago)",
             checked_at=now,
         )
     except Exception as exc:
@@ -236,18 +245,126 @@ async def _check_last_prediction(db: AsyncSession) -> SubsystemStatus:
         )
 
 
-def _check_api_budget() -> SubsystemStatus:
-    """Placeholder stub for API budget monitoring.
+async def _check_api_budget(db: AsyncSession, settings: Settings) -> SubsystemStatus:
+    """Check real Gemini API budget via prediction count for today.
 
-    Always reports healthy until Gemini API usage tracking is implemented.
+    Uses the same counting logic as BudgetMonitor.get_budget_status():
+    counts predictions created since midnight UTC against the daily budget.
+    Healthy if budget_remaining > 0.
     """
     now = datetime.now(timezone.utc)
-    return SubsystemStatus(
-        name="api_budget",
-        healthy=True,
-        detail="Budget tracking not yet implemented",
-        checked_at=now,
-    )
+    try:
+        from sqlalchemy import func
+
+        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        result = await db.execute(
+            select(func.count(Prediction.id)).where(
+                Prediction.created_at >= today_start
+            )
+        )
+        used = result.scalar_one()
+        total = settings.gemini_daily_budget
+        remaining = max(0, total - used)
+        pct_used = (used / total * 100) if total > 0 else 0.0
+        healthy = remaining > 0
+        return SubsystemStatus(
+            name="api_budget",
+            healthy=healthy,
+            detail=f"{used}/{total} used ({pct_used:.0f}%), {remaining} remaining",
+            checked_at=now,
+        )
+    except Exception as exc:
+        logger.warning("Health check: api_budget unhealthy: %s", exc)
+        return SubsystemStatus(
+            name="api_budget",
+            healthy=False,
+            detail=str(exc)[:200],
+            checked_at=now,
+        )
+
+
+def _check_disk_usage(settings: Settings) -> SubsystemStatus:
+    """Check root partition disk usage via psutil.
+
+    Status mapping for health derivation:
+    - ok:       healthy=True
+    - warning:  healthy=True (degraded, not critical)
+    - critical: healthy=False (contributes to "degraded" not "unhealthy")
+    """
+    now = datetime.now(timezone.utc)
+    try:
+        usage = psutil.disk_usage("/")
+        pct = usage.percent
+        free_gb = usage.free / (1024**3)
+        total_gb = usage.total / (1024**3)
+
+        if pct >= settings.disk_critical_pct:
+            disk_status = "critical"
+            healthy = False
+        elif pct >= settings.disk_warning_pct:
+            disk_status = "warning"
+            # Warning is not critical -- still healthy from system perspective
+            healthy = True
+        else:
+            disk_status = "ok"
+            healthy = True
+
+        return SubsystemStatus(
+            name="disk_usage",
+            healthy=healthy,
+            detail=f"{pct:.1f}% used ({free_gb:.1f} GB free / {total_gb:.0f} GB), status={disk_status}",
+            checked_at=now,
+        )
+    except Exception as exc:
+        logger.warning("Health check: disk_usage error: %s", exc)
+        return SubsystemStatus(
+            name="disk_usage",
+            healthy=False,
+            detail=str(exc)[:200],
+            checked_at=now,
+        )
+
+
+async def _check_calibration_freshness(db: AsyncSession) -> SubsystemStatus:
+    """Check recency of calibration weight computations.
+
+    Queries calibration_weight_history for the most recent row.
+    Stale if the most recent computation is older than 14 days.
+    """
+    now = datetime.now(timezone.utc)
+    try:
+        result = await db.execute(
+            select(CalibrationWeightHistory)
+            .order_by(CalibrationWeightHistory.computed_at.desc())
+            .limit(1)
+        )
+        row = result.scalar_one_or_none()
+        if row is None:
+            return SubsystemStatus(
+                name="calibration_freshness",
+                healthy=False,
+                detail="No calibration history (cold start)",
+                checked_at=now,
+            )
+        computed = row.computed_at
+        if computed.tzinfo is None:
+            computed = computed.replace(tzinfo=timezone.utc)
+        age_days = (now - computed).total_seconds() / 86400
+        healthy = age_days <= 14.0
+        return SubsystemStatus(
+            name="calibration_freshness",
+            healthy=healthy,
+            detail=f"Last calibration: {computed.isoformat()} ({age_days:.1f}d ago)",
+            checked_at=now,
+        )
+    except Exception as exc:
+        logger.warning("Health check: calibration_freshness error: %s", exc)
+        return SubsystemStatus(
+            name="calibration_freshness",
+            healthy=False,
+            detail=str(exc)[:200],
+            checked_at=now,
+        )
 
 
 def _derive_status(subsystems: list[SubsystemStatus]) -> str:
@@ -274,7 +391,7 @@ def _derive_status(subsystems: list[SubsystemStatus]) -> str:
     response_model=HealthResponse,
     summary="Full subsystem health inventory",
     description=(
-        "Reports status of all 8 subsystems. No authentication required. "
+        "Reports status of all 10 subsystems. No authentication required. "
         "Used by load balancers, uptime monitors, and the frontend "
         "SystemHealthPanel."
     ),
@@ -283,10 +400,10 @@ async def health_check(
     db: AsyncSession = Depends(get_db),
     settings: Settings = Depends(get_settings),
 ) -> HealthResponse:
-    """Run all 8 subsystem checks and return aggregate health."""
+    """Run all 10 subsystem checks and return aggregate health."""
     subsystems: list[SubsystemStatus] = []
 
-    # Run checks — order matches canonical subsystem list
+    # Run checks -- order matches canonical subsystem list
     subsystems.append(await _check_database(db))
     subsystems.append(await _check_redis(settings))
     subsystems.append(_check_gdelt_store(settings))
@@ -294,7 +411,9 @@ async def health_check(
     subsystems.append(_check_tkg_model())
     subsystems.append(await _check_last_ingest(db))
     subsystems.append(await _check_last_prediction(db))
-    subsystems.append(_check_api_budget())
+    subsystems.append(await _check_api_budget(db, settings))
+    subsystems.append(_check_disk_usage(settings))
+    subsystems.append(await _check_calibration_freshness(db))
 
     status = _derive_status(subsystems)
 

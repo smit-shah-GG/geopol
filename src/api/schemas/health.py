@@ -10,8 +10,8 @@ from typing import Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
-# Canonical subsystem names — the health endpoint always reports exactly
-# these 8 subsystems. Adding a new subsystem is an API contract change.
+# Canonical subsystem names -- the health endpoint always reports exactly
+# these 10 subsystems. Adding a new subsystem is an API contract change.
 SUBSYSTEM_NAMES: frozenset[str] = frozenset(
     {
         "database",
@@ -22,6 +22,8 @@ SUBSYSTEM_NAMES: frozenset[str] = frozenset(
         "last_ingest",
         "last_prediction",
         "api_budget",
+        "disk_usage",
+        "calibration_freshness",
     }
 )
 
@@ -39,7 +41,7 @@ class SubsystemStatus(BaseModel):
 
     name: str = Field(
         ...,
-        description="Subsystem identifier — must be one of the 8 canonical names",
+        description="Subsystem identifier -- must be one of the 10 canonical names",
     )
     healthy: bool = Field(..., description="Whether this subsystem is operational")
     detail: Optional[str] = Field(
@@ -57,9 +59,9 @@ class HealthResponse(BaseModel):
     status is derived from subsystem states:
     - "healthy": all subsystems healthy
     - "degraded": some subsystems unhealthy but core functionality works
-    - "unhealthy": critical subsystems down (database, api_budget)
+    - "unhealthy": critical subsystems down (database)
 
-    The subsystems list always contains exactly 8 entries, one per
+    The subsystems list always contains exactly 10 entries, one per
     canonical subsystem name.
     """
 
@@ -69,7 +71,7 @@ class HealthResponse(BaseModel):
         ..., description="Aggregate system health status"
     )
     subsystems: list[SubsystemStatus] = Field(
-        ..., description="Per-subsystem health status (exactly 8 entries)"
+        ..., description="Per-subsystem health status (exactly 10 entries)"
     )
     timestamp: datetime = Field(
         ..., description="When this health check was performed"
