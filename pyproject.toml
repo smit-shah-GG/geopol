@@ -62,6 +62,8 @@ dependencies = [
     "trafilatura>=2.0",
     # v2.0 TKG Training Observability
     "tensorboardX>=2.6",
+    # v2.0 Monitoring
+    "psutil>=5.9",
 ]
 
 [project.optional-dependencies]
