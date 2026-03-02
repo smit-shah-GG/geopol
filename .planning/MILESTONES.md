@@ -1,5 +1,31 @@
 # Project Milestones: Explainable Geopolitical Forecasting Engine
 
+## v2.0 Operationalization & Forecast Quality (Shipped: 2026-03-02)
+
+**Delivered:** Transformed research prototype into publicly demonstrable system with WM-derived TypeScript dashboard, headless FastAPI backend, automated daily forecast pipeline, TiRGN TKG predictor (3.47x MRR improvement over RE-GCN), per-CAMEO dynamic calibration, system monitoring, and Polymarket comparison.
+
+**Phases completed:** 9-13 (27 plans total)
+
+**Key accomplishments:**
+
+- Headless FastAPI REST API with Pydantic DTOs, PostgreSQL persistence, Redis caching, API key auth
+- WM-derived TypeScript dashboard: deck.gl globe, forecast panels, scenario explorer, country briefs, calibration visualizations
+- TiRGN JAX port replacing RE-GCN (MRR 0.4944 vs 0.1423, 3.47x improvement)
+- Micro-batch GDELT ingest (15-min cycle) + RSS feed ingestion (101 geopolitical feeds)
+- Daily forecast pipeline with automated question generation, ensemble prediction, outcome resolution
+- Per-CAMEO dynamic calibration weights via L-BFGS-B optimization (replacing fixed alpha=0.6)
+- Polymarket comparison service for external calibration validation
+- System health monitoring, drift detection, structured logging, systemd service units
+
+**Stats:**
+
+- 5 phases, 27 plans, ~130 tasks
+- ~2 days from milestone start to ship (2026-03-01 → 2026-03-02)
+
+**What's next:** v2.1 Production UX & Live Data Integration — three-screen frontend redesign, real country risk, question submission queue.
+
+---
+
 ## v1.1 Tech Debt Remediation (Shipped: 2026-01-30)
 
 **Delivered:** Stabilized v1.0 foundation by fixing NetworkX API bug, adding single-command bootstrap pipeline with checkpoint/resume, and implementing graph partitioning for >1M event scalability.
