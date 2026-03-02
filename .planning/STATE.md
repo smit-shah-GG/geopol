@@ -5,25 +5,25 @@
 See: .planning/PROJECT.md (updated 2026-02-27)
 
 **Core value:** Explainability -- every forecast must provide clear, traceable reasoning paths
-**Current focus:** Phase 13 in progress. Plans 01-05, 07 complete. Plan 06 remains.
+**Current focus:** Phase 13 complete. All 7 plans delivered.
 
 ## Current Position
 
 Milestone: v2.0 Operationalization & Forecast Quality
 Phase: 13 of 13 (Calibration, Monitoring & Hardening)
-Plan: 07 of 7 (in phase 13)
-Status: In progress
-Last activity: 2026-03-02 -- Completed 13-07-PLAN.md (Polymarket API + Digest + CalibrationPanel)
+Plan: 7 of 7 (in phase 13)
+Status: Phase complete
+Last activity: 2026-03-02 -- Completed 13-06-PLAN.md (Pipeline & Health Integration)
 
-Progress: [#################################.........] 81% (13/16 phases lifetime)
-v2.0:    [########..] 80% (4/5 phases complete, 13 in progress)
+Progress: [##########################################] 100% (16/16 phases lifetime)
+v2.0:    [##########] 100% (5/5 phases complete)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 48
+- Total plans completed: 49
 - Average duration: 12 minutes
-- Total execution time: 9.40 hours
+- Total execution time: 9.50 hours
 
 **By Phase:**
 
@@ -41,11 +41,11 @@ v2.0:    [########..] 80% (4/5 phases complete, 13 in progress)
 | 10-ingest-forecast-pipeline | 4 | 27min | 7min |
 | 11-tkg-predictor-replacement | 3 | 21min | 7min |
 | 12-wm-derived-frontend | 7 | 36min | 5min |
-| 13-calibration-monitoring-hardening | 6 | 21min | 4min |
+| 13-calibration-monitoring-hardening | 7 | 27min | 4min |
 
 **Recent Trend:**
-- Last 4 plans: 13-03 (4min), 13-04 (4min), 13-05 (3min), 13-07 (4min)
-- Trend: Sustained high velocity on calibration/monitoring/API integration
+- Last 4 plans: 13-04 (4min), 13-05 (3min), 13-07 (4min), 13-06 (6min)
+- Trend: Phase 13 complete -- all calibration/monitoring/integration plans delivered
 
 ## Accumulated Context
 
@@ -156,6 +156,11 @@ Key decisions affecting current work:
 - Digest sections all optional -- missing subsystem data renders placeholder, never blocks email (2026-03-02, 13-07)
 - seeking_more_matches threshold: active_count < 5 hardcoded (2026-03-02, 13-07)
 - Polymarket delta column directional coloring (positive=Geopol higher, negative=market higher) for active comparisons (2026-03-02, 13-07)
+- alpha_override as explicit predict() param -- predictor stays synchronous, async caller owns WeightLoader resolution (2026-03-02, 13-06)
+- Health endpoint uses psutil directly for disk check -- no DiskMonitor import coupling (2026-03-02, 13-06)
+- Calibration freshness threshold: 14 days (> 2 weekly cycles = stale) (2026-03-02, 13-06)
+- Disk critical -> degraded not unhealthy; only database down = unhealthy (2026-03-02, 13-06)
+- Pipeline email alerts on >= 2 consecutive failures via AlertManager, not just CRITICAL log (2026-03-02, 13-06)
 
 ### Deferred Issues
 
@@ -180,6 +185,6 @@ Key decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-03-02
-Stopped at: Completed 13-07-PLAN.md (Polymarket API + Digest + CalibrationPanel)
+Stopped at: Completed 13-06-PLAN.md (Pipeline & Health Integration)
 Resume file: None
-Next: 13-06-PLAN.md (Integration wiring -- final plan in phase 13)
+Next: v2.0 COMPLETE -- all 49 plans across 16 phases delivered
