@@ -262,7 +262,13 @@ Phase 14 (backend API hardening) --- unblocks real data for frontend
   3. `POST /api/v1/forecasts/submit` accepts a natural language question, returns a `request_id` and LLM-parsed structured form (country_iso, horizon_days, category), and the request appears in the `forecast_requests` table with status `pending`
   4. `GET /api/v1/forecasts/search?q=conflict&country=UA` returns forecasts matching the query using PostgreSQL `ts_vector` full-text search with sub-200ms response time on 1000+ predictions
   5. `GET /api/v1/forecasts/requests` returns the user's submitted questions with current status (pending/processing/complete/failed) and links to completed forecast results
-**Plans**: TBD
+**Plans**: 4 plans
+
+Plans:
+- [ ] 14-01-PLAN.md -- DB schema (forecast_requests + tsvector), fixture removal (BAPI-01), USE_FIXTURES dev flag
+- [ ] 14-02-PLAN.md -- Real country risk aggregation from PostgreSQL with CTE-based scoring (BAPI-02)
+- [ ] 14-03-PLAN.md -- Full-text search endpoint using tsvector + GIN index (BAPI-04)
+- [ ] 14-04-PLAN.md -- Question submission queue: LLM parsing, submit/confirm flow, async worker (BAPI-03)
 
 ### Phase 15: URL Routing & Dashboard Screen
 **Goal**: The single-screen layout is replaced by three URL-routed screens. The Dashboard screen (`/dashboard`) is a dense information display with progressive disclosure on forecast cards, full-text search, event feed, data source health, and a "My Forecasts" section showing user-submitted questions.
@@ -310,7 +316,7 @@ Sequential: Phase 14 -> Phase 15 -> Phase 16.
 | 11. TKG Replacement | v2.0 | 3/3 | Complete | 2026-03-01 |
 | 12. WM-Derived Frontend | v2.0 | 7/7 | Complete | 2026-03-02 |
 | 13. Calibration & Monitoring | v2.0 | 7/7 | Complete | 2026-03-02 |
-| 14. Backend API Hardening | v2.1 | 0/TBD | Not started | - |
+| 14. Backend API Hardening | v2.1 | 0/4 | Planned | - |
 | 15. URL Routing & Dashboard | v2.1 | 0/TBD | Not started | - |
 | 16. Globe & Forecasts Screens | v2.1 | 0/TBD | Not started | - |
 
