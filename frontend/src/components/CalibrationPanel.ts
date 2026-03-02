@@ -1,6 +1,6 @@
 import { Panel } from './Panel';
 import { h, replaceChildren } from '@/utils/dom-utils';
-import type { CalibrationDTO } from '@/types/api';
+import type { CalibrationDTO, PolymarketComparisonResponse, PolymarketComparison } from '@/types/api';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
@@ -20,15 +20,32 @@ function brierClass(score: number): string {
   return 'brier-poor';
 }
 
+/** Truncate a string to maxLen, appending ellipsis if truncated. */
+function truncate(text: string, maxLen: number): string {
+  return text.length > maxLen ? text.slice(0, maxLen - 1) + '\u2026' : text;
+}
+
+/** Format a delta value with sign prefix. */
+function formatDelta(delta: number): string {
+  const sign = delta >= 0 ? '+' : '';
+  return `${sign}${delta.toFixed(3)}`;
+}
+
 /**
- * CalibrationPanel -- reliability diagram + Brier decomposition + track record sparkline.
+ * CalibrationPanel -- reliability diagram + Brier decomposition + track record sparkline
+ * + Polymarket comparison table.
  *
  * Update-driven: receives CalibrationDTO[] from coordinated loads.
  * refresh() is a no-op since calibration data comes from forecast resolution.
+ * updatePolymarket() adds/replaces the Polymarket comparison section.
  */
 export class CalibrationPanel extends Panel {
+  /** Container for the Polymarket section, appended after calibration content. */
+  private polymarketContainer: HTMLElement;
+
   constructor() {
     super({ id: 'calibration', title: 'CALIBRATION', showCount: true });
+    this.polymarketContainer = h('div', { className: 'polymarket-section' });
     this.showPlaceholder();
   }
 
@@ -37,7 +54,7 @@ export class CalibrationPanel extends Panel {
     // Intentionally empty -- data arrives via update()
   }
 
-  /** Render all three calibration visualizations. */
+  /** Render all three calibration visualizations + preserved Polymarket section. */
   public update(calibrations: CalibrationDTO[]): void {
     this.setCount(calibrations.length);
 
@@ -50,6 +67,7 @@ export class CalibrationPanel extends Panel {
       this.buildReliabilityDiagram(calibrations),
       this.buildBrierTable(calibrations),
       this.buildTrackRecordSparkline(calibrations),
+      this.polymarketContainer,
     );
   }
 
@@ -323,5 +341,131 @@ export class CalibrationPanel extends Panel {
     );
     wrapper.appendChild(root as unknown as Node);
     return wrapper;
+  }
+
+  // ---------------------------------------------------------------------------
+  // 4. Polymarket Comparison Section
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Update the Polymarket comparison section (independent of calibration update).
+   *
+   * Replaces the polymarketContainer contents. If the container is already
+   * attached to the DOM (via a prior update()), the change is immediate.
+   */
+  public updatePolymarket(data: PolymarketComparisonResponse): void {
+    replaceChildren(this.polymarketContainer,
+      this.buildPolymarketSection(data),
+    );
+  }
+
+  private buildPolymarketSection(data: PolymarketComparisonResponse): HTMLElement {
+    const section = h('div', { className: 'polymarket-section-inner' });
+
+    // Section header
+    section.appendChild(h('div', { className: 'section-label' }, 'POLYMARKET COMPARISON'));
+
+    // Sparse data indicator
+    if (data.seeking_more_matches) {
+      section.appendChild(
+        h('div', { className: 'polymarket-seeking' },
+          'Seeking more geopolitical market overlaps...',
+        ),
+      );
+    }
+
+    // Active comparisons table
+    if (data.active.length > 0) {
+      section.appendChild(this.buildPolymarketTable(data.active));
+    } else {
+      section.appendChild(
+        h('div', { className: 'empty-state' }, 'No active Polymarket matches'),
+      );
+    }
+
+    // Resolved summary row
+    if (data.summary.resolved_count > 0) {
+      const gBrier = data.summary.geopol_avg_brier;
+      const mBrier = data.summary.polymarket_avg_brier;
+      let leader = '--';
+      if (gBrier !== null && mBrier !== null) {
+        leader = gBrier < mBrier ? 'Geopol leads' : 'Market leads';
+      }
+
+      const gBrierText = gBrier !== null ? gBrier.toFixed(4) : '--';
+      const mBrierText = mBrier !== null ? mBrier.toFixed(4) : '--';
+
+      section.appendChild(
+        h('div', { className: 'polymarket-resolved-summary' },
+          `Resolved: ${data.summary.resolved_count}`,
+          ' | ',
+          `Geopol Brier: ${gBrierText}`,
+          ' | ',
+          `Market Brier: ${mBrierText}`,
+          ' | ',
+          leader,
+        ),
+      );
+    }
+
+    return section;
+  }
+
+  private buildPolymarketTable(comparisons: PolymarketComparison[]): HTMLElement {
+    // Header row
+    const header = h('div', { className: 'polymarket-row polymarket-header' },
+      h('span', { className: 'polymarket-cell polymarket-cell-question' }, 'QUESTION'),
+      h('span', { className: 'polymarket-cell polymarket-cell-prob' }, 'GEOPOL'),
+      h('span', { className: 'polymarket-cell polymarket-cell-prob' }, 'MARKET'),
+      h('span', { className: 'polymarket-cell polymarket-cell-delta' }, 'DELTA'),
+      h('span', { className: 'polymarket-cell polymarket-cell-conf' }, 'CONF'),
+      h('span', { className: 'polymarket-cell polymarket-cell-time' }, 'UPDATED'),
+    );
+
+    const rows = comparisons.map((comp, i) => {
+      const geopol = comp.geopol_probability;
+      const market = comp.polymarket_price;
+      const delta = geopol - market;
+
+      // Delta coloring: green if Geopol has smaller absolute error potential,
+      // red if market is closer. For active comparisons without outcome,
+      // positive delta means Geopol assigns higher probability.
+      const deltaClass = delta >= 0 ? 'delta-positive' : 'delta-negative';
+
+      const lastUpdate = comp.last_snapshot_at
+        ? new Date(comp.last_snapshot_at).toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+          })
+        : '--';
+
+      return h('div', {
+        className: `polymarket-row ${i % 2 === 0 ? 'even' : 'odd'}`,
+      },
+        h('span', { className: 'polymarket-cell polymarket-cell-question' },
+          truncate(comp.polymarket_title, 60),
+        ),
+        h('span', { className: 'polymarket-cell polymarket-cell-prob mono' },
+          geopol.toFixed(3),
+        ),
+        h('span', { className: 'polymarket-cell polymarket-cell-prob mono' },
+          market.toFixed(3),
+        ),
+        h('span', { className: `polymarket-cell polymarket-cell-delta mono ${deltaClass}` },
+          formatDelta(delta),
+        ),
+        h('span', { className: 'polymarket-cell polymarket-cell-conf mono' },
+          comp.match_confidence.toFixed(2),
+        ),
+        h('span', { className: 'polymarket-cell polymarket-cell-time' },
+          lastUpdate,
+        ),
+      );
+    });
+
+    return h('div', { className: 'polymarket-table' },
+      header,
+      ...rows,
+    );
   }
 }

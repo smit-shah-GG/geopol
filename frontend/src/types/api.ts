@@ -111,3 +111,32 @@ export interface PaginatedResponse<T> {
   next_cursor: string | null;
   has_more: boolean;
 }
+
+// --- calibration.py (Polymarket comparison) ---
+
+/** Single active or resolved Polymarket-vs-Geopol comparison. */
+export interface PolymarketComparison {
+  polymarket_title: string;
+  polymarket_price: number;
+  geopol_probability: number;
+  match_confidence: number;
+  last_snapshot_at: string | null;
+  status: 'active' | 'resolved';
+  geopol_brier: number | null;
+  polymarket_brier: number | null;
+  resolved_at: string | null;
+}
+
+/** Full response from GET /api/v1/calibration/polymarket. */
+export interface PolymarketComparisonResponse {
+  active: PolymarketComparison[];
+  resolved: PolymarketComparison[];
+  summary: {
+    active_count: number;
+    resolved_count: number;
+    geopol_avg_brier: number | null;
+    polymarket_avg_brier: number | null;
+    geopol_wins: number;
+  };
+  seeking_more_matches: boolean;
+}
