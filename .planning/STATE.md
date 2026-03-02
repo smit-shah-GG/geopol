@@ -5,15 +5,15 @@
 See: .planning/PROJECT.md (updated 2026-02-27)
 
 **Core value:** Explainability -- every forecast must provide clear, traceable reasoning paths
-**Current focus:** Phase 13 in progress. Plans 01-04 complete. Plans 05-07 remain.
+**Current focus:** Phase 13 in progress. Plans 01-05 complete. Plans 06, 07 remain.
 
 ## Current Position
 
 Milestone: v2.0 Operationalization & Forecast Quality
 Phase: 13 of 13 (Calibration, Monitoring & Hardening)
-Plan: 04 of 7 (in phase 13)
+Plan: 05 of 7 (in phase 13)
 Status: In progress
-Last activity: 2026-03-02 -- Completed 13-04-PLAN.md (Logging & systemd units)
+Last activity: 2026-03-02 -- Completed 13-05-PLAN.md (Polymarket comparison subsystem)
 
 Progress: [#################################.........] 81% (13/16 phases lifetime)
 v2.0:    [########..] 80% (4/5 phases complete, 13 in progress)
@@ -21,9 +21,9 @@ v2.0:    [########..] 80% (4/5 phases complete, 13 in progress)
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 46
+- Total plans completed: 47
 - Average duration: 12 minutes
-- Total execution time: 9.28 hours
+- Total execution time: 9.33 hours
 
 **By Phase:**
 
@@ -41,11 +41,11 @@ v2.0:    [########..] 80% (4/5 phases complete, 13 in progress)
 | 10-ingest-forecast-pipeline | 4 | 27min | 7min |
 | 11-tkg-predictor-replacement | 3 | 21min | 7min |
 | 12-wm-derived-frontend | 7 | 36min | 5min |
-| 13-calibration-monitoring-hardening | 4 | 14min | 4min |
+| 13-calibration-monitoring-hardening | 5 | 17min | 3min |
 
 **Recent Trend:**
-- Last 4 plans: 13-01 (3min), 13-02 (3min), 13-03 (4min), 13-04 (4min)
-- Trend: Sustained high velocity on infrastructure/monitoring tasks
+- Last 4 plans: 13-02 (3min), 13-03 (4min), 13-04 (4min), 13-05 (3min)
+- Trend: Sustained high velocity on calibration/polymarket subsystem
 
 ## Accumulated Context
 
@@ -147,6 +147,11 @@ Key decisions affecting current work:
 - File handler level DEBUG unconditionally -- disk captures everything for post-incident analysis (2026-03-02, 13-04)
 - systemd units include NoNewPrivileges, ProtectSystem=strict, ProtectHome, PrivateTmp for defense-in-depth (2026-03-02, 13-04)
 - Daily forecast timer: Persistent=true + RandomizedDelaySec=300 for resilient scheduling (2026-03-02, 13-04)
+- Word overlap uses min(|a|,|b|) denominator (not union) -- avoids penalizing short prediction questions (2026-03-02, 13-05)
+- _parse_outcome_price handles both JSON string and list formats for Polymarket outcomePrices (2026-03-02, 13-05)
+- Resolved market outcome by price convergence (>=0.95 or <=0.05) with winner field fallback (2026-03-02, 13-05)
+- Individual tag fetch failures non-fatal in PolymarketClient -- remaining tags still processed (2026-03-02, 13-05)
+- LLM match response validated against candidate ID set -- hallucinated prediction IDs rejected (2026-03-02, 13-05)
 
 ### Deferred Issues
 
