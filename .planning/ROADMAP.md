@@ -5,6 +5,7 @@
 - v1.0 MVP -- Phases 1-5 (shipped 2026-01-23)
 - v1.1 Tech Debt Remediation -- Phases 6-8 (shipped 2026-01-30)
 - v2.0 Operationalization & Forecast Quality -- Phases 9-13 (shipped 2026-03-02)
+- v2.1 Production UX & Live Data Integration -- Phases 14-16 (in progress)
 
 ## Phases
 
@@ -87,35 +88,34 @@ Plans:
 
 </details>
 
-### v2.0 Operationalization & Forecast Quality (SHIPPED 2026-03-02)
+<details>
+<summary>v2.0 Operationalization & Forecast Quality (Phases 9-13) - SHIPPED 2026-03-02</summary>
 
 **Milestone Goal:** Transform research prototype into publicly demonstrable system with a WM-derived TypeScript dashboard, headless FastAPI backend, automated operations, upgraded TKG predictor, and self-improving calibration.
 
-**Architecture Decision (2026-02-27):** World Monitor used as reference architecture and code quarry — not as a live integration target. Geopol becomes a headless Python forecast engine with its own WM-derived TypeScript frontend. See `.planning/research/WM_AS_REPOSITORY.md` for full analysis and `WORLDMONITOR_INTEGRATION.md` for DTO contract spec.
+**Architecture Decision (2026-02-27):** World Monitor used as reference architecture and code quarry -- not as a live integration target. Geopol becomes a headless Python forecast engine with its own WM-derived TypeScript frontend. See `.planning/research/WM_AS_REPOSITORY.md` for full analysis and `WORLDMONITOR_INTEGRATION.md` for DTO contract spec.
 
 **Phase Numbering:** Starts at 9 (v1.1 ended at Phase 8; cancelled Llama-TGL phases 9-14 archived in `.planning/archive/v2.0-llama-cancelled.md`).
 
 **Execution Model:** Parallel after Phase 9. Phases 10, 11, and 12 run concurrently once Phase 9 establishes the API contract (DTOs + mock fixtures). Phase 13 waits for all three.
 
 ```
-Phase 9 (API + DB foundation) ─── critical path, everything gates on this
-    │
-    ├──► Phase 10 (ingest + pipeline + real API data)
-    │
-    ├──► Phase 11 (TKG replacement) ──── parallelizable
-    │
-    └──► Phase 12 (frontend against mock API → real API when Phase 10 lands)
-                │
-                └──────────► Phase 13 (monitoring + calibration + hardening)
+Phase 9 (API + DB foundation) --- critical path, everything gates on this
+    |
+    |---> Phase 10 (ingest + pipeline + real API data)
+    |
+    |---> Phase 11 (TKG replacement) ---- parallelizable
+    |
+    +---> Phase 12 (frontend against mock API -> real API when Phase 10 lands)
+                |
+                +-----------> Phase 13 (monitoring + calibration + hardening)
 ```
 
-- [x] **Phase 9: API Foundation & Infrastructure** — PostgreSQL, FastAPI skeleton with DTOs and mock fixtures, structured logging, jraph elimination, TKGModelProtocol
-- [x] **Phase 10: Ingest & Forecast Pipeline** — Micro-batch GDELT ingest, daily forecast automation, real API endpoints replacing mocks, Redis caching
-- [x] **Phase 11: TKG Predictor Replacement** — TiRGN JAX port replacing RE-GCN for improved accuracy (parallelizable with Phases 10 and 12)
-- [x] **Phase 12: WM-Derived Frontend** — TypeScript dashboard scaffolded from World Monitor patterns: deck.gl globe, forecast panels, scenario explorer, country briefs, map layers
-- [x] **Phase 13: Calibration, Monitoring & Hardening** — Dynamic per-CAMEO calibration from accumulated outcome data, system health observability, alerting, operational resilience
-
-## Phase Details
+- [x] **Phase 9: API Foundation & Infrastructure** -- PostgreSQL, FastAPI skeleton with DTOs and mock fixtures, structured logging, jraph elimination, TKGModelProtocol
+- [x] **Phase 10: Ingest & Forecast Pipeline** -- Micro-batch GDELT ingest, daily forecast automation, real API endpoints replacing mocks, Redis caching
+- [x] **Phase 11: TKG Predictor Replacement** -- TiRGN JAX port replacing RE-GCN for improved accuracy (parallelizable with Phases 10 and 12)
+- [x] **Phase 12: WM-Derived Frontend** -- TypeScript dashboard scaffolded from World Monitor patterns: deck.gl globe, forecast panels, scenario explorer, country briefs, map layers
+- [x] **Phase 13: Calibration, Monitoring & Hardening** -- Dynamic per-CAMEO calibration from accumulated outcome data, system health observability, alerting, operational resilience
 
 ### Phase 9: API Foundation & Infrastructure
 **Goal**: System has the persistence layer, headless API server with mock data, and cleaned dependency tree that every v2.0 feature requires. The API DTOs and mock fixtures establish the contract that Phases 10 and 12 develop against independently.
@@ -123,22 +123,22 @@ Phase 9 (API + DB foundation) ─── critical path, everything gates on this
 **Requirements**: INFRA-01, INFRA-02, INFRA-03, INFRA-04, INFRA-05, INFRA-06, INFRA-07, INFRA-08, API-01, API-02, API-03, API-07
 **Success Criteria** (what must be TRUE):
   1. `GET /api/v1/health` returns JSON reporting subsystem status (database connected, graph partition count, model loaded)
-  2. `GET /api/v1/forecasts/country/SY` returns a mock `ForecastResponse` with structurally valid scenarios, evidence, and calibration data — the response matches the DTO contract spec
+  2. `GET /api/v1/forecasts/country/SY` returns a mock `ForecastResponse` with structurally valid scenarios, evidence, and calibration data -- the response matches the DTO contract spec
   3. `POST /api/v1/forecasts` with a valid API key accepts a question and returns a mock forecast; without a valid API key returns 401
   4. Running `EnsemblePredictor.predict()` persists the forecast to PostgreSQL and the row is retrievable via both SQL and `GET /api/v1/forecasts/{id}`
   5. Three separate Python processes (FastAPI server, simulated ingest daemon, simulated prediction pipeline) can read/write the PostgreSQL database concurrently without errors or data corruption
   6. All production code paths emit structured log messages (no `print()` statements remain) with severity, timestamp, and module name
-  7. Importing the TKG training module succeeds without jraph installed — all jraph references replaced with local JAX equivalents
+  7. Importing the TKG training module succeeds without jraph installed -- all jraph references replaced with local JAX equivalents
   8. `TKGModelProtocol` is defined and both the existing RE-GCN wrapper and a stub TiRGN class satisfy it (verified by `isinstance` or Protocol structural check)
 **Plans**: 6 plans
 
 Plans:
-- [x] 09-01-PLAN.md — Dependencies, Docker, PostgreSQL ORM models, Alembic migrations, settings
-- [x] 09-02-PLAN.md — Pydantic V2 DTOs (contract spec, 8-subsystem health schema) and mock fixtures (SY, UA, MM)
-- [x] 09-03-PLAN.md — jraph elimination, TKGModelProtocol, structured logging config module
-- [x] 09-04-PLAN.md — print() to logging conversion sweep (9 production files)
-- [x] 09-05-PLAN.md — FastAPI app, full subsystem health endpoint (8 checks), routes, auth middleware, error handling
-- [x] 09-06-PLAN.md — ForecastService persistence bridge, route wiring, multi-process concurrent DB tests, table smoke writes
+- [x] 09-01-PLAN.md -- Dependencies, Docker, PostgreSQL ORM models, Alembic migrations, settings
+- [x] 09-02-PLAN.md -- Pydantic V2 DTOs (contract spec, 8-subsystem health schema) and mock fixtures (SY, UA, MM)
+- [x] 09-03-PLAN.md -- jraph elimination, TKGModelProtocol, structured logging config module
+- [x] 09-04-PLAN.md -- print() to logging conversion sweep (9 production files)
+- [x] 09-05-PLAN.md -- FastAPI app, full subsystem health endpoint (8 checks), routes, auth middleware, error handling
+- [x] 09-06-PLAN.md -- ForecastService persistence bridge, route wiring, multi-process concurrent DB tests, table smoke writes
 
 ### Phase 10: Ingest & Forecast Pipeline
 **Goal**: System continuously ingests GDELT events every 15 minutes and produces daily automated forecasts with outcome tracking. API endpoints serve real forecast data (replacing Phase 9 mock fixtures). Redis caching prevents redundant computation.
@@ -149,38 +149,38 @@ Plans:
   2. A missed or failed GDELT feed fetch triggers exponential backoff retries with logged warnings, and the daemon resumes normal operation when the feed recovers
   3. Daily pipeline (triggered via systemd timer or manual invocation) generates forecast questions from recent high-significance events, runs Gemini+TKG ensemble predictions, and persists results to the `predictions` table
   4. `GET /api/v1/forecasts/country/{iso}` returns real forecasts generated by the daily pipeline (not mock fixtures); responses are served from Redis cache on subsequent requests within TTL
-  5. `POST /api/v1/forecasts` generates a live forecast with input sanitization — crafted prompt-injection inputs do not leak system internals; requests are rejected when daily Gemini budget is exhausted
+  5. `POST /api/v1/forecasts` generates a live forecast with input sanitization -- crafted prompt-injection inputs do not leak system internals; requests are rejected when daily Gemini budget is exhausted
   6. After sufficient time passes, the daily pipeline resolves past predictions against GDELT ground truth and writes outcome records to the `outcome_records` table
   7. A consecutive daily pipeline failure triggers an alert (log or notification) and the system recovers on the next scheduled run without manual intervention
   8. RSS ingest daemon polls WM-curated feed list, and querying ChromaDB for a recent geopolitical topic returns article chunks from RSS sources (not just GDELT event descriptions)
 **Plans**: 4 plans
 
 Plans:
-- [x] 10-01-PLAN.md — GDELT micro-batch poller daemon with backoff, metrics, incremental graph update
-- [x] 10-02-PLAN.md — API hardening: three-tier cache, per-key rate limiting, input sanitization
-- [x] 10-03-PLAN.md — RSS feed ingestion daemon with tiered polling and ChromaDB indexing
-- [x] 10-04-PLAN.md — Daily forecast pipeline, outcome resolution, real API route wiring
+- [x] 10-01-PLAN.md -- GDELT micro-batch poller daemon with backoff, metrics, incremental graph update
+- [x] 10-02-PLAN.md -- API hardening: three-tier cache, per-key rate limiting, input sanitization
+- [x] 10-03-PLAN.md -- RSS feed ingestion daemon with tiered polling and ChromaDB indexing
+- [x] 10-04-PLAN.md -- Daily forecast pipeline, outcome resolution, real API route wiring
 
 ### Phase 11: TKG Predictor Replacement
 **Goal**: TiRGN replaces RE-GCN as the TKG backend, delivering measurable accuracy improvement while fitting the RTX 3060 training envelope and weekly retraining cadence
 **Depends on**: Phase 9 (TKGModelProtocol defined, jraph eliminated)
 **Requirements**: TKG-01, TKG-02, TKG-03, TKG-04, TKG-05
-**Research flag**: YES — no published JAX implementation of TiRGN exists. Plan-phase should evaluate whether `/gsd:research-phase` is needed before implementation.
+**Research flag**: YES -- no published JAX implementation of TiRGN exists. Plan-phase should evaluate whether `/gsd:research-phase` is needed before implementation.
 **Success Criteria** (what must be TRUE):
   1. TiRGN model trains to completion on the full GDELT dataset within 24 hours on RTX 3060 12GB without OOM
   2. TiRGN achieves higher MRR than RE-GCN on a held-out GDELT test set (improvement logged and reproducible)
-  3. Swapping `TKGPredictor` from RE-GCN to TiRGN requires only a config change — no downstream code modifications to `EnsemblePredictor`, calibration, or the daily pipeline
+  3. Swapping `TKGPredictor` from RE-GCN to TiRGN requires only a config change -- no downstream code modifications to `EnsemblePredictor`, calibration, or the daily pipeline
   4. Weekly automated retraining (via existing scheduler) completes successfully with the TiRGN model
 **Plans**: 3 plans
 
 Plans:
-- [x] 11-01-PLAN.md — TiRGN model module (global history encoder, Time-ConvTransE decoder, copy-generation fusion, protocol compliance)
-- [x] 11-02-PLAN.md — TiRGN training loop with observability (TensorBoard + W&B, early stopping, VRAM monitoring)
-- [x] 11-03-PLAN.md — Backend dispatch, scheduler integration, config-only swap, integration tests
+- [x] 11-01-PLAN.md -- TiRGN model module (global history encoder, Time-ConvTransE decoder, copy-generation fusion, protocol compliance)
+- [x] 11-02-PLAN.md -- TiRGN training loop with observability (TensorBoard + W&B, early stopping, VRAM monitoring)
+- [x] 11-03-PLAN.md -- Backend dispatch, scheduler integration, config-only swap, integration tests
 
 ### Phase 12: WM-Derived Frontend
-**Goal**: External visitors see a production-quality dashboard with deck.gl globe, forecast panels, interactive scenario exploration, and country briefs — all consuming Geopol's FastAPI backend. Architecturally derived from World Monitor's vanilla TypeScript patterns but purpose-built for geopolitical forecasting.
-**Depends on**: Phase 9 (API contract with mock fixtures — real data from Phase 10 is not required to start; frontend develops against mocks)
+**Goal**: External visitors see a production-quality dashboard with deck.gl globe, forecast panels, interactive scenario exploration, and country briefs -- all consuming Geopol's FastAPI backend. Architecturally derived from World Monitor's vanilla TypeScript patterns but purpose-built for geopolitical forecasting.
+**Depends on**: Phase 9 (API contract with mock fixtures -- real data from Phase 10 is not required to start; frontend develops against mocks)
 **Requirements**: FE-01, FE-02, FE-03, FE-04, FE-05, FE-06, FE-07, FE-08
 **WM Reference**: `.planning/research/WM_AS_REPOSITORY.md` documents salvageable components, panel mappings, and layer mappings
 **Success Criteria** (what must be TRUE):
@@ -191,17 +191,17 @@ Plans:
   5. `RiskIndexPanel` displays per-country aggregate risk scores with trend indicators (rising/stable/falling), derived from the CII scoring pattern
   6. `CalibrationPanel` displays reliability diagram and Brier score decomposition (populated from real data when Phase 10 is complete, placeholder when running against mocks)
   7. Dark/light theme toggle works correctly with semantic severity colors consistent across all panels and map layers
-  8. `ForecastServiceClient` implements circuit breaker pattern — API failures result in stale-data display with "unavailable" indicator, not a broken UI
+  8. `ForecastServiceClient` implements circuit breaker pattern -- API failures result in stale-data display with "unavailable" indicator, not a broken UI
 **Plans**: 7 plans
 
 Plans:
-- [x] 12-01-PLAN.md — Project scaffold (Vite, TypeScript, Panel base class, AppContext, h() helper, theme system, API types)
-- [x] 12-02-PLAN.md — ForecastServiceClient with CircuitBreaker (typed API access, resilience, deduplication)
-- [x] 12-03-PLAN.md — DeckGLMap globe with 5 map layers (choropleth, markers, arcs, heatmap, scenario zones)
-- [x] 12-04-PLAN.md — Dashboard panels (ForecastPanel, RiskIndexPanel, EventTimelinePanel, EnsembleBreakdownPanel, SystemHealthPanel, CalibrationPanel)
-- [x] 12-05-PLAN.md — ScenarioExplorer modal (d3-hierarchy tree visualization, evidence sidebar)
-- [x] 12-06-PLAN.md — Country Brief Page (6-tab full-screen modal with entity graph, calibration charts)
-- [x] 12-07-PLAN.md — Integration wiring (main.ts, panel layout, RefreshScheduler, end-to-end verification)
+- [x] 12-01-PLAN.md -- Project scaffold (Vite, TypeScript, Panel base class, AppContext, h() helper, theme system, API types)
+- [x] 12-02-PLAN.md -- ForecastServiceClient with CircuitBreaker (typed API access, resilience, deduplication)
+- [x] 12-03-PLAN.md -- DeckGLMap globe with 5 map layers (choropleth, markers, arcs, heatmap, scenario zones)
+- [x] 12-04-PLAN.md -- Dashboard panels (ForecastPanel, RiskIndexPanel, EventTimelinePanel, EnsembleBreakdownPanel, SystemHealthPanel, CalibrationPanel)
+- [x] 12-05-PLAN.md -- ScenarioExplorer modal (d3-hierarchy tree visualization, evidence sidebar)
+- [x] 12-06-PLAN.md -- Country Brief Page (6-tab full-screen modal with entity graph, calibration charts)
+- [x] 12-07-PLAN.md -- Integration wiring (main.ts, panel layout, RefreshScheduler, end-to-end verification)
 
 ### Phase 13: Calibration, Monitoring & Hardening
 **Goal**: System self-improves its ensemble weights from accumulated outcome data, health is continuously observable, operational failures trigger alerts, and the system runs unattended for days without degradation
@@ -218,18 +218,79 @@ Plans:
 **Plans**: 7 plans
 
 Plans:
-- [x] 13-01-PLAN.md — DB schema extensions (3 new tables, widened CalibrationWeight, Prediction.cameo_root_code) + settings
-- [x] 13-02-PLAN.md — Calibration optimizer (L-BFGS-B), weight loader (hierarchical fallback), cold-start priors
-- [x] 13-03-PLAN.md — Monitoring package (alert manager, feed/drift/budget/disk monitors)
-- [x] 13-04-PLAN.md — Structured log rotation + systemd service units
-- [x] 13-05-PLAN.md — Polymarket client, matcher, comparison service
-- [x] 13-06-PLAN.md — Integration wiring (ensemble dynamic alpha, health enrichment, pipeline hooks)
-- [x] 13-07-PLAN.md — Calibration API routes, daily digest, frontend CalibrationPanel Polymarket display
+- [x] 13-01-PLAN.md -- DB schema extensions (3 new tables, widened CalibrationWeight, Prediction.cameo_root_code) + settings
+- [x] 13-02-PLAN.md -- Calibration optimizer (L-BFGS-B), weight loader (hierarchical fallback), cold-start priors
+- [x] 13-03-PLAN.md -- Monitoring package (alert manager, feed/drift/budget/disk monitors)
+- [x] 13-04-PLAN.md -- Structured log rotation + systemd service units
+- [x] 13-05-PLAN.md -- Polymarket client, matcher, comparison service
+- [x] 13-06-PLAN.md -- Integration wiring (ensemble dynamic alpha, health enrichment, pipeline hooks)
+- [x] 13-07-PLAN.md -- Calibration API routes, daily digest, frontend CalibrationPanel Polymarket display
+
+</details>
+
+### v2.1 Production UX & Live Data Integration
+
+**Milestone Goal:** Restructure the single-screen dashboard into a three-screen URL-routed application with progressive disclosure, real data-driven country risk, user-submitted forecast questions, and full-text search -- transforming the v2.0 demo into a usable analytical tool.
+
+**Design document:** `.planning/research/FRONTEND_REDESIGN.md`
+
+**Phase Numbering:** Starts at 14 (v2.0 ended at Phase 13).
+
+**Execution Model:** Sequential. Phase 14 (backend) unblocks Phases 15 and 16. Phase 15 (routing + dashboard) establishes the screen scaffold that Phase 16 (globe + forecasts screens) builds on.
+
+```
+Phase 14 (backend API hardening) --- unblocks real data for frontend
+    |
+    +---> Phase 15 (URL routing + dashboard screen) --- establishes 3-screen scaffold
+              |
+              +---> Phase 16 (globe + forecasts screens) --- completes remaining screens
+```
+
+- [ ] **Phase 14: Backend API Hardening** -- Kill fixture fallback, real country risk aggregation, question submission queue, full-text search endpoint
+- [ ] **Phase 15: URL Routing & Dashboard Screen** -- Three-screen URL routing, information-dense dashboard with progressive disclosure, search UI, event feed, sources panel
+- [ ] **Phase 16: Globe & Forecasts Screens** -- Full-viewport globe with contextual drill-down, forecast submission queue UI, layer toggle controls
+
+## Phase Details
+
+### Phase 14: Backend API Hardening
+**Goal**: API endpoints serve real aggregated data instead of mock fixtures, accept user-submitted forecast questions via a processing queue, and support full-text search over the predictions table. The frontend can request country risk, submit questions, and search forecasts against production data.
+**Depends on**: Phase 13 (v2.0 complete)
+**Requirements**: BAPI-01, BAPI-02, BAPI-03, BAPI-04
+**Success Criteria** (what must be TRUE):
+  1. `GET /api/v1/forecasts/country/MM` returns an empty result set (not Syria's forecasts) when no Myanmar predictions exist in PostgreSQL -- the fixture fallback code path is deleted, not disabled
+  2. `GET /api/v1/countries` returns a JSON array where each entry has `country_iso`, `forecast_count`, `risk_score`, `trend`, and `top_forecast` -- all computed from the `predictions` table via SQL aggregation, not hardcoded
+  3. `POST /api/v1/forecasts/submit` accepts a natural language question, returns a `request_id` and LLM-parsed structured form (country_iso, horizon_days, category), and the request appears in the `forecast_requests` table with status `pending`
+  4. `GET /api/v1/forecasts/search?q=conflict&country=UA` returns forecasts matching the query using PostgreSQL `ts_vector` full-text search with sub-200ms response time on 1000+ predictions
+  5. `GET /api/v1/forecasts/requests` returns the user's submitted questions with current status (pending/processing/complete/failed) and links to completed forecast results
+**Plans**: TBD
+
+### Phase 15: URL Routing & Dashboard Screen
+**Goal**: The single-screen layout is replaced by three URL-routed screens. The Dashboard screen (`/dashboard`) is a dense information display with progressive disclosure on forecast cards, full-text search, event feed, data source health, and a "My Forecasts" section showing user-submitted questions.
+**Depends on**: Phase 14 (real country risk, search endpoint, submission queue)
+**Requirements**: SCREEN-01, SCREEN-02, FUX-01, FUX-02, FUX-03, FUX-04, FUX-05, FUX-06
+**Success Criteria** (what must be TRUE):
+  1. Navigating to `/dashboard`, `/globe`, and `/forecasts` renders three distinct screens; the browser URL updates on navigation; back/forward buttons work; direct URL entry loads the correct screen
+  2. The Dashboard screen displays scrollable columns with collapsible sections and no globe -- the freed viewport space is filled with forecast cards, event feed, and source health panels
+  3. Clicking a forecast card inline-expands to show ensemble weights, top evidence summaries, calibration metadata, and a "View Full Analysis" button that opens the ScenarioExplorer modal
+  4. Typing in the search bar filters visible forecasts in real-time by question text, country, or category; results update as the user types (debounced) against the BAPI-04 search endpoint
+  5. The "My Forecasts" section shows user-submitted questions with status badges (pending/processing/complete) and clicking a completed forecast navigates to its full result
+**Plans**: TBD
+
+### Phase 16: Globe & Forecasts Screens
+**Goal**: The Globe screen provides full-viewport geospatial exploration with contextual drill-down on country click. The Forecasts screen provides a question submission workflow with queue status display. All three screens are complete and the v2.1 milestone is deliverable.
+**Depends on**: Phase 15 (URL routing scaffold, dashboard screen complete)
+**Requirements**: SCREEN-03, SCREEN-04, GLOBE-01, GLOBE-02, GLOBE-03
+**Success Criteria** (what must be TRUE):
+  1. The Globe screen (`/globe`) renders deck.gl at full viewport with overlay panels that appear contextually on interaction -- no permanent sidebar competing for space
+  2. Clicking a country on the globe opens a slide-in panel showing that country's active forecasts, a risk score timeline, and a GDELT event sparkline -- all from live API data via BAPI-02
+  3. The choropleth layer colors countries by real aggregate risk scores from the `predictions` table (via BAPI-02); countries with no forecasts render as neutral/uncolored
+  4. Layer toggle controls are visible on the Globe screen allowing the user to enable/disable forecast markers, conflict arcs, heatmap, and scenario zone layers independently
+  5. The Forecasts screen (`/forecasts`) displays a question submission form; submitting a question shows LLM-parsed confirmation (country, horizon, category) and the question enters the processing queue with real-time status updates
 
 ## Progress
 
 **Execution Order:**
-Phase 9 first (critical path). Then Phases 10, 11, 12 in parallel. Phase 13 after convergence.
+Sequential: Phase 14 -> Phase 15 -> Phase 16.
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -246,5 +307,8 @@ Phase 9 first (critical path). Then Phases 10, 11, 12 in parallel. Phase 13 afte
 | 11. TKG Replacement | v2.0 | 3/3 | Complete | 2026-03-01 |
 | 12. WM-Derived Frontend | v2.0 | 7/7 | Complete | 2026-03-02 |
 | 13. Calibration & Monitoring | v2.0 | 7/7 | Complete | 2026-03-02 |
+| 14. Backend API Hardening | v2.1 | 0/TBD | Not started | - |
+| 15. URL Routing & Dashboard | v2.1 | 0/TBD | Not started | - |
+| 16. Globe & Forecasts Screens | v2.1 | 0/TBD | Not started | - |
 
-**Total:** 13 phases complete (v1.0 + v1.1 + v2.0), 49 plans delivered. v2.0: 5/5 phases complete, 50 requirements satisfied.
+**Total:** 13 phases complete (v1.0 + v1.1 + v2.0), 49 plans delivered. v2.1: 0/3 phases started, 17 requirements pending.
