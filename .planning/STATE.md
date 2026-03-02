@@ -5,15 +5,15 @@
 See: .planning/PROJECT.md (updated 2026-02-27)
 
 **Core value:** Explainability -- every forecast must provide clear, traceable reasoning paths
-**Current focus:** Phase 13 in progress. Plan 01 (schema + settings foundation) complete. Plans 02-07 remain.
+**Current focus:** Phase 13 in progress. Plans 01-02 complete. Plans 03-07 remain.
 
 ## Current Position
 
 Milestone: v2.0 Operationalization & Forecast Quality
 Phase: 13 of 13 (Calibration, Monitoring & Hardening)
-Plan: 01 of 7 (in phase 13)
+Plan: 02 of 7 (in phase 13)
 Status: In progress
-Last activity: 2026-03-02 -- Completed 13-01-PLAN.md (Schema & settings foundation)
+Last activity: 2026-03-02 -- Completed 13-02-PLAN.md (Calibration weight recompute)
 
 Progress: [#################################.........] 81% (13/16 phases lifetime)
 v2.0:    [########..] 80% (4/5 phases complete, 13 in progress)
@@ -21,9 +21,9 @@ v2.0:    [########..] 80% (4/5 phases complete, 13 in progress)
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 43
+- Total plans completed: 44
 - Average duration: 13 minutes
-- Total execution time: 9.09 hours
+- Total execution time: 9.14 hours
 
 **By Phase:**
 
@@ -41,11 +41,11 @@ v2.0:    [########..] 80% (4/5 phases complete, 13 in progress)
 | 10-ingest-forecast-pipeline | 4 | 27min | 7min |
 | 11-tkg-predictor-replacement | 3 | 21min | 7min |
 | 12-wm-derived-frontend | 7 | 36min | 5min |
-| 13-calibration-monitoring-hardening | 1 | 3min | 3min |
+| 13-calibration-monitoring-hardening | 2 | 6min | 3min |
 
 **Recent Trend:**
-- Last 4 plans: 12-06 (6min), 12-07 (5min), 13-01 (3min)
-- Trend: Sustained high velocity on schema/config tasks
+- Last 4 plans: 12-07 (5min), 13-01 (3min), 13-02 (3min)
+- Trend: Sustained high velocity on calibration subsystem tasks
 
 ## Accumulated Context
 
@@ -133,6 +133,11 @@ Key decisions affecting current work:
 - CalibrationWeight.cameo_code widened to String(30) -- hierarchical keys (root codes, super-categories, global) without separate table (2026-03-02, 13-01)
 - PolymarketSnapshot uses ForeignKey to polymarket_comparisons.id -- first real FK in schema (2026-03-02, 13-01)
 - smtp_password as plain str not SecretStr -- consistent with existing extra=ignore pydantic-settings pattern (2026-03-02, 13-01)
+- CAMEO quadrant mapping: 01-05 verbal_coop, 06-09 material_coop, 10-14 verbal_conflict, 15-20 material_conflict (2026-03-02, 13-02)
+- Cold-start priors asymmetric: verbal_coop=0.65 (LLM-strong) to material_conflict=0.50 (TKG-strong), global=0.58 (2026-03-02, 13-02)
+- Guardrails use relative deviation (20%) not absolute -- more conservative at extreme alpha values (2026-03-02, 13-02)
+- Under-sampled CAMEO codes aggregate to super-category for optimization (2026-03-02, 13-02)
+- WeightLoader TTL uses time.monotonic() -- immune to NTP clock adjustments (2026-03-02, 13-02)
 
 ### Deferred Issues
 
@@ -157,6 +162,6 @@ Key decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-03-02
-Stopped at: Completed 13-01-PLAN.md (Schema & settings foundation)
+Stopped at: Completed 13-02-PLAN.md (Calibration weight recompute)
 Resume file: None
-Next: 13-02-PLAN.md (Calibration weight recompute)
+Next: 13-03-PLAN.md (Alert manager)
