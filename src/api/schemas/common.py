@@ -100,3 +100,43 @@ def decode_cursor(cursor: str) -> dict:
         raise ValueError("Cursor missing required fields 'id' and 'ts'")
 
     return data
+
+
+def encode_keyset_cursor(**kwargs: str | int | float) -> str:
+    """Encode arbitrary keyset pagination coordinates as base64url JSON.
+
+    Accepts any keyword arguments as cursor fields.  Values must be
+    JSON-serializable primitives (str, int, float).
+
+    Example::
+
+        encode_keyset_cursor(id=42, event_date="2026-01-15")
+    """
+    payload = json.dumps(kwargs, separators=(",", ":"))
+    return base64.urlsafe_b64encode(payload.encode("utf-8")).decode("ascii")
+
+
+def decode_keyset_cursor(cursor: str, required_keys: set[str]) -> dict:
+    """Decode a keyset cursor and validate required keys are present.
+
+    Args:
+        cursor: Base64url-encoded cursor string from the client.
+        required_keys: Set of keys that must be present in the decoded cursor.
+
+    Returns:
+        Dict with the cursor's key-value pairs.
+
+    Raises:
+        ValueError: If the cursor is malformed or missing required keys.
+    """
+    try:
+        raw = base64.urlsafe_b64decode(cursor.encode("ascii"))
+        data = json.loads(raw.decode("utf-8"))
+    except Exception as exc:
+        raise ValueError(f"Invalid cursor: {exc}") from exc
+
+    missing = required_keys - set(data.keys())
+    if missing:
+        raise ValueError(f"Cursor missing required fields: {missing}")
+
+    return data

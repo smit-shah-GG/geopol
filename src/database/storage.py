@@ -31,7 +31,7 @@ class EventStorage:
         self.init_database()
 
     def init_database(self):
-        """Create database tables if they don't exist."""
+        """Create database tables if they don't exist, then run migrations."""
         if not self.db.table_exists('events'):
             schema_path = Path(__file__).parent / 'schema.sql'
             if schema_path.exists():
@@ -40,6 +40,59 @@ class EventStorage:
             else:
                 logger.error(f"Schema file not found: {schema_path}")
                 raise FileNotFoundError(f"Database schema not found at {schema_path}")
+
+        # Run column migrations for existing databases
+        self._migrate_columns()
+
+    def _migrate_columns(self) -> None:
+        """Add country_iso and source columns if missing, backfill country_iso from raw_json."""
+        with self.db.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("PRAGMA table_info(events)")
+            existing_cols = {row["name"] for row in cursor.fetchall()}
+
+            if "country_iso" not in existing_cols:
+                cursor.execute("ALTER TABLE events ADD COLUMN country_iso TEXT")
+                logger.info("Migration: added country_iso column to events table")
+
+                # Backfill from ActionGeo_CountryCode
+                cursor.execute("""
+                    UPDATE events SET country_iso = json_extract(raw_json, '$.ActionGeo_CountryCode')
+                    WHERE raw_json IS NOT NULL AND country_iso IS NULL
+                """)
+                primary_filled = cursor.rowcount
+                logger.info("Backfill: %d rows populated country_iso from ActionGeo_CountryCode", primary_filled)
+
+                # Fallback to Actor1CountryCode where ActionGeo was NULL
+                cursor.execute("""
+                    UPDATE events SET country_iso = json_extract(raw_json, '$.Actor1CountryCode')
+                    WHERE raw_json IS NOT NULL AND country_iso IS NULL
+                      AND json_extract(raw_json, '$.Actor1CountryCode') IS NOT NULL
+                """)
+                fallback_filled = cursor.rowcount
+                logger.info("Backfill: %d rows populated country_iso from Actor1CountryCode fallback", fallback_filled)
+
+                # Stats
+                cursor.execute("SELECT COUNT(*) as cnt FROM events WHERE country_iso IS NULL")
+                still_null = cursor.fetchone()["cnt"]
+                cursor.execute("SELECT COUNT(*) as cnt FROM events")
+                total = cursor.fetchone()["cnt"]
+                logger.info(
+                    "Backfill complete: %d/%d rows have country_iso (%d remain NULL)",
+                    total - still_null, total, still_null,
+                )
+
+                # Create index
+                cursor.execute("CREATE INDEX IF NOT EXISTS idx_events_country_iso ON events(country_iso)")
+                cursor.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_events_country_date_id "
+                    "ON events(country_iso, event_date DESC, id DESC)"
+                )
+
+            if "source" not in existing_cols:
+                cursor.execute("ALTER TABLE events ADD COLUMN source TEXT NOT NULL DEFAULT 'gdelt'")
+                cursor.execute("CREATE INDEX IF NOT EXISTS idx_events_source ON events(source)")
+                logger.info("Migration: added source column to events table")
 
     def insert_events(self, events: List[Event], batch_size: int = 1000) -> int:
         """
@@ -305,6 +358,191 @@ class EventStorage:
 
             logger.info(f"Deleted {deleted_count} events older than {cutoff_date}")
             return deleted_count
+
+    def query_events(
+        self,
+        country: Optional[str] = None,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        cameo_code: Optional[str] = None,
+        actor: Optional[str] = None,
+        goldstein_min: Optional[float] = None,
+        goldstein_max: Optional[float] = None,
+        text: Optional[str] = None,
+        source: Optional[str] = None,
+        cursor_id: Optional[int] = None,
+        cursor_date: Optional[str] = None,
+        limit: int = 50,
+    ) -> List[Event]:
+        """Query events with full filter surface and cursor-based keyset pagination.
+
+        Returns ``limit + 1`` rows so the caller can check ``has_more`` by
+        comparing ``len(result) > limit``. Ordered by ``event_date DESC, id DESC``.
+
+        When no date range is given, defaults to the last 30 days.
+
+        Args:
+            country: ISO 3166-1 alpha-2 country code.
+            start_date: Inclusive start date (YYYY-MM-DD).
+            end_date: Inclusive end date (YYYY-MM-DD).
+            cameo_code: CAMEO event code prefix match.
+            actor: Substring match against actor1_code or actor2_code.
+            goldstein_min: Minimum Goldstein scale value (inclusive).
+            goldstein_max: Maximum Goldstein scale value (inclusive).
+            text: Title substring search.
+            source: Source discriminator ('gdelt' or 'acled').
+            cursor_id: Keyset cursor -- last seen event id.
+            cursor_date: Keyset cursor -- last seen event_date.
+            limit: Maximum items per page (caller receives limit+1).
+
+        Returns:
+            List of Event objects (up to limit + 1).
+        """
+        # Default to 30-day window when no dates given
+        if not start_date and not end_date:
+            end_date = datetime.now().strftime("%Y-%m-%d")
+            start_date = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
+
+        with self.db.get_connection() as conn:
+            cursor = conn.cursor()
+
+            clauses: List[str] = []
+            params: list = []
+
+            if country:
+                clauses.append("country_iso = ?")
+                params.append(country)
+            if start_date:
+                clauses.append("event_date >= ?")
+                params.append(start_date)
+            if end_date:
+                clauses.append("event_date <= ?")
+                params.append(end_date)
+            if cameo_code:
+                clauses.append("event_code LIKE ? || '%'")
+                params.append(cameo_code)
+            if actor:
+                clauses.append("(actor1_code LIKE '%' || ? || '%' OR actor2_code LIKE '%' || ? || '%')")
+                params.extend([actor, actor])
+            if goldstein_min is not None:
+                clauses.append("goldstein_scale >= ?")
+                params.append(goldstein_min)
+            if goldstein_max is not None:
+                clauses.append("goldstein_scale <= ?")
+                params.append(goldstein_max)
+            if text:
+                clauses.append("title LIKE '%' || ? || '%'")
+                params.append(text)
+            if source:
+                clauses.append("source = ?")
+                params.append(source)
+
+            # Keyset cursor: seek past the last page boundary
+            if cursor_id is not None and cursor_date is not None:
+                clauses.append("(event_date < ? OR (event_date = ? AND id < ?))")
+                params.extend([cursor_date, cursor_date, cursor_id])
+
+            where = " AND ".join(clauses) if clauses else "1=1"
+            sql = (
+                f"SELECT * FROM events WHERE {where} "
+                "ORDER BY event_date DESC, id DESC "
+                "LIMIT ?"
+            )
+            params.append(limit + 1)
+
+            cursor.execute(sql, params)
+            rows = cursor.fetchall()
+
+            return [Event(**dict(row)) for row in rows]
+
+    def query_events_count(
+        self,
+        country: Optional[str] = None,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+    ) -> int:
+        """Return total event count for a country within a date range.
+
+        Used by the country brief page to display aggregate stats.
+        """
+        with self.db.get_connection() as conn:
+            cursor = conn.cursor()
+
+            clauses: List[str] = []
+            params: list = []
+
+            if country:
+                clauses.append("country_iso = ?")
+                params.append(country)
+            if start_date:
+                clauses.append("event_date >= ?")
+                params.append(start_date)
+            if end_date:
+                clauses.append("event_date <= ?")
+                params.append(end_date)
+
+            where = " AND ".join(clauses) if clauses else "1=1"
+            sql = f"SELECT COUNT(*) as cnt FROM events WHERE {where}"
+
+            cursor.execute(sql, params)
+            result = cursor.fetchone()
+            return result["cnt"] if result else 0
+
+    def query_top_actors(
+        self,
+        country: Optional[str] = None,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        limit: int = 20,
+    ) -> List[Dict[str, Any]]:
+        """Return actor codes ranked by event count for a country and date range.
+
+        Unions actor1_code and actor2_code, deduplicates, and sorts by
+        descending frequency.  Used by the entity tab on country brief pages.
+
+        Returns:
+            List of dicts with keys 'actor' (str) and 'count' (int).
+        """
+        with self.db.get_connection() as conn:
+            cursor = conn.cursor()
+
+            clauses: List[str] = []
+            params: list = []
+
+            if country:
+                clauses.append("country_iso = ?")
+                params.append(country)
+            if start_date:
+                clauses.append("event_date >= ?")
+                params.append(start_date)
+            if end_date:
+                clauses.append("event_date <= ?")
+                params.append(end_date)
+
+            where = " AND ".join(clauses) if clauses else "1=1"
+
+            # Union actor1 and actor2 counts, then aggregate
+            sql = f"""
+                SELECT actor, SUM(cnt) as count FROM (
+                    SELECT actor1_code as actor, COUNT(*) as cnt
+                    FROM events
+                    WHERE {where} AND actor1_code IS NOT NULL
+                    GROUP BY actor1_code
+                    UNION ALL
+                    SELECT actor2_code as actor, COUNT(*) as cnt
+                    FROM events
+                    WHERE {where} AND actor2_code IS NOT NULL
+                    GROUP BY actor2_code
+                ) sub
+                GROUP BY actor
+                ORDER BY count DESC
+                LIMIT ?
+            """
+            # Each subquery needs its own parameter set
+            full_params = params + params + [limit]
+
+            cursor.execute(sql, full_params)
+            return [{"actor": row["actor"], "count": row["count"]} for row in cursor.fetchall()]
 
     def record_ingestion_stats(
         self,

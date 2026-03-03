@@ -187,6 +187,17 @@ def _gdelt_row_to_event(row: pd.Series) -> Event:
         except (ValueError, TypeError):
             pass
 
+    # Extract country code -- prefer ActionGeo (where it happened) over Actor1 (who did it)
+    country_iso: Optional[str] = None
+    if pd.notna(row.get("ActionGeo_CountryCode")):
+        raw_cc = str(row["ActionGeo_CountryCode"]).strip()
+        if raw_cc:
+            country_iso = raw_cc
+    if country_iso is None and pd.notna(row.get("Actor1CountryCode")):
+        raw_cc = str(row["Actor1CountryCode"]).strip()
+        if raw_cc:
+            country_iso = raw_cc
+
     return Event(
         gdelt_id=gdelt_id,
         content_hash=content_hash,
@@ -201,6 +212,8 @@ def _gdelt_row_to_event(row: pd.Series) -> Event:
         num_sources=sources,
         tone=tone,
         url=str(row.get("SOURCEURL", "")) if pd.notna(row.get("SOURCEURL")) else None,
+        country_iso=country_iso,
+        source="gdelt",
     )
 
 

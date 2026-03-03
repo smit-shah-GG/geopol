@@ -37,6 +37,10 @@ CREATE TABLE IF NOT EXISTS events (
     -- Store raw JSON for future processing
     raw_json TEXT,
 
+    -- Multi-source support
+    country_iso TEXT,               -- ISO 3166-1 alpha-2 country code (event location)
+    source TEXT NOT NULL DEFAULT 'gdelt',  -- Discriminator: 'gdelt' or 'acled'
+
     -- Indexes for efficient queries
     CHECK (quad_class IN (1, 2, 3, 4) OR quad_class IS NULL)
 );
@@ -59,6 +63,15 @@ CREATE INDEX IF NOT EXISTS idx_num_mentions ON events(num_mentions);
 
 -- Index for tone-based filtering
 CREATE INDEX IF NOT EXISTS idx_tone ON events(tone);
+
+-- Index for country-based API queries
+CREATE INDEX IF NOT EXISTS idx_events_country_iso ON events(country_iso);
+
+-- Composite index for cursor-based pagination (country + date DESC + id DESC)
+CREATE INDEX IF NOT EXISTS idx_events_country_date_id ON events(country_iso, event_date DESC, id DESC);
+
+-- Index for source filtering (gdelt vs acled)
+CREATE INDEX IF NOT EXISTS idx_events_source ON events(source);
 
 -- View for high-confidence conflict events
 CREATE VIEW IF NOT EXISTS conflict_events AS
