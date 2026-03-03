@@ -336,9 +336,19 @@ Plans:
 ### Phase 18: Polymarket-Driven Forecasting
 **Goal**: The system actively polls Polymarket for geopolitical questions, runs Geopol's forecasting pipeline on matching questions, and tracks probability comparisons over time. A dedicated dashboard panel shows Polymarket questions alongside Geopol's competing forecasts, providing direct calibration signal and demonstrable accuracy comparison.
 **Depends on**: Phase 16 (screens exist); Phase 13 (existing Polymarket client, matcher, comparison service)
-**Requirements**: TBD (define during `/gsd:discuss-phase 18`)
-**Success Criteria**: TBD
-**Plans**: TBD
+**Success Criteria** (what must be TRUE):
+  1. Unmatched Polymarket geopolitical questions above $100K volume automatically trigger full EnsemblePredictor pipeline runs, persisting results with `provenance="polymarket_driven"` and creating PolymarketComparison tracking rows
+  2. Active comparisons are re-forecasted daily (overwriting existing Prediction rows), with probability changes captured in polymarket_snapshots time-series
+  3. Daily caps (3 new + 5 re-forecasts) and Gemini budget checks prevent runaway API costs; same Polymarket question never triggers duplicate pipeline runs
+  4. Forecast cards in the dashboard show a "P" badge on collapsed state when linked to a Polymarket market; expanding the card shows market price, divergence (pp), and a dual-line sparkline (lazy-loaded from /calibration/polymarket/comparisons/{id}/snapshots)
+  5. ComparisonPanel in Col 2 (below Active Forecasts) displays all active and resolved comparisons with dual probability bars, divergence color coding, provenance badges, and resolved status indicators
+  6. `GET /calibration/polymarket/comparisons` returns all comparisons with provenance and divergence data; `GET /calibration/polymarket/comparisons/{id}/snapshots` returns sampled sparkline data (30 points)
+**Plans**: 3 plans
+
+Plans:
+- [ ] 18-01-PLAN.md -- DB schema (provenance + polymarket_event_id on Prediction), PolymarketAutoForecaster (volume filter, tiered extraction, pipeline trigger, cap tracking, dedup), app.py wiring, comparison.py snapshot query
+- [ ] 18-02-PLAN.md -- ForecastResponse DTO extension (polymarket_comparison field), forecast enrichment, comparison panel + snapshot API endpoints
+- [ ] 18-03-PLAN.md -- Frontend: TypeScript types, forecast-client methods, badge + inline comparison on expandable cards, ComparisonPanel, dashboard wiring
 
 ## Progress
 
@@ -364,6 +374,6 @@ Sequential: Phase 14 -> Phase 15 -> Phase 16. Then Phase 17 and Phase 18 can run
 | 15. URL Routing & Dashboard | v2.1 | 3/3 | Complete | 2026-03-03 |
 | 16. Globe & Forecasts Screens | v2.1 | 3/3 | Complete | 2026-03-03 |
 | 17. Live Data Feeds & Country Depth | v2.1 | 3/3 | Complete | 2026-03-04 |
-| 18. Polymarket-Driven Forecasting | v2.1 | 0/TBD | Not started | - |
+| 18. Polymarket-Driven Forecasting | v2.1 | 0/3 | Not started | - |
 
-**Total:** 17 phases complete (v1.0 + v1.1 + v2.0 + Phases 14-17), 62 plans delivered. v2.1: 4/5 phases complete, Phase 18 requirements TBD.
+**Total:** 17 phases complete (v1.0 + v1.1 + v2.0 + Phases 14-17), 62 plans delivered. v2.1: 4/5 phases complete, Phase 18 planned (3 plans).
