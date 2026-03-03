@@ -11,10 +11,13 @@
  */
 
 import type {
+  ConfirmSubmissionResponse,
   CountryRiskSummary,
+  ForecastRequestStatus,
   ForecastResponse,
   HealthResponse,
   PaginatedResponse,
+  ParsedQuestionResponse,
   PolymarketComparisonResponse,
   SearchResponse,
 } from '@/types/api.ts';
@@ -64,6 +67,7 @@ const FALLBACK_HEALTH: HealthResponse = {
   timestamp: new Date().toISOString(),
   version: 'unknown',
 };
+const EMPTY_REQUESTS: ForecastRequestStatus[] = [];
 const FALLBACK_POLYMARKET: PolymarketComparisonResponse = {
   active: [],
   resolved: [],
@@ -230,6 +234,48 @@ export class ForecastServiceClient {
     if (options?.limit) params.set('limit', String(options.limit));
     const path = `/forecasts/search?${params.toString()}`;
     return this.fetchJson<SearchResponse>(path, { signal: options?.signal });
+  }
+
+  // -----------------------------------------------------------------------
+  // Submission flow (Phase 14 backend)
+  // -----------------------------------------------------------------------
+
+  /**
+   * POST /forecasts/submit -- submit a natural language question for LLM parsing.
+   * NOT deduplicated (mutation, user expects immediate feedback).
+   * NOT circuit-broken (user expects immediate error on failure).
+   */
+  async submitQuestion(question: string): Promise<ParsedQuestionResponse> {
+    return this.fetchJson<ParsedQuestionResponse>('/forecasts/submit', {
+      method: 'POST',
+      body: JSON.stringify({ question }),
+    });
+  }
+
+  /**
+   * POST /forecasts/submit/{id}/confirm -- confirm a parsed question for processing.
+   * NOT deduplicated, NOT circuit-broken (mutation).
+   */
+  async confirmSubmission(requestId: string): Promise<ConfirmSubmissionResponse> {
+    return this.fetchJson<ConfirmSubmissionResponse>(
+      `/forecasts/submit/${encodeURIComponent(requestId)}/confirm`,
+      { method: 'POST' },
+    );
+  }
+
+  /**
+   * GET /forecasts/requests -- list user's submitted forecast requests.
+   * Deduplicated (polled periodically). Uses health breaker (low-priority).
+   */
+  async getRequests(statusFilter?: string): Promise<ForecastRequestStatus[]> {
+    const qs = statusFilter ? `?status_filter=${encodeURIComponent(statusFilter)}` : '';
+    const key = `/forecasts/requests${qs}`;
+    return this.dedup(key, () =>
+      this.healthBreaker.execute(
+        () => this.fetchJson<ForecastRequestStatus[]>(key),
+        EMPTY_REQUESTS,
+      ),
+    ) as Promise<ForecastRequestStatus[]>;
   }
 
   // -----------------------------------------------------------------------

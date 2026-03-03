@@ -143,6 +143,40 @@ export interface SearchResponse {
   suggestions: string[] | null;
 }
 
+// --- submission.py ---
+
+/** POST /forecasts/submit response -- LLM-parsed question. */
+export interface ParsedQuestionResponse {
+  request_id: string;
+  question: string;
+  country_iso_list: string[];
+  horizon_days: number;
+  category: string;
+  status: string;
+  parsed_at: string;
+}
+
+/** GET /forecasts/requests item -- submission lifecycle status. */
+export interface ForecastRequestStatus {
+  request_id: string;
+  question: string;
+  country_iso_list: string[];
+  horizon_days: number;
+  category: string;
+  status: 'pending' | 'confirmed' | 'processing' | 'complete' | 'failed';
+  submitted_at: string;
+  completed_at: string | null;
+  prediction_ids: string[];
+  error_message: string | null;
+}
+
+/** POST /forecasts/submit/{id}/confirm response. */
+export interface ConfirmSubmissionResponse {
+  request_id: string;
+  status: string;
+  message: string;
+}
+
 /** Full response from GET /api/v1/calibration/polymarket. */
 export interface PolymarketComparisonResponse {
   active: PolymarketComparison[];
