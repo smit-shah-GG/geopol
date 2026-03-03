@@ -5,7 +5,7 @@
 - v1.0 MVP -- Phases 1-5 (shipped 2026-01-23)
 - v1.1 Tech Debt Remediation -- Phases 6-8 (shipped 2026-01-30)
 - v2.0 Operationalization & Forecast Quality -- Phases 9-13 (shipped 2026-03-02)
-- v2.1 Production UX & Live Data Integration -- Phases 14-18 (in progress)
+- v2.1 Production UX & Live Data Integration -- Phases 14-18 (shipped 2026-03-04)
 
 ## Phases
 
@@ -254,7 +254,7 @@ Phase 14 (backend API hardening) --- unblocks real data for frontend
 - [x] **Phase 15: URL Routing & Dashboard Screen** -- Three-screen URL routing, information-dense dashboard with progressive disclosure, search UI, event feed, sources panel
 - [x] **Phase 16: Globe & Forecasts Screens** -- Full-viewport globe with contextual drill-down, forecast submission queue UI, layer toggle controls
 - [x] **Phase 17: Live Data Feeds & Country Depth** -- Backend event/article API endpoints, wire EventTimelinePanel to real data, additional data source ingestion, country screen subpages with real data
-- [ ] **Phase 18: Polymarket-Driven Forecasting** -- Poll Polymarket for active geopolitical questions, run Geopol pipeline on matched questions, comparison tracking over time, Col 2 Polymarket panel
+- [x] **Phase 18: Polymarket-Driven Forecasting** -- Poll Polymarket for active geopolitical questions, run Geopol pipeline on matched questions, comparison tracking over time, Col 2 Polymarket panel
 
 ## Phase Details
 
@@ -346,9 +346,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 18-01-PLAN.md -- DB schema (provenance + polymarket_event_id on Prediction), PolymarketAutoForecaster (volume filter, tiered extraction, pipeline trigger, cap tracking, dedup), app.py wiring, comparison.py snapshot query
-- [ ] 18-02-PLAN.md -- ForecastResponse DTO extension (polymarket_comparison field), forecast enrichment, comparison panel + snapshot API endpoints
-- [ ] 18-03-PLAN.md -- Frontend: TypeScript types, forecast-client methods, badge + inline comparison on expandable cards, ComparisonPanel, dashboard wiring
+- [x] 18-01-PLAN.md -- DB schema (provenance + polymarket_event_id on Prediction), PolymarketAutoForecaster (volume filter, tiered extraction, pipeline trigger, cap tracking, dedup), app.py wiring, comparison.py snapshot query
+- [x] 18-02-PLAN.md -- ForecastResponse DTO extension (polymarket_comparison field), forecast enrichment, comparison panel + snapshot API endpoints
+- [x] 18-03-PLAN.md -- Frontend: TypeScript types, forecast-client methods, badge + inline comparison on expandable cards, ComparisonPanel, dashboard wiring
 
 ## Progress
 
@@ -374,6 +374,6 @@ Sequential: Phase 14 -> Phase 15 -> Phase 16. Then Phase 17 and Phase 18 can run
 | 15. URL Routing & Dashboard | v2.1 | 3/3 | Complete | 2026-03-03 |
 | 16. Globe & Forecasts Screens | v2.1 | 3/3 | Complete | 2026-03-03 |
 | 17. Live Data Feeds & Country Depth | v2.1 | 3/3 | Complete | 2026-03-04 |
-| 18. Polymarket-Driven Forecasting | v2.1 | 0/3 | Not started | - |
+| 18. Polymarket-Driven Forecasting | v2.1 | 3/3 | Complete | 2026-03-04 |
 
-**Total:** 17 phases complete (v1.0 + v1.1 + v2.0 + Phases 14-17), 62 plans delivered. v2.1: 4/5 phases complete, Phase 18 planned (3 plans).
+**Total:** 18 phases complete (v1.0 + v1.1 + v2.0 + v2.1), 65 plans delivered. v2.1: 5/5 phases complete. Milestone shipped.
