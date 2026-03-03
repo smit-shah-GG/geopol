@@ -9,7 +9,17 @@
  *   5. ScenarioZones           (GeoJsonLayer)     -- scenario-relevant countries
  *
  * NOT a Panel subclass. Standalone map component that renders into a given
- * container element and exposes a public data-push API for main.ts wiring.
+ * container element and exposes a public data-push API for screen wiring.
+ *
+ * Public API for external layer control:
+ *   - flyToCountry(iso)       -- animate camera to country centroid
+ *   - setLayerVisible(id, v)  -- toggle individual layer visibility
+ *   - setLayerDefaults(map)   -- batch-set layer visibility (e.g. globe screen)
+ *   - getLayerVisible(id)     -- query layer visibility state
+ *   - getMap()                -- access underlying maplibre-gl Map instance
+ *
+ * Built-in toggle panel removed -- external LayerPillBar (Plan 02) manages
+ * layer visibility via setLayerVisible()/getLayerVisible() public API.
  */
 
 import { MapboxOverlay } from '@deck.gl/mapbox';
@@ -30,8 +40,8 @@ import type { ForecastResponse, CountryRiskSummary } from '@/types/api.ts';
 const DARK_STYLE = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
 // Light style removed -- dark-only theme
 
-/** Layer IDs for toggle state tracking */
-const LAYER_IDS = [
+/** Layer IDs for toggle state tracking. Exported for external consumers. */
+export const LAYER_IDS = [
   'ForecastRiskChoropleth',
   'ActiveForecastMarkers',
   'KnowledgeGraphArcs',
@@ -39,7 +49,7 @@ const LAYER_IDS = [
   'ScenarioZones',
 ] as const;
 
-type LayerId = (typeof LAYER_IDS)[number];
+export type LayerId = (typeof LAYER_IDS)[number];
 
 // ---------------------------------------------------------------------------
 // Color utilities
@@ -117,10 +127,10 @@ export class DeckGLMap {
   private map: maplibregl.Map | null = null;
   private overlay: MapboxOverlay | null = null;
   private wrapper: HTMLElement | null = null;
-  private togglePanel: HTMLElement | null = null;
   private tooltip: HTMLElement | null = null;
 
-  // Layer toggle state
+  // Layer toggle state -- defaults all true (dashboard shows everything).
+  // Globe screen calls setLayerDefaults() after construction to override.
   private readonly layerVisible: Record<LayerId, boolean> = {
     ForecastRiskChoropleth: true,
     ActiveForecastMarkers: true,
@@ -154,7 +164,6 @@ export class DeckGLMap {
 
     this.setupDOM();
     this.initMap();
-    this.createLayerToggles();
 
     window.addEventListener('theme-changed', this.onThemeChanged);
   }
@@ -240,6 +249,64 @@ export class DeckGLMap {
     this.rebuildLayers();
   }
 
+  /**
+   * Animate camera to the centroid of the given country.
+   * Uses maplibre-gl flyTo with Natural Earth LABEL_X/LABEL_Y coordinates.
+   * @param iso ISO 3166-1 Alpha-2 code (case-insensitive)
+   */
+  public flyToCountry(iso: string): void {
+    if (!this.map) return;
+    const centroid = countryGeometry.getCentroid(iso.toUpperCase());
+    if (!centroid) return;
+    this.map.flyTo({
+      center: [centroid[0], centroid[1]],
+      zoom: 4.5,
+      duration: 800,
+      essential: true,
+    });
+  }
+
+  /**
+   * Toggle visibility of an individual layer. Triggers layer rebuild.
+   * @param layerId One of the 5 analytic layer IDs
+   * @param visible Whether the layer should be rendered
+   */
+  public setLayerVisible(layerId: LayerId, visible: boolean): void {
+    this.layerVisible[layerId] = visible;
+    this.rebuildLayers();
+  }
+
+  /**
+   * Batch-set layer visibility defaults. Useful for screens that want
+   * different initial layer states than the default (all true).
+   * Only modifies keys present in the defaults map; others remain unchanged.
+   * @param defaults Partial map of LayerId -> visibility
+   */
+  public setLayerDefaults(defaults: Partial<Record<LayerId, boolean>>): void {
+    for (const [id, visible] of Object.entries(defaults)) {
+      if (id in this.layerVisible) {
+        this.layerVisible[id as LayerId] = visible as boolean;
+      }
+    }
+    this.rebuildLayers();
+  }
+
+  /**
+   * Query the current visibility state of a layer.
+   * @param layerId One of the 5 analytic layer IDs
+   */
+  public getLayerVisible(layerId: LayerId): boolean {
+    return this.layerVisible[layerId];
+  }
+
+  /**
+   * Access the underlying maplibre-gl Map instance.
+   * Returns null if the map hasn't initialized yet or has been destroyed.
+   */
+  public getMap(): maplibregl.Map | null {
+    return this.map;
+  }
+
   /** Clean up map + overlay + event listeners. */
   destroy(): void {
     window.removeEventListener('theme-changed', this.onThemeChanged);
@@ -259,7 +326,6 @@ export class DeckGLMap {
       this.wrapper = null;
     }
 
-    this.togglePanel = null;
     this.tooltip = null;
   }
 
@@ -607,54 +673,5 @@ export class DeckGLMap {
         target: targetCentroid,
       });
     }
-  }
-
-  // =========================================================================
-  // Basemap switching
-  // =========================================================================
-
-  // =========================================================================
-  // Layer toggle UI
-  // =========================================================================
-
-  private createLayerToggles(): void {
-    if (!this.wrapper) return;
-
-    const labels: Record<LayerId, string> = {
-      ForecastRiskChoropleth: 'Risk Choropleth',
-      ActiveForecastMarkers: 'Forecast Markers',
-      KnowledgeGraphArcs: 'Knowledge Arcs',
-      GDELTEventHeatmap: 'GDELT Heatmap',
-      ScenarioZones: 'Scenario Zones',
-    };
-
-    this.togglePanel = h('div', { className: 'map-layer-toggles' });
-
-    const title = h('div', { className: 'map-layer-toggles-title' }, 'LAYERS');
-    this.togglePanel.appendChild(title);
-
-    for (const layerId of LAYER_IDS) {
-      const checkbox = document.createElement('input');
-      checkbox.type = 'checkbox';
-      checkbox.checked = this.layerVisible[layerId];
-      checkbox.id = `layer-toggle-${layerId}`;
-
-      checkbox.addEventListener('change', () => {
-        this.layerVisible[layerId] = checkbox.checked;
-        this.rebuildLayers();
-      });
-
-      const label = h('label', {
-        className: 'map-layer-toggle-label',
-        'for': `layer-toggle-${layerId}`,
-      }, labels[layerId]);
-
-      const row = h('div', { className: 'map-layer-toggle-row' });
-      row.appendChild(checkbox);
-      row.appendChild(label);
-      this.togglePanel.appendChild(row);
-    }
-
-    this.wrapper.appendChild(this.togglePanel);
   }
 }
