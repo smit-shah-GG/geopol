@@ -1,71 +1,28 @@
 /**
- * main.ts -- Geopol dashboard bootstrap.
+ * main.ts -- Geopol SPA bootstrap.
  *
- * Orchestrates the full application lifecycle:
- *  1. Apply stored theme (FOUC prevention)
- *  2. Create panel grid layout
- *  3. Initialize AppContext
- *  4. Load country geometry (GeoJSON)
- *  5. Create and mount all 6 panels + DeckGLMap
- *  6. Create ScenarioExplorer + CountryBriefPage modals
- *  7. Initial data load (forecasts, countries, health)
- *  8. Wire inter-component events
- *  9. Start RefreshScheduler
- * 10. Visibility-aware background throttling
+ * Router-driven lifecycle:
+ *  1. Apply dark theme
+ *  2. Create Router + NavBar
+ *  3. Register 3 screen routes (/dashboard, /globe, /forecasts)
+ *  4. Resolve initial screen from current URL
+ *  5. Visibility-aware background throttling
  */
 
-import { applyStoredTheme, toggleTheme } from '@/utils/theme-manager';
+import { applyStoredTheme } from '@/utils/theme-manager';
 import { createAppContext } from '@/app/app-context';
-import { createPanelLayout } from '@/app/panel-layout';
-import { RefreshScheduler } from '@/app/refresh-scheduler';
-import { countryGeometry } from '@/services/country-geometry';
-import { forecastClient } from '@/services/forecast-client';
+import { Router } from '@/app/router';
+import { createNavBar } from '@/components/NavBar';
 import { h } from '@/utils/dom-utils';
 
-// Panels
-import { ForecastPanel } from '@/components/ForecastPanel';
-import { RiskIndexPanel } from '@/components/RiskIndexPanel';
-import { EventTimelinePanel } from '@/components/EventTimelinePanel';
-import { EnsembleBreakdownPanel } from '@/components/EnsembleBreakdownPanel';
-import { SystemHealthPanel } from '@/components/SystemHealthPanel';
-import { CalibrationPanel } from '@/components/CalibrationPanel';
+// Screen modules
+import { mountDashboard, unmountDashboard } from '@/screens/dashboard-screen';
+import { mountGlobe, unmountGlobe } from '@/screens/globe-screen';
+import { mountForecasts, unmountForecasts } from '@/screens/forecasts-screen';
 
-// Map
-import { DeckGLMap } from '@/components/DeckGLMap';
-
-// Modals
-import { ScenarioExplorer } from '@/components/ScenarioExplorer';
-import { CountryBriefPage } from '@/components/CountryBriefPage';
-
-// Styles
-import 'maplibre-gl/dist/maplibre-gl.css';
+// Styles (no maplibre CSS here -- loaded dynamically in globe-screen)
 import '@/styles/main.css';
 import '@/styles/panels.css';
-
-// Types
-import type { ForecastResponse, CountryRiskSummary, HealthResponse } from '@/types/api';
-
-// ---------------------------------------------------------------------------
-// Header
-// ---------------------------------------------------------------------------
-
-function createHeader(): HTMLElement {
-  const themeBtn = h('button', {
-    className: 'header-theme-toggle',
-    'aria-label': 'Toggle theme',
-    onClick: () => toggleTheme(),
-  }, 'Theme');
-
-  return h('header', { className: 'app-header' },
-    h('div', { className: 'header-left' },
-      h('span', { className: 'header-logo' }, 'GEOPOL'),
-      h('span', { className: 'header-subtitle' }, 'Geopolitical Forecast Dashboard'),
-    ),
-    h('div', { className: 'header-right' },
-      themeBtn,
-    ),
-  );
-}
 
 // ---------------------------------------------------------------------------
 // Bootstrap
@@ -79,184 +36,53 @@ async function boot(): Promise<void> {
 
   const ctx = createAppContext(app);
 
-  // -- Layout --
+  // -- Layout: NavBar + screen container --
   app.innerHTML = '';
-  app.appendChild(createHeader());
 
-  const { grid, slots } = createPanelLayout();
-  app.appendChild(grid);
+  const screenContainer = h('div', { className: 'screen-container' });
 
-  // -- Country geometry (async, non-blocking for panel mount) --
-  const geoPromise = countryGeometry.load();
+  const router = new Router(screenContainer);
+  const navBar = createNavBar(router);
 
-  // -- Panels --
-  const forecastPanel = new ForecastPanel();
-  const riskIndexPanel = new RiskIndexPanel();
-  const eventTimelinePanel = new EventTimelinePanel();
-  const ensemblePanel = new EnsembleBreakdownPanel();
-  const healthPanel = new SystemHealthPanel();
-  const calibrationPanel = new CalibrationPanel();
+  app.appendChild(navBar);
+  app.appendChild(screenContainer);
 
-  // Mount panels into grid slots
-  slots['forecasts'].appendChild(forecastPanel.getElement());
-  slots['ensemble'].appendChild(ensemblePanel.getElement());
-  slots['calibration'].appendChild(calibrationPanel.getElement());
-  slots['risk-index'].appendChild(riskIndexPanel.getElement());
-  slots['system-health'].appendChild(healthPanel.getElement());
-  slots['event-timeline'].appendChild(eventTimelinePanel.getElement());
-
-  // Register in context for lifecycle management
-  ctx.panels['forecasts'] = forecastPanel;
-  ctx.panels['risk-index'] = riskIndexPanel;
-  ctx.panels['event-timeline'] = eventTimelinePanel;
-  ctx.panels['ensemble'] = ensemblePanel;
-  ctx.panels['system-health'] = healthPanel;
-  ctx.panels['calibration'] = calibrationPanel;
-
-  // -- DeckGLMap (requires geometry loaded) --
-  await geoPromise;
-  const deckMap = new DeckGLMap(slots['map']);
-
-  // -- Modals --
-  const scenarioExplorer = new ScenarioExplorer();
-  const countryBriefPage = new CountryBriefPage();
-
-  // -- Initial data load --
-  // Coordinated parallel fetch: update() pushes data to panels and map
-  const update = async (): Promise<void> => {
-    const [forecasts, countries, health, polymarket] = await Promise.all([
-      forecastClient.getTopForecasts(10),
-      forecastClient.getCountries(),
-      forecastClient.getHealth(),
-      forecastClient.getPolymarket(),
-    ]);
-
-    pushForecasts(forecasts, forecastPanel, deckMap);
-    pushCountries(countries, riskIndexPanel, deckMap);
-    pushHealth(health, healthPanel);
-    calibrationPanel.updatePolymarket(polymarket);
-
-    // EventTimeline renders mock data on first load
-    eventTimelinePanel.refresh();
-  };
-
-  // Fire initial load; circuit breakers handle backend unavailability
-  update().catch((err) => {
-    console.error('[Geopol] Initial data load failed:', err);
+  // -- Register routes --
+  router.addRoute({
+    path: '/dashboard',
+    mount: (container) => mountDashboard(container, ctx),
+    unmount: () => unmountDashboard(ctx),
   });
 
-  // -- Event wiring --
+  router.addRoute({
+    path: '/globe',
+    mount: (container) => mountGlobe(container, ctx),
+    unmount: () => unmountGlobe(ctx),
+  });
 
-  // forecast-selected -> EnsembleBreakdownPanel + CalibrationPanel + map highlight
-  window.addEventListener('forecast-selected', ((e: CustomEvent<{ forecast: ForecastResponse }>) => {
-    const { forecast } = e.detail;
-    ensemblePanel.update(forecast);
-    calibrationPanel.update([forecast.calibration]);
-    deckMap.setSelectedForecast(forecast);
-  }) as EventListener);
+  router.addRoute({
+    path: '/forecasts',
+    mount: (container) => mountForecasts(container, ctx),
+    unmount: () => unmountForecasts(ctx),
+  });
 
-  // country-selected -> map highlight + CountryBriefPage (handled internally by CBP)
-  window.addEventListener('country-selected', ((e: CustomEvent<{ iso: string }>) => {
-    deckMap.setSelectedCountry(e.detail.iso);
-  }) as EventListener);
+  // -- Resolve initial screen based on current URL --
+  await router.resolve();
 
-  // -- RefreshScheduler --
-  const scheduler = new RefreshScheduler(ctx);
-  scheduler.init();
-  ctx.scheduler = scheduler;
-
-  const refresh = (): void => {
-    scheduler.registerAll([
-      {
-        name: 'forecasts',
-        fn: async () => {
-          const forecasts = await forecastClient.getTopForecasts(10);
-          pushForecasts(forecasts, forecastPanel, deckMap);
-        },
-        intervalMs: 60_000,
-      },
-      {
-        name: 'countries',
-        fn: async () => {
-          const countries = await forecastClient.getCountries();
-          pushCountries(countries, riskIndexPanel, deckMap);
-        },
-        intervalMs: 120_000,
-      },
-      {
-        name: 'health',
-        fn: async () => {
-          const health = await forecastClient.getHealth();
-          pushHealth(health, healthPanel);
-        },
-        intervalMs: 30_000,
-      },
-      {
-        name: 'polymarket',
-        fn: async () => {
-          const polymarket = await forecastClient.getPolymarket();
-          calibrationPanel.updatePolymarket(polymarket);
-        },
-        intervalMs: 300_000,
-      },
-    ]);
-  };
-
-  refresh();
-
-  // Visibility-aware: flush stale on tab restore
+  // -- Visibility-aware background throttling --
   document.addEventListener('visibilitychange', () => {
+    if (!ctx.scheduler) return;
     if (document.visibilityState === 'hidden') {
-      scheduler.setHiddenSince(Date.now());
+      ctx.scheduler.setHiddenSince(Date.now());
     } else {
-      scheduler.flushStaleRefreshes();
+      ctx.scheduler.flushStaleRefreshes();
     }
   });
 
   // -- Debug access --
   if (import.meta.env.DEV) {
-    (window as unknown as Record<string, unknown>)['__geopol'] = {
-      ctx,
-      deckMap,
-      scenarioExplorer,
-      countryBriefPage,
-      forecastPanel,
-      riskIndexPanel,
-      eventTimelinePanel,
-      ensemblePanel,
-      healthPanel,
-      calibrationPanel,
-    };
+    (window as unknown as Record<string, unknown>)['__geopol'] = { ctx, router };
   }
-}
-
-// ---------------------------------------------------------------------------
-// Data push helpers -- update panels and map in one call
-// ---------------------------------------------------------------------------
-
-function pushForecasts(
-  forecasts: ForecastResponse[],
-  panel: ForecastPanel,
-  map: DeckGLMap,
-): void {
-  panel.update(forecasts);
-  map.updateForecasts(forecasts);
-}
-
-function pushCountries(
-  countries: CountryRiskSummary[],
-  panel: RiskIndexPanel,
-  map: DeckGLMap,
-): void {
-  panel.update(countries);
-  map.updateRiskScores(countries);
-}
-
-function pushHealth(
-  health: HealthResponse,
-  panel: SystemHealthPanel,
-): void {
-  panel.update(health);
 }
 
 // ---------------------------------------------------------------------------

@@ -94,10 +94,17 @@ export class RiskIndexPanel extends Panel {
     );
 
     row.addEventListener('click', () => {
+      // Bubbles to dashboard screen for map highlight
       this.element.dispatchEvent(
         new CustomEvent('country-selected', {
           detail: { iso: c.iso_code },
           bubbles: true,
+        }),
+      );
+      // Global event for cross-column filtering (ForecastPanel, etc.)
+      window.dispatchEvent(
+        new CustomEvent('country-filter-changed', {
+          detail: { iso: c.iso_code },
         }),
       );
     });

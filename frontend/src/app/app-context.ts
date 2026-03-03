@@ -35,6 +35,12 @@ export interface GeoPolAppContext {
   /** Refresh scheduler for periodic data polling */
   scheduler: RefreshScheduler | null;
 
+  /** Current country filter (shared between Col 1 risk clicks and Col 2 forecast filter) */
+  activeCountryFilter: string | null;
+
+  /** Set country filter and dispatch event for cross-column reactivity */
+  setCountryFilter(iso: string | null): void;
+
   /** Destroy all registered modules and mark context as dead */
   destroy(): void;
 }
@@ -52,6 +58,14 @@ export function createAppContext(container: HTMLElement): GeoPolAppContext {
     inFlight: new Set(),
     panels: {},
     scheduler: null,
+    activeCountryFilter: null,
+
+    setCountryFilter(iso: string | null) {
+      ctx.activeCountryFilter = iso;
+      window.dispatchEvent(
+        new CustomEvent('country-filter-changed', { detail: { iso } }),
+      );
+    },
 
     destroy() {
       if (ctx.isDestroyed) return;
