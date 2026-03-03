@@ -11,19 +11,19 @@ See: .planning/PROJECT.md (updated 2026-03-02)
 
 Milestone: v2.1 Production UX & Live Data Integration
 Phase: 17 of 18 (Live Data Feeds & Country Depth)
-Plan: 01 of TBD
+Plan: 02 of 03
 Status: In progress
-Last activity: 2026-03-04 -- Completed 17-01-PLAN.md (Data Layer Foundation)
+Last activity: 2026-03-04 -- Completed 17-02-PLAN.md (Backend API Routes + Ingestion Daemons)
 
-Progress: [##################################################] 98% (60/TBD plans lifetime)
-v2.1:    [###########] 85% (11/13+ plans)
+Progress: [##################################################] 98% (61/62 plans lifetime)
+v2.1:    [###########] 92% (12/13 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 60
+- Total plans completed: 61
 - Average duration: 11 minutes
-- Total execution time: 10.50 hours
+- Total execution time: 10.70 hours
 
 **By Phase:**
 
@@ -46,11 +46,11 @@ v2.1:    [###########] 85% (11/13+ plans)
 | 15-url-routing-dashboard | 3 | 20min | 7min |
 
 | 16-globe-forecasts-screens | 3 | 16min | 5min |
-| 17-live-data-feeds-country-depth | 1 | 7min | 7min |
+| 17-live-data-feeds-country-depth | 2 | 19min | 10min |
 
 **Recent Trend:**
-- Last 4 plans: 16-02 (6min), 16-03 (5min), 17-01 (7min)
-- Trend: Consistent 5-7min -- data layer + DTO construction
+- Last 4 plans: 16-03 (5min), 17-01 (7min), 17-02 (12min)
+- Trend: 17-02 slower due to content filter recovery on advisory poller
 
 ## Accumulated Context
 
@@ -94,6 +94,10 @@ Key decisions affecting current work:
 - Generic keyset cursor (encode_keyset_cursor/decode_keyset_cursor) alongside existing forecast cursor -- no breaking changes (2026-03-04)
 - Event backfill yields 0 results (1.37M rows have NULL raw_json) -- country_iso populates on new ingestion only (2026-03-04)
 - query_top_actors uses UNION ALL actor1+actor2 with GROUP BY dedup for bilateral actor coverage (2026-03-04)
+- AdvisoryStore uses classmethod in-memory cache -- no Pydantic coupling, import-safe for both route and poller (2026-03-04)
+- ACLED uses key+email query params (NOT OAuth2) per ACLED API docs (2026-03-04)
+- EU EEAS dropped from advisory sources -- no structured API exists (2026-03-04)
+- FCDO per-country fetches bounded by Semaphore(5) + 0.3s delay to respect GOV.UK rate limits (2026-03-04)
 
 ### Deferred Issues
 
@@ -117,6 +121,6 @@ Key decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-03-04
-Stopped at: Completed 17-01-PLAN.md (Data Layer Foundation)
+Stopped at: Completed 17-02-PLAN.md (Backend API Routes + Ingestion Daemons)
 Resume file: None
-Next: Execute 17-02-PLAN.md (API routes for events/articles/advisories/sources)
+Next: Execute 17-03-PLAN.md (Frontend wiring: TypeScript types, panel data, country tabs)
