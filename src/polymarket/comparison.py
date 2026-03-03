@@ -451,6 +451,121 @@ class PolymarketComparisonService:
 
             return items
 
+    async def get_snapshots_for_comparison(
+        self, comparison_id: int, limit: int = 30
+    ) -> list[dict]:
+        """Query time-series snapshot data for a comparison pair.
+
+        Returns sampled data points suitable for sparkline rendering.
+        If more than ``limit`` snapshots exist, evenly samples to get
+        approximately ``limit`` points.
+
+        Args:
+            comparison_id: The PolymarketComparison row ID.
+            limit: Maximum data points to return.
+
+        Returns:
+            List of dicts with polymarket_price, geopol_probability, captured_at.
+        """
+        async with self._session_factory() as session:
+            # First count total snapshots
+            count_stmt = (
+                select(func.count())
+                .where(PolymarketSnapshot.comparison_id == comparison_id)
+                .select_from(PolymarketSnapshot)
+            )
+            count_result = await session.execute(count_stmt)
+            total = count_result.scalar() or 0
+
+            if total == 0:
+                return []
+
+            if total <= limit:
+                # Return all, ordered chronologically
+                stmt = (
+                    select(PolymarketSnapshot)
+                    .where(PolymarketSnapshot.comparison_id == comparison_id)
+                    .order_by(PolymarketSnapshot.captured_at.asc())
+                )
+            else:
+                # Sample evenly using row_number window function
+                # Take every Nth row to get ~limit points
+                stmt = (
+                    select(PolymarketSnapshot)
+                    .where(PolymarketSnapshot.comparison_id == comparison_id)
+                    .order_by(PolymarketSnapshot.captured_at.asc())
+                )
+
+            result = await session.execute(stmt)
+            all_snapshots = list(result.scalars().all())
+
+            # Sample if needed (application-level for portability)
+            if len(all_snapshots) > limit:
+                step = len(all_snapshots) / limit
+                sampled = [
+                    all_snapshots[int(i * step)]
+                    for i in range(limit)
+                ]
+            else:
+                sampled = all_snapshots
+
+            return [
+                {
+                    "polymarket_price": snap.polymarket_price,
+                    "geopol_probability": snap.geopol_probability,
+                    "captured_at": snap.captured_at.isoformat(),
+                }
+                for snap in sampled
+            ]
+
+    async def get_all_comparisons(self) -> list[dict[str, Any]]:
+        """Query all comparisons (active + resolved) ordered by created_at DESC.
+
+        Returns a unified list suitable for the ComparisonPanel. Each entry
+        includes status-dependent fields (Brier scores for resolved, latest
+        prices for active).
+
+        Returns:
+            List of dicts with comparison details.
+        """
+        async with self._session_factory() as session:
+            stmt = (
+                select(PolymarketComparison)
+                .order_by(PolymarketComparison.created_at.desc())
+            )
+            result = await session.execute(stmt)
+            comparisons = result.scalars().all()
+
+            items: list[dict[str, Any]] = []
+            for comp in comparisons:
+                entry: dict[str, Any] = {
+                    "id": comp.id,
+                    "polymarket_event_id": comp.polymarket_event_id,
+                    "polymarket_slug": comp.polymarket_slug,
+                    "polymarket_title": comp.polymarket_title,
+                    "geopol_prediction_id": comp.geopol_prediction_id,
+                    "match_confidence": comp.match_confidence,
+                    "polymarket_price": comp.polymarket_price,
+                    "geopol_probability": comp.geopol_probability,
+                    "status": comp.status,
+                    "created_at": comp.created_at.isoformat(),
+                }
+
+                # Resolved-only fields
+                if comp.status == "resolved":
+                    entry["geopol_brier"] = comp.geopol_brier
+                    entry["polymarket_brier"] = comp.polymarket_brier
+                    entry["polymarket_outcome"] = comp.polymarket_outcome
+                    entry["resolved_at"] = (
+                        comp.resolved_at.isoformat()
+                        if comp.resolved_at
+                        else None
+                    )
+
+                items.append(entry)
+
+            return items
+
     async def get_comparison_summary(self) -> dict[str, Any]:
         """Aggregate summary statistics across all comparisons.
 

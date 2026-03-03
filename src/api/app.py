@@ -117,15 +117,18 @@ async def _seed_dev_api_key() -> None:
 
 
 async def _polymarket_loop(settings) -> None:
-    """Periodic Polymarket matching cycle.
+    """Periodic Polymarket matching + auto-forecast cycle.
 
-    Runs run_matching_cycle() + capture_snapshots() on the configured
-    interval. Errors are logged and swallowed — the loop must not crash.
+    Runs run_matching_cycle() + capture_snapshots() + auto-forecaster
+    on the configured interval. Re-forecasting of active comparisons
+    runs at most once per UTC day. Errors are logged and swallowed --
+    the loop must not crash.
     """
     import aiohttp
 
     from src.db.postgres import async_session_factory
     from src.forecasting.gemini_client import GeminiClient
+    from src.polymarket.auto_forecaster import PolymarketAutoForecaster
     from src.polymarket.client import PolymarketClient
     from src.polymarket.comparison import PolymarketComparisonService
     from src.polymarket.matcher import PolymarketMatcher
@@ -141,6 +144,9 @@ async def _polymarket_loop(settings) -> None:
 
     matcher = PolymarketMatcher(gemini_client, match_threshold=settings.polymarket_match_threshold)
 
+    # Track last reforecast date to ensure at-most-once-daily
+    _last_reforecast_date: str | None = None
+
     while True:
         try:
             async with aiohttp.ClientSession() as http_session:
@@ -154,6 +160,28 @@ async def _polymarket_loop(settings) -> None:
                 result = await service.run_matching_cycle()
                 logger.info("Polymarket matching: %s", result)
                 await service.capture_snapshots()
+
+                # Phase 18: Auto-forecast unmatched high-volume questions
+                auto_forecaster = PolymarketAutoForecaster(
+                    async_session_factory=async_session_factory,
+                    gemini_client=gemini_client,
+                    settings=settings,
+                )
+                geo_events = await pm_client.fetch_geopolitical_markets()
+                auto_result = await auto_forecaster.run(
+                    geo_events, tracked_ids=set()
+                )
+                logger.info("Polymarket auto-forecast: %s", auto_result)
+
+                # Re-forecast active comparisons (at most once per UTC day)
+                from datetime import date, timezone
+
+                today_str = date.today().isoformat()
+                if _last_reforecast_date != today_str:
+                    reforecast_result = await auto_forecaster.reforecast_active()
+                    logger.info("Polymarket re-forecast: %s", reforecast_result)
+                    _last_reforecast_date = today_str
+
         except asyncio.CancelledError:
             raise
         except Exception:
