@@ -13,7 +13,7 @@ Milestone: v2.1 Production UX & Live Data Integration
 Phase: 16 of 18 (Globe & Forecasts Screens) -- COMPLETE
 Plan: 03 of 03
 Status: Phase complete
-Last activity: 2026-03-03 -- Completed Phase 16 (Globe & Forecasts Screens, 3 plans)
+Last activity: 2026-03-03 -- Completed quick task 002: Post-Phase 16 UX fixes
 
 Progress: [##################################################] 98% (59/60 plans lifetime)
 v2.1:    [##########] 83% (10/12 plans)
@@ -104,9 +104,15 @@ Key decisions affecting current work:
 - Polyglot tax: Python + TypeScript -- two ecosystems for single developer (Rust/Tauri dropped, web-only)
 - Docker daemon not auto-started -- verification of PostgreSQL/Redis containers and Alembic migration deferred
 
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 002 | Post-Phase 16 UX fixes (Polymarket top-10, map resize, dashboard nav, ensemble removal, expandable cards, QUEUED status) | 2026-03-03 | fa00903 | [002-post-phase16-ux-fixes](./quick/002-post-phase16-ux-fixes/) |
+
 ## Session Continuity
 
 Last session: 2026-03-03
-Stopped at: Phase 16 complete -- all 3 plans executed (16min total)
+Stopped at: Completed quick task 002: Post-Phase 16 UX fixes (6 issues)
 Resume file: None
 Next: `/gsd:discuss-phase 17` -- Live Data Feeds & Country Depth (then Phase 18: Polymarket-Driven Forecasting)
