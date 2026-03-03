@@ -5,7 +5,7 @@
 - v1.0 MVP -- Phases 1-5 (shipped 2026-01-23)
 - v1.1 Tech Debt Remediation -- Phases 6-8 (shipped 2026-01-30)
 - v2.0 Operationalization & Forecast Quality -- Phases 9-13 (shipped 2026-03-02)
-- v2.1 Production UX & Live Data Integration -- Phases 14-16 (in progress)
+- v2.1 Production UX & Live Data Integration -- Phases 14-18 (in progress)
 
 ## Phases
 
@@ -230,13 +230,13 @@ Plans:
 
 ### v2.1 Production UX & Live Data Integration
 
-**Milestone Goal:** Restructure the single-screen dashboard into a three-screen URL-routed application with progressive disclosure, real data-driven country risk, user-submitted forecast questions, and full-text search -- transforming the v2.0 demo into a usable analytical tool.
+**Milestone Goal:** Restructure the single-screen dashboard into a three-screen URL-routed application with progressive disclosure, real data-driven country risk, user-submitted forecast questions, full-text search, live data feeds, deep country drill-down, and Polymarket-driven comparative forecasting -- transforming the v2.0 demo into a usable analytical tool.
 
 **Design document:** `.planning/research/FRONTEND_REDESIGN.md`
 
 **Phase Numbering:** Starts at 14 (v2.0 ended at Phase 13).
 
-**Execution Model:** Sequential. Phase 14 (backend) unblocks Phases 15 and 16. Phase 15 (routing + dashboard) establishes the screen scaffold that Phase 16 (globe + forecasts screens) builds on.
+**Execution Model:** Sequential. Phase 14 (backend) unblocks Phases 15 and 16. Phase 15 (routing + dashboard) establishes the screen scaffold that Phase 16 (globe + forecasts screens) builds on. Phases 17 and 18 are independent of each other but both depend on Phase 16 (screens exist).
 
 ```
 Phase 14 (backend API hardening) --- unblocks real data for frontend
@@ -244,11 +244,17 @@ Phase 14 (backend API hardening) --- unblocks real data for frontend
     +---> Phase 15 (URL routing + dashboard screen) --- establishes 3-screen scaffold
               |
               +---> Phase 16 (globe + forecasts screens) --- completes remaining screens
+                        |
+                        |---> Phase 17 (live data feeds + country depth) --- makes screens data-rich
+                        |
+                        +---> Phase 18 (Polymarket-driven forecasting) --- comparative calibration
 ```
 
 - [x] **Phase 14: Backend API Hardening** -- Kill fixture fallback, real country risk aggregation, question submission queue, full-text search endpoint
 - [x] **Phase 15: URL Routing & Dashboard Screen** -- Three-screen URL routing, information-dense dashboard with progressive disclosure, search UI, event feed, sources panel
 - [ ] **Phase 16: Globe & Forecasts Screens** -- Full-viewport globe with contextual drill-down, forecast submission queue UI, layer toggle controls
+- [ ] **Phase 17: Live Data Feeds & Country Depth** -- Backend event/article API endpoints, wire EventTimelinePanel to real data, additional data source ingestion, country screen subpages with real data
+- [ ] **Phase 18: Polymarket-Driven Forecasting** -- Poll Polymarket for active geopolitical questions, run Geopol pipeline on matched questions, comparison tracking over time, Col 2 Polymarket panel
 
 ## Phase Details
 
@@ -300,11 +306,31 @@ Plans:
   3. The choropleth layer colors countries by real aggregate risk scores from the `predictions` table (via BAPI-02); countries with no forecasts render as neutral/uncolored
   4. Layer toggle controls are visible on the Globe screen allowing the user to enable/disable forecast markers, conflict arcs, heatmap, and scenario zone layers independently
   5. The Forecasts screen (`/forecasts`) displays a question submission form; submitting a question shows LLM-parsed confirmation (country, horizon, category) and the question enters the processing queue with real-time status updates
+**Plans**: 3 plans
+
+Plans:
+- [ ] 16-01-PLAN.md -- Shared expandable card utility extraction + DeckGLMap public API extensions (flyToCountry, setLayerVisible, remove built-in toggles)
+- [ ] 16-02-PLAN.md -- Globe screen: full-viewport globe with GlobeHud, LayerPillBar, GlobeDrillDown, data loading, refresh scheduling (SCREEN-03, GLOBE-01, GLOBE-02, GLOBE-03)
+- [ ] 16-03-PLAN.md -- Forecasts screen: SubmissionForm (three-state inline transform), SubmissionQueue (status badges, elapsed timer, expandable completed forecasts), two-column layout (SCREEN-04)
+
+### Phase 17: Live Data Feeds & Country Depth
+**Goal**: Every panel and country screen displays real, live data from multiple sources. Backend exposes event and article API endpoints. EventTimelinePanel shows real GDELT events instead of mock data. Country screens are fleshed out with meaningful subpages populated from live data. Additional data sources beyond GDELT and RSS are ingested and surfaced.
+**Depends on**: Phase 16 (all screens exist)
+**Requirements**: TBD (define during `/gsd:discuss-phase 17`)
+**Success Criteria**: TBD
+**Plans**: TBD
+
+### Phase 18: Polymarket-Driven Forecasting
+**Goal**: The system actively polls Polymarket for geopolitical questions, runs Geopol's forecasting pipeline on matching questions, and tracks probability comparisons over time. A dedicated dashboard panel shows Polymarket questions alongside Geopol's competing forecasts, providing direct calibration signal and demonstrable accuracy comparison.
+**Depends on**: Phase 16 (screens exist); Phase 13 (existing Polymarket client, matcher, comparison service)
+**Requirements**: TBD (define during `/gsd:discuss-phase 18`)
+**Success Criteria**: TBD
+**Plans**: TBD
 
 ## Progress
 
 **Execution Order:**
-Sequential: Phase 14 -> Phase 15 -> Phase 16.
+Sequential: Phase 14 -> Phase 15 -> Phase 16. Then Phase 17 and Phase 18 can run in parallel.
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -323,6 +349,8 @@ Sequential: Phase 14 -> Phase 15 -> Phase 16.
 | 13. Calibration & Monitoring | v2.0 | 7/7 | Complete | 2026-03-02 |
 | 14. Backend API Hardening | v2.1 | 4/4 | Complete | 2026-03-03 |
 | 15. URL Routing & Dashboard | v2.1 | 3/3 | Complete | 2026-03-03 |
-| 16. Globe & Forecasts Screens | v2.1 | 0/TBD | Not started | - |
+| 16. Globe & Forecasts Screens | v2.1 | 0/3 | Not started | - |
+| 17. Live Data Feeds & Country Depth | v2.1 | 0/TBD | Not started | - |
+| 18. Polymarket-Driven Forecasting | v2.1 | 0/TBD | Not started | - |
 
-**Total:** 15 phases complete (v1.0 + v1.1 + v2.0 + Phases 14-15), 56 plans delivered. v2.1: 2/3 phases complete, 5 requirements pending.
+**Total:** 15 phases complete (v1.0 + v1.1 + v2.0 + Phases 14-15), 56 plans delivered. Phase 16: 3 plans in 2 waves. v2.1: 2/5 phases complete, 5+ requirements pending (Phases 17-18 requirements TBD).
