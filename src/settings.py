@@ -56,12 +56,13 @@ class Settings(BaseSettings):
     gemini_api_key: str = ""
     gemini_model: str = "models/gemini-3-pro-preview"
     gemini_fallback_model: str = "models/gemini-2.5-pro"
+    gemini_max_rpm: int = 25  # Requests per minute (match API key tier)
 
     # -- Daily Pipeline --
     gemini_daily_budget: int = 25  # Max questions per day
 
     # -- TKG Model --
-    tkg_backend: Literal["tirgn", "regcn"] = "regcn"
+    tkg_backend: Literal["tirgn", "regcn"] = "tirgn"
 
     # -- Logging --
     log_level: str = "INFO"

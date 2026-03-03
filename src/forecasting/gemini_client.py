@@ -46,7 +46,7 @@ class GeminiClient:
     Attributes:
         model_name: Primary Gemini model (default from Settings).
         fallback_model_name: Fallback model for 503 errors (default from Settings).
-        max_rpm: Maximum requests per minute (default: 5 for free tier).
+        max_rpm: Maximum requests per minute (default from Settings.gemini_max_rpm).
     """
 
     def __init__(
@@ -54,7 +54,7 @@ class GeminiClient:
         api_key: Optional[str] = None,
         model_name: Optional[str] = None,
         fallback_model_name: Optional[str] = None,
-        max_rpm: int = 5,
+        max_rpm: Optional[int] = None,
     ):
         """
         Initialize Gemini client.
@@ -68,7 +68,7 @@ class GeminiClient:
             api_key: Google AI API key.
             model_name: Primary model (default: Settings.gemini_model).
             fallback_model_name: Fallback model (default: Settings.gemini_fallback_model).
-            max_rpm: Maximum requests per minute (rate limit).
+            max_rpm: Maximum requests per minute (default: Settings.gemini_max_rpm).
 
         Raises:
             ValueError: If no API key is resolved from any source.
@@ -92,7 +92,7 @@ class GeminiClient:
 
         # Initialize the client with the new SDK
         self.client = genai.Client(api_key=api_key)
-        self.max_rpm = max_rpm
+        self.max_rpm = max_rpm if max_rpm is not None else settings.gemini_max_rpm
 
         # Request tracking for rate limiting (sliding window)
         self._request_times: deque = deque()

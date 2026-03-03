@@ -149,9 +149,15 @@ async def _run(args: argparse.Namespace) -> int:
         except Exception as exc:
             logger.warning("LLM orchestrator init failed (will use TKG-only): %s", exc)
 
+    # Dynamic per-CAMEO weights from calibration data
+    from src.calibration.weight_loader import WeightLoader
+
+    weight_loader = WeightLoader(async_session_factory=session_factory)
+
     ensemble_predictor = EnsemblePredictor(
         llm_orchestrator=llm_orchestrator,
         tkg_predictor=tkg_predictor,
+        weight_loader=weight_loader,
     )
 
     # Pipeline components
