@@ -5,25 +5,25 @@
 See: .planning/PROJECT.md (updated 2026-03-02)
 
 **Core value:** Explainability -- every forecast must provide clear, traceable reasoning paths
-**Current focus:** Phase 15 complete -- URL Routing & Dashboard Screen delivered
+**Current focus:** Phase 16 in progress -- Globe & Forecasts Screens
 
 ## Current Position
 
 Milestone: v2.1 Production UX & Live Data Integration
-Phase: 15 of 16 (URL Routing & Dashboard)
-Plan: 03 of 03
-Status: Phase complete
-Last activity: 2026-03-03 -- Completed Phase 15 (URL Routing & Dashboard Screen, 3 plans)
+Phase: 16 of 18 (Globe & Forecasts Screens)
+Plan: 01 of 03
+Status: In progress
+Last activity: 2026-03-03 -- Completed 16-01-PLAN.md (Shared Expandable Card + DeckGLMap Public API)
 
-Progress: [################################################....] 93% (56/60 plans lifetime)
-v2.1:    [######....] 58% (7/12 plans)
+Progress: [################################################....] 95% (57/60 plans lifetime)
+v2.1:    [########..] 67% (8/12 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 56
+- Total plans completed: 57
 - Average duration: 11 minutes
-- Total execution time: 10.12 hours
+- Total execution time: 10.20 hours
 
 **By Phase:**
 
@@ -45,9 +45,11 @@ v2.1:    [######....] 58% (7/12 plans)
 | 14-backend-api-hardening | 4 | 17min | 4min |
 | 15-url-routing-dashboard | 3 | 20min | 7min |
 
+| 16-globe-forecasts-screens | 1 | 5min | 5min |
+
 **Recent Trend:**
-- Last 4 plans: 15-01 (9min), 15-02 (7min), 15-03 (4min)
-- Trend: Phase 15 consistent 4-9min -- UI component work following established patterns
+- Last 4 plans: 15-02 (7min), 15-03 (4min), 16-01 (5min)
+- Trend: Consistent 4-7min -- extraction/refactor work on established codebase
 
 ## Accumulated Context
 
@@ -83,6 +85,8 @@ Key decisions affecting current work:
 - Mini d3 tree limited to 2 depth levels with 20-char labels -- preview only, full detail in ScenarioExplorer (2026-03-03)
 - SearchBar as standalone class (not Panel subclass) -- no header/resize/badge overhead for inline control (2026-03-03)
 - ScenarioExplorer tooltip uses HTML div positioned via pageX/pageY -- not SVG title (2026-03-03)
+- forecast-selected CustomEvent dispatches on window for cross-screen listening (2026-03-03)
+- DeckGLMap layer defaults unchanged (all true); globe screen calls setLayerDefaults() post-construction (2026-03-03)
 
 ### Deferred Issues
 
@@ -100,6 +104,6 @@ Key decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-03-03
-Stopped at: Phase 15 complete -- all 3 plans executed (20min total)
+Stopped at: Completed 16-01-PLAN.md (Shared Expandable Card + DeckGLMap Public API)
 Resume file: None
-Next: `/gsd:discuss-phase 16` or `/gsd:plan-phase 16` -- Globe & Forecasts Screens
+Next: 16-02-PLAN.md -- Globe Screen + Layer Pill Bar (then 16-03: Forecasts Screen)
