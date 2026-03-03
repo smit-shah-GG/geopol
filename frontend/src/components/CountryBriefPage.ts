@@ -16,6 +16,8 @@ import * as d3 from 'd3';
 import { h, clearChildren } from '@/utils/dom-utils';
 import { forecastClient } from '@/services/forecast-client';
 import type {
+  AdvisoryDTO,
+  EventDTO,
   ForecastResponse,
   CountryRiskSummary,
   PaginatedResponse,
@@ -41,7 +43,7 @@ type TabId =
 const TAB_LABELS: Record<TabId, string> = {
   overview: 'Overview',
   forecasts: 'Active Forecasts',
-  events: 'GDELT Events',
+  events: 'Events',
   'risk-signals': 'Risk Signals',
   history: 'Forecast History',
   entities: 'Entity Relations',
@@ -142,6 +144,65 @@ function brierClass(score: number): string {
   return 'brier-poor';
 }
 
+/** Actor aggregation for entities tab. */
+interface ActorCount {
+  actor: string;
+  count: number;
+  lastSeen: string;
+}
+
+/** Advisory level color mapping. */
+function advisoryLevelColor(level: number): string {
+  switch (level) {
+    case 1: return 'var(--semantic-success)';
+    case 2: return 'var(--semantic-warning, #e5c07b)';
+    case 3: return 'var(--semantic-elevated, #d19a66)';
+    case 4: return 'var(--semantic-critical)';
+    default: return 'var(--text-muted)';
+  }
+}
+
+/** Advisory level CSS class. */
+function advisoryLevelClass(level: number): string {
+  switch (level) {
+    case 1: return 'advisory-level-1';
+    case 2: return 'advisory-level-2';
+    case 3: return 'advisory-level-3';
+    case 4: return 'advisory-level-4';
+    default: return '';
+  }
+}
+
+/** CAMEO quad_class to severity category for events. */
+function quadCategory(quadClass: number | null): string {
+  if (quadClass === null) return 'neutral';
+  if (quadClass <= 2) return 'cooperative';
+  if (quadClass === 3) return 'neutral';
+  return 'conflictual';
+}
+
+/** CAMEO event_code to severity category. */
+function cameoCategory(code: string): string {
+  const prefix = parseInt(code.slice(0, 2), 10);
+  if (Number.isNaN(prefix)) return 'neutral';
+  if (prefix <= 5) return 'cooperative';
+  if (prefix <= 9) return 'neutral';
+  if (prefix <= 14) return 'conflictual';
+  return 'hostile';
+}
+
+/** Relative time string from ISO timestamp. */
+function relativeTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60_000);
+  if (mins < 1) return 'now';
+  if (mins < 60) return `${mins}m`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h`;
+  const days = Math.floor(hrs / 24);
+  return `${days}d`;
+}
+
 /** Entity co-occurrence edge for force graph. */
 interface EntityEdge {
   source: string;
@@ -167,11 +228,16 @@ export class CountryBriefPage {
   private activeTab: TabId = 'overview';
   private entityViewMode: 'graph' | 'table' = 'graph';
 
-  // Loaded data
+  // Loaded data (from loadData -- fetched on open)
   private currentIso: string | null = null;
   private forecasts: ForecastResponse[] = [];
   private countryRisk: CountryRiskSummary | null = null;
   private loading = false;
+
+  // Lazy-loaded per-tab data (null = not loaded, [] = loaded but empty)
+  private events: EventDTO[] | null = null;
+  private advisories: AdvisoryDTO[] | null = null;
+  private actorCounts: ActorCount[] | null = null;
 
   // Event listeners (stored for cleanup)
   private readonly onCountrySelected: (e: Event) => void;
@@ -204,6 +270,11 @@ export class CountryBriefPage {
     this.forecasts = [];
     this.countryRisk = null;
     this.loading = true;
+
+    // Reset lazy-loaded tab data for fresh country
+    this.events = null;
+    this.advisories = null;
+    this.actorCounts = null;
 
     this.buildModal(iso);
     document.addEventListener('keydown', this.onKeyDown);
@@ -419,12 +490,16 @@ export class CountryBriefPage {
         : h('div', { className: 'overview-card-empty' }, 'No active forecasts'),
     ));
 
-    // Card 3: Recent Events (placeholder)
+    // Card 3: Recent Events (shows count from cached events if loaded)
+    const eventCount = this.events !== null ? this.events.length : null;
     grid.appendChild(h('div', { className: 'overview-card' },
       h('div', { className: 'overview-card-label' }, 'RECENT EVENTS'),
-      h('div', { className: 'overview-card-value' }, '--'),
+      h('div', { className: 'overview-card-value' },
+        eventCount !== null ? String(eventCount) : '--'),
       h('div', { className: 'overview-card-sub' },
-        'GDELT event feed -- data available when ingest daemon runs'),
+        eventCount !== null
+          ? `${eventCount} events in the last 30 days`
+          : 'Switch to Events tab to load event data'),
     ));
 
     // Card 4: Calibration Snapshot
@@ -446,6 +521,73 @@ export class CountryBriefPage {
     ));
 
     this.tabContent.appendChild(grid);
+
+    // Advisory summary section (unconditional -- always rendered)
+    this.renderOverviewAdvisorySummary();
+  }
+
+  /**
+   * Load advisories for overview tab and render summary.
+   * Shares cached data with risk-signals tab.
+   */
+  private renderOverviewAdvisorySummary(): void {
+    if (!this.tabContent || !this.currentIso) return;
+
+    const summaryContainer = h('div', { className: 'overview-advisory-summary' },
+      h('div', { className: 'section-label' }, 'TRAVEL ADVISORIES'),
+    );
+
+    if (this.advisories === null) {
+      // Advisories not yet loaded -- trigger lazy load
+      summaryContainer.appendChild(
+        h('div', { className: 'cb-info-line' }, 'Loading advisories...'),
+      );
+      this.tabContent.appendChild(summaryContainer);
+
+      // Fire lazy load in background
+      this.loadAdvisoriesData().then(() => {
+        if (this.activeTab === 'overview' && this.tabContent) {
+          // Update only the advisory summary container
+          clearChildren(summaryContainer);
+          summaryContainer.appendChild(
+            h('div', { className: 'section-label' }, 'TRAVEL ADVISORIES'),
+          );
+          this.fillAdvisorySummaryLines(summaryContainer);
+        }
+      }).catch(() => {
+        if (this.activeTab === 'overview') {
+          clearChildren(summaryContainer);
+          summaryContainer.appendChild(
+            h('div', { className: 'section-label' }, 'TRAVEL ADVISORIES'),
+          );
+          summaryContainer.appendChild(
+            h('div', { className: 'cb-info-line' },
+              'No government travel advisories available'),
+          );
+        }
+      });
+    } else {
+      this.fillAdvisorySummaryLines(summaryContainer);
+      this.tabContent.appendChild(summaryContainer);
+    }
+  }
+
+  private fillAdvisorySummaryLines(container: HTMLElement): void {
+    if (this.advisories && this.advisories.length > 0) {
+      for (const adv of this.advisories) {
+        container.appendChild(
+          h('div', { className: `overview-advisory-line ${advisoryLevelClass(adv.level)}` },
+            h('span', { className: 'advisory-source-label' }, `${adv.source}:`),
+            h('span', null, ` Level ${adv.level} - ${adv.level_description}`),
+          ),
+        );
+      }
+    } else {
+      container.appendChild(
+        h('div', { className: 'cb-info-line' },
+          'No government travel advisories available'),
+      );
+    }
   }
 
   // ==================================================================
@@ -513,53 +655,83 @@ export class CountryBriefPage {
   }
 
   // ==================================================================
-  // Tab 3: GDELT Events (mock data placeholder)
+  // Tab 3: Events (live GDELT + ACLED data)
   // ==================================================================
 
   private renderEventsTab(): void {
-    if (!this.tabContent) return;
+    if (!this.tabContent || !this.currentIso) return;
 
-    this.tabContent.appendChild(
-      h('div', { className: 'cb-events-notice' },
-        'GDELT event data will be available when the ingest daemon is running.'),
-    );
+    // Lazy load: fetch on first activation, cache for modal session
+    if (this.events === null) {
+      this.tabContent.appendChild(
+        h('div', { className: 'cb-loading' }, 'Loading events...'),
+      );
+      this.loadEventsData().catch((err) => {
+        console.error('[CountryBriefPage] events load failed:', err);
+        if (this.tabContent && this.activeTab === 'events') {
+          clearChildren(this.tabContent);
+          this.tabContent.appendChild(
+            h('div', { className: 'cb-empty-tab' }, 'Failed to load event data'),
+          );
+        }
+      });
+      return;
+    }
 
-    // Mock event rows demonstrating layout
-    const mockEvents = [
-      { time: '14:32', actor1: 'GOV', action: 'CONSULT', actor2: 'OPP', cameo: '04', goldstein: 1.0 },
-      { time: '12:15', actor1: 'MIL', action: 'EXHIBIT POSTURE', actor2: 'REB', cameo: '15', goldstein: -7.0 },
-      { time: '09:48', actor1: 'CVL', action: 'PROTEST', actor2: 'GOV', cameo: '14', goldstein: -6.5 },
-      { time: '08:20', actor1: 'GOV', action: 'PROVIDE AID', actor2: 'CVL', cameo: '07', goldstein: 7.0 },
-      { time: 'YD 22:10', actor1: 'OPP', action: 'DEMAND', actor2: 'GOV', cameo: '10', goldstein: -3.0 },
-      { time: 'YD 18:05', actor1: 'MIL', action: 'FIGHT', actor2: 'REB', cameo: '19', goldstein: -9.0 },
-    ];
+    this.renderEventsContent();
+  }
+
+  private async loadEventsData(): Promise<void> {
+    if (!this.currentIso) return;
+    const iso = this.currentIso;
+    const result = await forecastClient.getEvents({ country: iso, limit: 50 });
+
+    // Guard against stale responses
+    if (this.currentIso !== iso) return;
+
+    this.events = result.items;
+    if (this.activeTab === 'events' && this.tabContent) {
+      clearChildren(this.tabContent);
+      this.renderEventsContent();
+    }
+  }
+
+  private renderEventsContent(): void {
+    if (!this.tabContent || !this.events) return;
+    const countryName = this.currentIso ?? 'this country';
+
+    if (this.events.length === 0) {
+      this.tabContent.appendChild(
+        h('div', { className: 'cb-empty-tab' },
+          `No events for ${countryName} in the last 30 days`),
+      );
+      return;
+    }
 
     const table = h('div', { className: 'cb-events-table' });
-    // Header
-    table.appendChild(h('div', { className: 'cb-event-row cb-event-header' },
-      h('span', { className: 'cb-event-cell cb-event-time' }, 'TIME'),
-      h('span', { className: 'cb-event-cell cb-event-actors' }, 'ACTORS'),
-      h('span', { className: 'cb-event-cell cb-event-cameo' }, 'CAMEO'),
-      h('span', { className: 'cb-event-cell cb-event-goldstein' }, 'GOLDSTEIN'),
-    ));
 
-    for (let i = 0; i < mockEvents.length; i++) {
-      const ev = mockEvents[i]!;
-      const gColor = goldsteinColor(ev.goldstein);
-      const cameoClass = ev.goldstein > 2 ? 'cameo-cooperative'
-        : ev.goldstein > -2 ? 'cameo-neutral'
-          : ev.goldstein > -5 ? 'cameo-conflictual'
-            : 'cameo-hostile';
+    for (let i = 0; i < this.events.length; i++) {
+      const evt = this.events[i]!;
+      const title = evt.title ?? evt.event_code ?? 'Event';
+      const sevCategory = evt.quad_class !== null
+        ? quadCategory(evt.quad_class)
+        : (evt.event_code ? cameoCategory(evt.event_code) : 'neutral');
+      const gColor = evt.goldstein_scale !== null ? goldsteinColor(evt.goldstein_scale) : 'var(--text-muted)';
+      const gText = evt.goldstein_scale !== null
+        ? (evt.goldstein_scale > 0 ? `+${evt.goldstein_scale.toFixed(1)}` : evt.goldstein_scale.toFixed(1))
+        : '--';
 
       table.appendChild(h('div', { className: `cb-event-row ${i % 2 === 0 ? 'even' : 'odd'}` },
-        h('span', { className: 'cb-event-cell cb-event-time' }, ev.time),
-        h('span', { className: 'cb-event-cell cb-event-actors' },
-          `${ev.actor1} \u2192 ${ev.action} \u2192 ${ev.actor2}`),
-        h('span', { className: `cb-event-cell cameo-badge ${cameoClass}` }, ev.cameo),
+        h('span', { className: 'cb-event-cell cb-event-time' }, relativeTime(evt.event_date)),
+        h('span', { className: 'cb-event-cell cb-event-desc' }, truncate(title, 80)),
+        h('span', { className: `cb-event-cell cameo-badge cameo-${sevCategory}` },
+          evt.quad_class !== null ? `Q${evt.quad_class}` : (evt.event_code ?? '')),
         h('span', {
           className: 'cb-event-cell cb-event-goldstein',
           style: `color: ${gColor}`,
-        }, ev.goldstein > 0 ? `+${ev.goldstein.toFixed(1)}` : ev.goldstein.toFixed(1)),
+        }, gText),
+        h('span', { className: `cb-event-cell source-badge source-${evt.source.toLowerCase()}` },
+          evt.source.toUpperCase()),
       ));
     }
 
@@ -567,12 +739,91 @@ export class CountryBriefPage {
   }
 
   // ==================================================================
-  // Tab 4: Risk Signals (CAMEO category breakdown)
+  // Tab 4: Risk Signals (advisories + CAMEO category breakdown)
   // ==================================================================
 
   private renderRiskSignalsTab(): void {
+    if (!this.tabContent || !this.currentIso) return;
+
+    // Lazy load advisories on first activation
+    if (this.advisories === null) {
+      this.tabContent.appendChild(
+        h('div', { className: 'cb-loading' }, 'Loading risk signals...'),
+      );
+      this.loadAdvisoriesData().then(() => {
+        if (this.activeTab === 'risk-signals' && this.tabContent) {
+          clearChildren(this.tabContent);
+          this.renderRiskSignalsContent();
+        }
+      }).catch((err) => {
+        console.error('[CountryBriefPage] advisories load failed:', err);
+        if (this.tabContent && this.activeTab === 'risk-signals') {
+          clearChildren(this.tabContent);
+          this.renderRiskSignalsContent();
+        }
+      });
+      return;
+    }
+
+    this.renderRiskSignalsContent();
+  }
+
+  private async loadAdvisoriesData(): Promise<void> {
+    if (!this.currentIso) return;
+    const iso = this.currentIso;
+    try {
+      this.advisories = await forecastClient.getAdvisories(iso);
+    } catch {
+      this.advisories = [];
+    }
+    // Guard against stale responses
+    if (this.currentIso !== iso) return;
+  }
+
+  private renderRiskSignalsContent(): void {
     if (!this.tabContent) return;
 
+    // Advisory section
+    if (this.advisories && this.advisories.length > 0) {
+      const advisorySection = h('div', { className: 'advisory-section' },
+        h('div', { className: 'section-label' }, 'GOVERNMENT TRAVEL ADVISORIES'),
+      );
+
+      for (const adv of this.advisories) {
+        const levelColor = advisoryLevelColor(adv.level);
+        const levelCls = advisoryLevelClass(adv.level);
+        const summaryText = adv.summary.length > 300
+          ? adv.summary.slice(0, 297) + '...'
+          : adv.summary;
+
+        advisorySection.appendChild(h('div', { className: 'advisory-card' },
+          h('div', { className: 'advisory-header' },
+            h('span', { className: `advisory-level-badge ${levelCls}`, style: `border-color: ${levelColor}` },
+              `Level ${adv.level}`),
+            h('span', { className: 'advisory-source' }, adv.source),
+            h('span', { className: 'advisory-level-desc' }, adv.level_description),
+          ),
+          h('div', { className: 'advisory-summary' }, summaryText),
+          adv.url
+            ? h('a', {
+              className: 'advisory-link',
+              href: adv.url,
+              target: '_blank',
+              rel: 'noopener noreferrer',
+            }, 'View full advisory')
+            : null,
+        ));
+      }
+
+      this.tabContent.appendChild(advisorySection);
+    } else {
+      this.tabContent.appendChild(
+        h('div', { className: 'cb-info-line' },
+          'No government travel advisories available for this country.'),
+      );
+    }
+
+    // Existing CAMEO category breakdown below advisories
     // Extract CAMEO-related frequency data from forecasts
     const cameoCounts = new Map<string, number>();
     for (const f of this.forecasts) {
@@ -815,22 +1066,121 @@ export class CountryBriefPage {
   }
 
   // ==================================================================
-  // Tab 6: Entity Relations (force graph + table toggle)
+  // Tab 6: Entity Relations (top actors + force graph + table toggle)
   // ==================================================================
 
   private renderEntitiesTab(): void {
+    if (!this.tabContent || !this.currentIso) return;
+
+    // Lazy load actor data on first activation
+    if (this.actorCounts === null) {
+      this.tabContent.appendChild(
+        h('div', { className: 'cb-loading' }, 'Loading entity data...'),
+      );
+      this.loadActorData().then(() => {
+        if (this.activeTab === 'entities' && this.tabContent) {
+          clearChildren(this.tabContent);
+          this.renderEntitiesContent();
+        }
+      }).catch((err) => {
+        console.error('[CountryBriefPage] actor data load failed:', err);
+        if (this.tabContent && this.activeTab === 'entities') {
+          clearChildren(this.tabContent);
+          this.renderEntitiesContent();
+        }
+      });
+      return;
+    }
+
+    this.renderEntitiesContent();
+  }
+
+  private async loadActorData(): Promise<void> {
+    if (!this.currentIso) return;
+    const iso = this.currentIso;
+    try {
+      const result = await forecastClient.getEvents({ country: iso, limit: 200 });
+      if (this.currentIso !== iso) return;
+
+      // Aggregate actor codes client-side
+      const actorMap = new Map<string, { count: number; lastSeen: string }>();
+      for (const evt of result.items) {
+        const actors = new Set<string>();
+        if (evt.actor1_code) actors.add(evt.actor1_code);
+        if (evt.actor2_code) actors.add(evt.actor2_code);
+
+        for (const actor of actors) {
+          const existing = actorMap.get(actor);
+          if (!existing) {
+            actorMap.set(actor, { count: 1, lastSeen: evt.event_date });
+          } else {
+            existing.count++;
+            if (evt.event_date > existing.lastSeen) {
+              existing.lastSeen = evt.event_date;
+            }
+          }
+        }
+      }
+
+      // Sort by count descending, take top 20
+      this.actorCounts = Array.from(actorMap.entries())
+        .map(([actor, data]) => ({ actor, count: data.count, lastSeen: data.lastSeen }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 20);
+    } catch {
+      this.actorCounts = [];
+    }
+  }
+
+  private renderEntitiesContent(): void {
     if (!this.tabContent) return;
 
+    // Top Actors section (from real event data)
+    if (this.actorCounts && this.actorCounts.length > 0) {
+      const actorSection = h('div', { className: 'top-actors-section' },
+        h('div', { className: 'section-label' }, 'TOP ACTORS'),
+      );
+
+      const actorTable = h('div', { className: 'actor-table' });
+      actorTable.appendChild(h('div', { className: 'actor-table-row actor-table-header' },
+        h('span', { className: 'actor-table-cell actor-cell-code' }, 'ACTOR CODE'),
+        h('span', { className: 'actor-table-cell actor-cell-count' }, 'EVENT COUNT'),
+        h('span', { className: 'actor-table-cell actor-cell-seen' }, 'LAST SEEN'),
+      ));
+
+      for (let i = 0; i < this.actorCounts.length; i++) {
+        const ac = this.actorCounts[i]!;
+        actorTable.appendChild(h('div', {
+          className: `actor-table-row ${i % 2 === 0 ? 'even' : 'odd'}`,
+        },
+          h('span', { className: 'actor-table-cell actor-cell-code' }, ac.actor),
+          h('span', { className: 'actor-table-cell actor-cell-count' }, String(ac.count)),
+          h('span', { className: 'actor-table-cell actor-cell-seen' }, relativeTime(ac.lastSeen)),
+        ));
+      }
+
+      actorSection.appendChild(actorTable);
+      this.tabContent.appendChild(actorSection);
+    } else if (this.actorCounts !== null) {
+      this.tabContent.appendChild(
+        h('div', { className: 'cb-info-line' },
+          'No actor data available for this country.'),
+      );
+    }
+
+    // Existing entity co-occurrence graph from forecasts
     // Extract entity co-occurrence data from all forecasts
     const { nodes, edges } = this.extractEntityGraph();
 
-    if (nodes.length === 0) {
+    if (nodes.length === 0 && (!this.actorCounts || this.actorCounts.length === 0)) {
       this.tabContent.appendChild(
         h('div', { className: 'cb-empty-tab' },
           'Entity relationships populate from forecast scenarios'),
       );
       return;
     }
+
+    if (nodes.length === 0) return;
 
     // View toggle
     const toggleBar = h('div', { className: 'view-toggle' });
