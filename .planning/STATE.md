@@ -11,19 +11,19 @@ See: .planning/PROJECT.md (updated 2026-03-02)
 
 Milestone: v2.1 Production UX & Live Data Integration
 Phase: 14 of 16 (Backend API Hardening)
-Plan: 03 of 04
+Plan: 03 of 04 (01, 02, 03 complete)
 Status: In progress
-Last activity: 2026-03-03 -- Completed 14-03-PLAN.md (Full-Text Search Endpoint)
+Last activity: 2026-03-03 -- Completed 14-02-PLAN.md (Country Risk Aggregation Endpoint)
 
-Progress: [###########################################.........] 85% (51/60 plans lifetime)
-v2.1:    [###.......] 17% (2/12 plans)
+Progress: [############################################........] 87% (52/60 plans lifetime)
+v2.1:    [###.......] 25% (3/12 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 51
+- Total plans completed: 52
 - Average duration: 11 minutes
-- Total execution time: 9.63 hours
+- Total execution time: 9.71 hours
 
 **By Phase:**
 
@@ -42,10 +42,10 @@ v2.1:    [###.......] 17% (2/12 plans)
 | 11-tkg-predictor-replacement | 3 | 21min | 7min |
 | 12-wm-derived-frontend | 7 | 36min | 5min |
 | 13-calibration-monitoring-hardening | 7 | 27min | 4min |
-| 14-backend-api-hardening | 2 | 8min | 4min |
+| 14-backend-api-hardening | 3 | 13min | 4min |
 
 **Recent Trend:**
-- Last 4 plans: 13-07 (4min), 13-06 (6min), 14-01 (5min), 14-03 (3min)
+- Last 4 plans: 13-06 (6min), 14-01 (5min), 14-03 (3min), 14-02 (5min)
 - Trend: Stable at ~4-5min/plan
 
 ## Accumulated Context
@@ -66,6 +66,8 @@ Key decisions affecting current work:
 - Bare except blocks removed from GET production paths; PostgreSQL errors propagate to 500 (2026-03-03)
 - plainto_tsquery over to_tsquery for search -- safe natural-language input, no injection risk (2026-03-03)
 - Nullable suggestions field in SearchResponse -- prevents breaking DTO change when LLM suggestions added later (2026-03-03)
+- sqlalchemy.text() for CTE country risk query -- 4-CTE analytical query unreadable as Core expressions (2026-03-03)
+- top_question renamed to top_forecast -- breaking change for frontend TypeScript types, deferred to Phase 15 (2026-03-03)
 
 ### Deferred Issues
 
@@ -83,6 +85,6 @@ Key decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-03-03
-Stopped at: Completed 14-03-PLAN.md (Full-Text Search Endpoint)
+Stopped at: Completed 14-02-PLAN.md (Country Risk Aggregation Endpoint)
 Resume file: None
 Next: `/gsd:execute-phase 14-04` -- Pagination + Filtering Hardening
