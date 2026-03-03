@@ -65,6 +65,7 @@ export class ScenarioExplorer {
   private modal: HTMLElement | null = null;
   private treeContainer: HTMLElement | null = null;
   private sidebar: HTMLElement | null = null;
+  private tooltip: HTMLElement | null = null;
 
   private readonly onForecastSelected: (e: Event) => void;
   private readonly onKeyDown: (e: KeyboardEvent) => void;
@@ -96,6 +97,10 @@ export class ScenarioExplorer {
     if (this.backdrop) {
       this.backdrop.remove();
       this.backdrop = null;
+    }
+    if (this.tooltip) {
+      this.tooltip.remove();
+      this.tooltip = null;
     }
     this.modal = null;
     this.treeContainer = null;
@@ -330,6 +335,17 @@ export class ScenarioExplorer {
         g.appendChild(pruneText);
       }
 
+      // Tooltip on hover -- shows full scenario description
+      g.addEventListener('mouseenter', (e: MouseEvent) => {
+        this.showTooltip(node.data.name, e.pageX, e.pageY);
+      });
+      g.addEventListener('mousemove', (e: MouseEvent) => {
+        this.positionTooltip(e.pageX, e.pageY);
+      });
+      g.addEventListener('mouseleave', () => {
+        this.hideTooltip();
+      });
+
       // Click handler -> populate sidebar
       g.addEventListener('click', (e: MouseEvent) => {
         e.stopPropagation();
@@ -340,6 +356,33 @@ export class ScenarioExplorer {
     }
 
     this.treeContainer.appendChild(svg);
+  }
+
+  // ==================================================================
+  // Tooltip (HTML overlay, not SVG <title>)
+  // ==================================================================
+
+  private showTooltip(text: string, pageX: number, pageY: number): void {
+    if (!this.tooltip) {
+      this.tooltip = document.createElement('div');
+      this.tooltip.className = 'scenario-node-tooltip';
+      document.body.appendChild(this.tooltip);
+    }
+    this.tooltip.textContent = text;
+    this.tooltip.style.display = 'block';
+    this.positionTooltip(pageX, pageY);
+  }
+
+  private positionTooltip(pageX: number, pageY: number): void {
+    if (!this.tooltip) return;
+    this.tooltip.style.left = `${pageX + 12}px`;
+    this.tooltip.style.top = `${pageY - 8}px`;
+  }
+
+  private hideTooltip(): void {
+    if (this.tooltip) {
+      this.tooltip.style.display = 'none';
+    }
   }
 
   // ==================================================================

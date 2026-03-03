@@ -1893,6 +1893,316 @@
 }
 
 /* ========================================================================
+   Search Bar (SearchBar component)
+   ======================================================================== */
+
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--panel-radius);
+  margin-bottom: var(--space-sm);
+}
+
+.search-input {
+  flex: 1;
+  min-width: 0;
+  padding: var(--space-xs) var(--space-sm);
+  font-size: var(--font-size-sm);
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  outline: none;
+  transition: border-color var(--transition-fast);
+}
+
+.search-input::placeholder {
+  color: var(--text-muted);
+}
+
+.search-input:focus {
+  border-color: var(--accent);
+}
+
+.search-country-select,
+.search-category-select {
+  padding: var(--space-xs) var(--space-sm);
+  font-size: var(--font-size-xs);
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  outline: none;
+  cursor: pointer;
+  max-width: 140px;
+}
+
+.search-country-select:focus,
+.search-category-select:focus {
+  border-color: var(--accent);
+}
+
+/* ========================================================================
+   Expandable Forecast Cards (ForecastPanel progressive disclosure)
+   ======================================================================== */
+
+.forecast-card-header {
+  cursor: pointer;
+}
+
+.forecast-card.expanded {
+  background: var(--bg-elevated);
+  border-color: var(--accent-muted);
+}
+
+.expanded-content {
+  display: flex;
+  gap: var(--space-md);
+  padding: var(--space-md) 0 var(--space-sm) 0;
+  border-top: 1px solid var(--border-subtle);
+  margin-top: var(--space-sm);
+}
+
+.expanded-left {
+  flex: 0 0 55%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.expanded-right {
+  flex: 0 0 43%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+/* -- Expanded probability -- */
+
+.expanded-prob-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.expanded-prob-label {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+}
+
+.expanded-prob-bar-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.expanded-prob-bar {
+  height: 8px;
+}
+
+.expanded-prob-value {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-md);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+  min-width: 52px;
+  text-align: right;
+}
+
+/* -- Expanded ensemble weights -- */
+
+.expanded-ensemble-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.expanded-section-label {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+}
+
+.expanded-ensemble-bar {
+  display: flex;
+  height: 12px;
+  border-radius: 2px;
+  overflow: hidden;
+  background: var(--border-subtle);
+}
+
+.expanded-ensemble-llm {
+  height: 100%;
+  background: var(--accent);
+  min-width: 2px;
+}
+
+.expanded-ensemble-tkg {
+  height: 100%;
+  background: var(--semantic-warning);
+  min-width: 2px;
+}
+
+.expanded-ensemble-legend {
+  display: flex;
+  gap: var(--space-md);
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.expanded-ensemble-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.expanded-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.expanded-dot-llm { background: var(--accent); }
+.expanded-dot-tkg { background: var(--semantic-warning); }
+
+/* -- Calibration metadata grid -- */
+
+.expanded-cal-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.expanded-cal-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px var(--space-md);
+  font-size: var(--font-size-xs);
+  font-family: var(--font-mono);
+}
+
+.expanded-cal-key {
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.expanded-cal-val {
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* -- Mini scenario tree -- */
+
+.mini-tree-wrapper {
+  border: 1px solid var(--border-subtle);
+  border-radius: 3px;
+  overflow: hidden;
+  background: var(--bg-surface);
+}
+
+.mini-tree-svg {
+  display: block;
+}
+
+/* -- Mini evidence cards (compact) -- */
+
+.expanded-evidence-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.mini-evidence-card {
+  padding: var(--space-xs) var(--space-sm);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 2px;
+}
+
+.mini-evidence-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 2px;
+}
+
+.mini-evidence-conf {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.mini-evidence-desc {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  line-height: var(--line-height-tight);
+}
+
+/* -- "View Full Analysis" button -- */
+
+.view-full-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-xs) var(--space-md);
+  margin-top: auto;
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--accent);
+  background: var(--accent-muted);
+  border: 1px solid rgba(58, 123, 213, 0.25);
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.view-full-btn:hover {
+  background: rgba(58, 123, 213, 0.2);
+  border-color: var(--accent);
+}
+
+/* ========================================================================
+   Scenario Node Tooltip (ScenarioExplorer hover)
+   ======================================================================== */
+
+.scenario-node-tooltip {
+  position: absolute;
+  z-index: var(--z-tooltip);
+  max-width: 360px;
+  padding: var(--space-xs) var(--space-sm);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: var(--font-size-xs);
+  color: var(--text-primary);
+  line-height: var(--line-height-loose);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+  display: none;
+}
+
+/* ========================================================================
    Screen Placeholder
    ======================================================================== */
 
