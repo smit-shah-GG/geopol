@@ -5,7 +5,7 @@
 See: .planning/PROJECT.md (updated 2026-03-02)
 
 **Core value:** Explainability -- every forecast must provide clear, traceable reasoning paths
-**Current focus:** Phase 15 in progress -- URL Routing & Dashboard Screen
+**Current focus:** Phase 15 complete -- URL Routing & Dashboard Screen delivered
 
 ## Current Position
 
@@ -13,7 +13,7 @@ Milestone: v2.1 Production UX & Live Data Integration
 Phase: 15 of 16 (URL Routing & Dashboard)
 Plan: 03 of 03
 Status: Phase complete
-Last activity: 2026-03-03 -- Completed 15-02-PLAN.md (Forecast UX: Progressive Disclosure + Search + Tooltip)
+Last activity: 2026-03-03 -- Completed Phase 15 (URL Routing & Dashboard Screen, 3 plans)
 
 Progress: [################################################....] 93% (56/60 plans lifetime)
 v2.1:    [######....] 58% (7/12 plans)
@@ -100,6 +100,6 @@ Key decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-03-03
-Stopped at: Completed 15-02-PLAN.md (Forecast UX: Progressive Disclosure + Search + Tooltip)
+Stopped at: Phase 15 complete -- all 3 plans executed (20min total)
 Resume file: None
-Next: Phase 15 complete -- proceed to /gsd:plan-phase 16
+Next: `/gsd:discuss-phase 16` or `/gsd:plan-phase 16` -- Globe & Forecasts Screens

@@ -130,19 +130,19 @@ Removed requirements:
 
 ### Screen Architecture
 
-- [ ] **SCREEN-01**: Frontend uses URL-based routing (`/dashboard`, `/globe`, `/forecasts`) with browser history support -- each screen is bookmarkable and shareable
-- [ ] **SCREEN-02**: Dashboard screen (`/dashboard`) uses scrollable column layout with collapsible sections, no globe -- freed space allocated to feeds, sources, search, and expanded forecast cards
+- [x] **SCREEN-01**: Frontend uses URL-based routing (`/dashboard`, `/globe`, `/forecasts`) with browser history support -- each screen is bookmarkable and shareable
+- [x] **SCREEN-02**: Dashboard screen (`/dashboard`) uses scrollable column layout with collapsible sections, no globe -- freed space allocated to feeds, sources, search, and expanded forecast cards
 - [ ] **SCREEN-03**: Globe screen (`/globe`) renders full-viewport deck.gl globe with contextual overlay panels that appear on interaction
 - [ ] **SCREEN-04**: Forecasts screen (`/forecasts`) displays question submission form with LLM-parsed confirmation and queue showing pending/processing/complete status
 
 ### Forecast UX
 
-- [ ] **FUX-01**: Clicking a forecast card inline-expands to reveal probability bar, ensemble weights, evidence count + top 2-3 evidence summaries, horizon/expiry, calibration metadata, and a "View Full Analysis" button that opens ScenarioExplorer modal
-- [ ] **FUX-02**: Scenario tree node labels show short text (~40 chars) by default with tooltip on hover revealing full scenario description
-- [ ] **FUX-03**: Full-text search UI over active forecasts filtering by question text, country, and category -- usable at 30+ forecasts
-- [ ] **FUX-04**: "My Forecasts" section on Dashboard showing user-submitted questions with status badges (pending -> processing -> complete) and links to completed results
-- [ ] **FUX-05**: Event Feed panel showing GDELT event stream and RSS article headlines in compact timeline format
-- [ ] **FUX-06**: Sources panel showing active data sources (GDELT, RSS tiers, Polymarket) with health/staleness indicators
+- [x] **FUX-01**: Clicking a forecast card inline-expands to reveal probability bar, ensemble weights, evidence count + top 2-3 evidence summaries, horizon/expiry, calibration metadata, and a "View Full Analysis" button that opens ScenarioExplorer modal
+- [x] **FUX-02**: Scenario tree node labels show short text (~40 chars) by default with tooltip on hover revealing full scenario description
+- [x] **FUX-03**: Full-text search UI over active forecasts filtering by question text, country, and category -- usable at 30+ forecasts
+- [x] **FUX-04**: "My Forecasts" section on Dashboard showing user-submitted questions with status badges (pending -> processing -> complete) and links to completed results
+- [x] **FUX-05**: Event Feed panel showing GDELT event stream and RSS article headlines in compact timeline format
+- [x] **FUX-06**: Sources panel showing active data sources (GDELT, RSS tiers, Polymarket) with health/staleness indicators
 
 ### Globe Interaction
 
@@ -259,14 +259,14 @@ Which phases cover which requirements. Updated during roadmap creation.
 | BAPI-02 | Phase 14 | Complete |
 | BAPI-03 | Phase 14 | Complete |
 | BAPI-04 | Phase 14 | Complete |
-| SCREEN-01 | Phase 15 | Pending |
-| SCREEN-02 | Phase 15 | Pending |
-| FUX-01 | Phase 15 | Pending |
-| FUX-02 | Phase 15 | Pending |
-| FUX-03 | Phase 15 | Pending |
-| FUX-04 | Phase 15 | Pending |
-| FUX-05 | Phase 15 | Pending |
-| FUX-06 | Phase 15 | Pending |
+| SCREEN-01 | Phase 15 | Complete |
+| SCREEN-02 | Phase 15 | Complete |
+| FUX-01 | Phase 15 | Complete |
+| FUX-02 | Phase 15 | Complete |
+| FUX-03 | Phase 15 | Complete |
+| FUX-04 | Phase 15 | Complete |
+| FUX-05 | Phase 15 | Complete |
+| FUX-06 | Phase 15 | Complete |
 | SCREEN-03 | Phase 16 | Pending |
 | SCREEN-04 | Phase 16 | Pending |
 | GLOBE-01 | Phase 16 | Pending |

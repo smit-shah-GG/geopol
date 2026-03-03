@@ -247,7 +247,7 @@ Phase 14 (backend API hardening) --- unblocks real data for frontend
 ```
 
 - [x] **Phase 14: Backend API Hardening** -- Kill fixture fallback, real country risk aggregation, question submission queue, full-text search endpoint
-- [ ] **Phase 15: URL Routing & Dashboard Screen** -- Three-screen URL routing, information-dense dashboard with progressive disclosure, search UI, event feed, sources panel
+- [x] **Phase 15: URL Routing & Dashboard Screen** -- Three-screen URL routing, information-dense dashboard with progressive disclosure, search UI, event feed, sources panel
 - [ ] **Phase 16: Globe & Forecasts Screens** -- Full-viewport globe with contextual drill-down, forecast submission queue UI, layer toggle controls
 
 ## Phase Details
@@ -286,9 +286,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 15-01-PLAN.md -- Router + NavBar + 4-column layout + screen lifecycle + theme simplification + top_forecast rename
-- [ ] 15-02-PLAN.md -- ForecastPanel expandable cards + SearchBar + ScenarioExplorer tooltip (FUX-01, FUX-02, FUX-03)
-- [ ] 15-03-PLAN.md -- MyForecastsPanel + SourcesPanel + dashboard Col 3 wiring (FUX-04, FUX-05, FUX-06)
+- [x] 15-01-PLAN.md -- Router + NavBar + 4-column layout + screen lifecycle + theme simplification + top_forecast rename
+- [x] 15-02-PLAN.md -- ForecastPanel expandable cards + SearchBar + ScenarioExplorer tooltip (FUX-01, FUX-02, FUX-03)
+- [x] 15-03-PLAN.md -- MyForecastsPanel + SourcesPanel + dashboard Col 3 wiring (FUX-04, FUX-05, FUX-06)
 
 ### Phase 16: Globe & Forecasts Screens
 **Goal**: The Globe screen provides full-viewport geospatial exploration with contextual drill-down on country click. The Forecasts screen provides a question submission workflow with queue status display. All three screens are complete and the v2.1 milestone is deliverable.
@@ -322,7 +322,7 @@ Sequential: Phase 14 -> Phase 15 -> Phase 16.
 | 12. WM-Derived Frontend | v2.0 | 7/7 | Complete | 2026-03-02 |
 | 13. Calibration & Monitoring | v2.0 | 7/7 | Complete | 2026-03-02 |
 | 14. Backend API Hardening | v2.1 | 4/4 | Complete | 2026-03-03 |
-| 15. URL Routing & Dashboard | v2.1 | 0/3 | Not started | - |
+| 15. URL Routing & Dashboard | v2.1 | 3/3 | Complete | 2026-03-03 |
 | 16. Globe & Forecasts Screens | v2.1 | 0/TBD | Not started | - |
 
-**Total:** 14 phases complete (v1.0 + v1.1 + v2.0 + Phase 14), 53 plans delivered. v2.1: 1/3 phases complete, 13 requirements pending.
+**Total:** 15 phases complete (v1.0 + v1.1 + v2.0 + Phases 14-15), 56 plans delivered. v2.1: 2/3 phases complete, 5 requirements pending.
