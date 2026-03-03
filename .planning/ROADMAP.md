@@ -314,11 +314,24 @@ Plans:
 - [x] 16-03-PLAN.md -- Forecasts screen: SubmissionForm (three-state inline transform), SubmissionQueue (status badges, elapsed timer, expandable completed forecasts), two-column layout (SCREEN-04)
 
 ### Phase 17: Live Data Feeds & Country Depth
-**Goal**: Every panel and country screen displays real, live data from multiple sources. Backend exposes event and article API endpoints. EventTimelinePanel shows real GDELT events instead of mock data. Country screens are fleshed out with meaningful subpages populated from live data. Additional data sources beyond GDELT and RSS are ingested and surfaced.
+**Goal**: Every panel and country screen displays real, live data from multiple sources. Backend exposes event and article API endpoints with full filter surfaces. EventTimelinePanel shows real GDELT+ACLED events. Country screens are populated with meaningful content across all tabs. ACLED conflict data and US/UK government travel advisories are ingested as new data sources. SourcesPanel auto-discovers active sources from the backend.
 **Depends on**: Phase 16 (all screens exist)
-**Requirements**: TBD (define during `/gsd:discuss-phase 17`)
-**Success Criteria**: TBD
-**Plans**: TBD
+**Success Criteria** (what must be TRUE):
+  1. `GET /api/v1/events?country=UA&limit=50` returns paginated GDELT+ACLED events for Ukraine with cursor-based pagination, filterable by date range, CAMEO code, actor, Goldstein range, text search, and source
+  2. `GET /api/v1/articles?text=conflict&semantic=true` returns ChromaDB vector similarity results for articles; keyword mode returns metadata-filtered results
+  3. `GET /api/v1/sources` returns health/staleness for all data sources (gdelt, rss, acled, advisory) auto-discovered from IngestRun table -- adding a new source on the backend auto-appears without frontend changes
+  4. `GET /api/v1/advisories?country=UA` returns US State Dept and UK FCDO travel advisories for Ukraine with normalized risk levels (1-4)
+  5. EventTimelinePanel on the dashboard shows real events from /events API with diff-based DOM updates preserving expanded card state across 30s refresh cycles -- no mock data remains
+  6. SourcesPanel displays auto-discovered data sources from /sources endpoint, not filtered health subsystems
+  7. CountryBriefPage events tab shows events filtered by country; risk-signals tab shows government advisories; entities tab shows top actors with event counts -- all from real API data
+  8. ACLED poller daemon fetches armed conflict events (Battles, Explosions, Violence against civilians) daily, maps to unified Event schema, and inserts into SQLite with "ACLED-" prefixed IDs
+  9. Advisory poller daemon fetches US State Dept + UK FCDO travel advisories daily and populates in-memory cache served by /advisories endpoint
+**Plans**: 3 plans
+
+Plans:
+- [ ] 17-01-PLAN.md -- Data layer foundation: SQLite schema migration (country_iso + source columns, backfill, indexes), Event model update, EventStorage query expansion, Pydantic DTOs, settings
+- [ ] 17-02-PLAN.md -- Backend API routes (events, articles, sources, advisories) + ACLED poller + advisory poller
+- [ ] 17-03-PLAN.md -- Frontend wiring: TypeScript types, forecast-client methods, EventTimelinePanel, SourcesPanel, CountryBriefPage tabs
 
 ### Phase 18: Polymarket-Driven Forecasting
 **Goal**: The system actively polls Polymarket for geopolitical questions, runs Geopol's forecasting pipeline on matching questions, and tracks probability comparisons over time. A dedicated dashboard panel shows Polymarket questions alongside Geopol's competing forecasts, providing direct calibration signal and demonstrable accuracy comparison.
@@ -350,7 +363,7 @@ Sequential: Phase 14 -> Phase 15 -> Phase 16. Then Phase 17 and Phase 18 can run
 | 14. Backend API Hardening | v2.1 | 4/4 | Complete | 2026-03-03 |
 | 15. URL Routing & Dashboard | v2.1 | 3/3 | Complete | 2026-03-03 |
 | 16. Globe & Forecasts Screens | v2.1 | 3/3 | Complete | 2026-03-03 |
-| 17. Live Data Feeds & Country Depth | v2.1 | 0/TBD | Not started | - |
+| 17. Live Data Feeds & Country Depth | v2.1 | 0/3 | Planned | - |
 | 18. Polymarket-Driven Forecasting | v2.1 | 0/TBD | Not started | - |
 
-**Total:** 16 phases complete (v1.0 + v1.1 + v2.0 + Phases 14-16), 59 plans delivered. v2.1: 3/5 phases complete (all defined requirements delivered), Phases 17-18 requirements TBD.
+**Total:** 16 phases complete (v1.0 + v1.1 + v2.0 + Phases 14-16), 59 plans delivered. v2.1: 3/5 phases complete, Phase 17 planned (3 plans in 3 waves), Phase 18 requirements TBD.
