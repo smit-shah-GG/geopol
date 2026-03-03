@@ -2217,3 +2217,347 @@
   text-transform: uppercase;
   letter-spacing: 2px;
 }
+
+/* ========================================================================
+   Globe Screen Layout
+   ======================================================================== */
+
+.globe-screen {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ========================================================================
+   Globe HUD -- Top-left stats overlay
+   ======================================================================== */
+
+.globe-hud {
+  position: absolute;
+  top: var(--space-md);
+  left: var(--space-md);
+  z-index: 15;
+  display: flex;
+  gap: var(--space-lg);
+  padding: var(--space-sm) var(--space-md);
+  background: rgba(17, 22, 32, 0.85);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  backdrop-filter: blur(8px);
+  pointer-events: none;
+}
+
+.hud-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.hud-label {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.hud-value {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-md);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+
+/* ========================================================================
+   Layer Pill Bar -- Bottom-center floating toggle bar
+   ======================================================================== */
+
+.layer-pill-bar {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 15;
+  display: flex;
+  gap: 6px;
+  padding: 6px 12px;
+  background: rgba(26, 32, 48, 0.9);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(8px);
+}
+
+.layer-pill {
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.layer-pill:hover {
+  color: var(--text-secondary);
+  border-color: var(--text-muted);
+}
+
+.layer-pill.active {
+  background: var(--accent-muted);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+/* ========================================================================
+   Globe Drill-Down Panel -- Right-edge slide-in
+   ======================================================================== */
+
+.globe-drilldown {
+  position: absolute;
+  top: 0;
+  right: -420px;
+  width: 400px;
+  height: 100%;
+  z-index: 20;
+  background: var(--panel-bg);
+  border-left: 1px solid var(--border);
+  box-shadow: -4px 0 16px rgba(0, 0, 0, 0.3);
+  transition: right 0.28s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.globe-drilldown.active {
+  right: 0;
+}
+
+/* ---- Header ---- */
+
+.drilldown-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-md) var(--space-lg);
+  border-bottom: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+  min-height: 48px;
+}
+
+.drilldown-header-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  min-width: 0;
+  flex: 1;
+}
+
+.drilldown-flag {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.drilldown-name {
+  font-size: var(--font-size-md);
+  font-weight: 700;
+  color: var(--text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.drilldown-risk {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  padding: 2px 8px;
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  border-radius: 2px;
+  white-space: nowrap;
+}
+
+.drilldown-risk.severity-critical {
+  color: var(--semantic-critical);
+  background: rgba(230, 57, 70, 0.12);
+}
+
+.drilldown-risk.severity-high {
+  color: var(--prob-high);
+  background: rgba(230, 126, 34, 0.12);
+}
+
+.drilldown-risk.severity-elevated {
+  color: var(--semantic-warning);
+  background: rgba(230, 162, 60, 0.12);
+}
+
+.drilldown-risk.severity-normal {
+  color: var(--semantic-success);
+  background: rgba(46, 204, 113, 0.12);
+}
+
+.drilldown-risk.severity-low {
+  color: var(--text-muted);
+  background: rgba(128, 144, 164, 0.08);
+}
+
+.drilldown-risk-value {
+  font-size: var(--font-size-sm);
+}
+
+.drilldown-trend {
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+}
+
+.drilldown-trend.trend-rising {
+  color: var(--semantic-critical);
+}
+
+.drilldown-trend.trend-falling {
+  color: var(--semantic-success);
+}
+
+.drilldown-trend.trend-stable {
+  color: var(--text-muted);
+}
+
+.drilldown-close {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all var(--transition-fast);
+  line-height: 1;
+}
+
+.drilldown-close:hover {
+  color: var(--text-primary);
+  border-color: var(--text-secondary);
+  background: var(--bg-elevated);
+}
+
+/* ---- Content area ---- */
+
+.drilldown-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-md);
+}
+
+.drilldown-content .forecast-card {
+  margin-bottom: var(--space-sm);
+}
+
+.drilldown-section-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: var(--space-sm);
+  padding-bottom: var(--space-xs);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.drilldown-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-xl);
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+  font-family: var(--font-mono);
+}
+
+.drilldown-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-xl);
+  color: var(--semantic-critical);
+  font-size: var(--font-size-sm);
+}
+
+.drilldown-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-xl);
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+  text-align: center;
+  font-style: italic;
+}
+
+/* ---- Sparkline placeholder (Phase 17) ---- */
+
+.drilldown-sparkline {
+  flex-shrink: 0;
+  padding: var(--space-md);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.drilldown-sparkline-placeholder {
+  padding: var(--space-md);
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  text-align: center;
+  font-style: italic;
+  background: var(--bg-surface);
+  border: 1px dashed var(--border-subtle);
+  border-radius: 3px;
+}
+
+/* ---- View Details link ---- */
+
+.drilldown-view-details {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: var(--space-sm) var(--space-md);
+  margin-top: var(--space-md);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.drilldown-view-details:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-muted);
+}
