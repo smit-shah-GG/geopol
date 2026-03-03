@@ -1052,6 +1052,115 @@
 }
 
 /* ========================================================================
+   ComparisonPanel -- Polymarket vs Geopol dual-bar comparisons
+   ======================================================================== */
+
+.comparison-entry {
+  padding: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.comparison-entry.resolved {
+  opacity: 0.7;
+}
+
+.comparison-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  margin-bottom: 6px;
+}
+
+.comparison-badge {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: 2px;
+  text-transform: uppercase;
+  flex-shrink: 0;
+  margin-left: 6px;
+}
+
+.badge-driven {
+  background: var(--accent);
+  color: var(--bg-primary);
+}
+
+.badge-tracked {
+  background: var(--border);
+  color: var(--text-primary);
+}
+
+.badge-resolved {
+  background: var(--text-muted);
+  color: var(--bg-primary);
+}
+
+.comparison-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.bar-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.bar-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  width: 18px;
+  font-family: var(--font-mono);
+}
+
+.bar-track {
+  flex: 1;
+  height: 12px;
+  background: var(--bg-tertiary);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.bar-geopol.div-low { background: var(--accent); }
+.bar-geopol.div-medium { background: var(--semantic-warning); }
+.bar-geopol.div-high { background: var(--semantic-critical); }
+
+.bar-polymarket.div-low { background: var(--accent); opacity: 0.6; }
+.bar-polymarket.div-medium { background: var(--semantic-warning); opacity: 0.6; }
+.bar-polymarket.div-high { background: var(--semantic-critical); opacity: 0.6; }
+
+.bar-value {
+  font-size: 11px;
+  width: 30px;
+  text-align: right;
+  color: var(--text-secondary);
+}
+
+.comparison-winner {
+  font-size: 10px;
+  margin-top: 4px;
+  font-weight: 600;
+}
+
+.winner-geopol {
+  color: var(--accent);
+}
+
+.winner-market {
+  color: var(--semantic-critical);
+}
+
+/* ========================================================================
    DeckGLMap -- Layer Toggle Panel + Map Tooltip + Attribution
    ======================================================================== */
 

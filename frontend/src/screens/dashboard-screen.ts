@@ -3,7 +3,7 @@
  *
  * Column assignments:
  *   Col 1: RiskIndexPanel
- *   Col 2: SearchBar, ForecastPanel
+ *   Col 2: SearchBar, ForecastPanel, ComparisonPanel
  *   Col 3: MyForecastsPanel, SourcesPanel
  *   Col 4: EventTimeline, SystemHealth, Polymarket
  *
@@ -24,6 +24,7 @@ import { SystemHealthPanel } from '@/components/SystemHealthPanel';
 import { PolymarketPanel } from '@/components/PolymarketPanel';
 import { MyForecastsPanel } from '@/components/MyForecastsPanel';
 import { SourcesPanel } from '@/components/SourcesPanel';
+import { ComparisonPanel } from '@/components/ComparisonPanel';
 
 // Search
 import { SearchBar } from '@/components/SearchBar';
@@ -83,6 +84,7 @@ export function mountDashboard(container: HTMLElement, ctx: GeoPolAppContext): v
   const polymarketPanel = new PolymarketPanel();
   const myForecastsPanel = new MyForecastsPanel();
   const sourcesPanel = new SourcesPanel();
+  const comparisonPanel = new ComparisonPanel();
 
   // -- Search bar at top of Col 2 --
   searchBar = new SearchBar();
@@ -91,6 +93,7 @@ export function mountDashboard(container: HTMLElement, ctx: GeoPolAppContext): v
   // -- Mount panels into columns --
   columns.col1.appendChild(riskIndexPanel.getElement());
   columns.col2.appendChild(forecastPanel.getElement());
+  columns.col2.appendChild(comparisonPanel.getElement());
   columns.col3.appendChild(myForecastsPanel.getElement());
   columns.col3.appendChild(sourcesPanel.getElement());
   columns.col4.appendChild(eventTimelinePanel.getElement());
@@ -105,6 +108,7 @@ export function mountDashboard(container: HTMLElement, ctx: GeoPolAppContext): v
   ctx.panels['polymarket'] = polymarketPanel;
   ctx.panels['my-forecasts'] = myForecastsPanel;
   ctx.panels['sources'] = sourcesPanel;
+  ctx.panels['comparisons'] = comparisonPanel;
 
   // -- Modals (attach global event listeners in constructor) --
   scenarioExplorer = new ScenarioExplorer();
@@ -112,12 +116,13 @@ export function mountDashboard(container: HTMLElement, ctx: GeoPolAppContext): v
 
   // -- Initial data load --
   const loadInitial = async (): Promise<void> => {
-    const [forecasts, countries, health, polymarket, requests] = await Promise.all([
+    const [forecasts, countries, health, polymarket, requests, comparisons] = await Promise.all([
       forecastClient.getTopForecasts(10),
       forecastClient.getCountries(),
       forecastClient.getHealth(),
       forecastClient.getPolymarketTop(),
       forecastClient.getRequests(),
+      forecastClient.getComparisons(),
     ]);
 
     pushForecasts(forecasts, forecastPanel);
@@ -126,6 +131,7 @@ export function mountDashboard(container: HTMLElement, ctx: GeoPolAppContext): v
     pushHealth(health, healthPanel);
     pushRequests(requests, myForecastsPanel);
     polymarketPanel.update(polymarket);
+    comparisonPanel.update(comparisons);
   };
 
   loadInitial().catch((err) => {
@@ -201,6 +207,14 @@ export function mountDashboard(container: HTMLElement, ctx: GeoPolAppContext): v
       fn: async () => {
         const polymarket = await forecastClient.getPolymarketTop();
         polymarketPanel.update(polymarket);
+      },
+      intervalMs: 300_000,
+    },
+    {
+      name: 'comparisons',
+      fn: async () => {
+        const comparisons = await forecastClient.getComparisons();
+        comparisonPanel.update(comparisons);
       },
       intervalMs: 300_000,
     },
