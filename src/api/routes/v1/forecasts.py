@@ -151,6 +151,8 @@ async def get_top_forecasts(
     service = ForecastService(db)
     result = await service.get_top_forecasts(limit=limit)
     if result:
+        # Enrich with Polymarket comparison data (batch query, no N+1)
+        result = await service.enrich_with_comparisons(result)
         data = [item.model_dump(mode="json") for item in result]
         await cache.set(key, data, ttl=SUMMARY_TTL)
         return result
@@ -271,6 +273,13 @@ async def get_forecasts_by_country(
         country_iso=iso_upper, cursor=cursor, limit=limit
     )
     if result.items:
+        # Enrich with Polymarket comparison data (batch query, no N+1)
+        enriched_items = await service.enrich_with_comparisons(result.items)
+        result = PaginatedResponse[ForecastResponse](
+            items=enriched_items,
+            next_cursor=result.next_cursor,
+            has_more=result.has_more,
+        )
         # Cache first page only
         if cursor is None:
             data = {
@@ -340,6 +349,9 @@ async def get_forecast_by_id(
     service = ForecastService(db)
     result = await service.get_forecast_by_id(forecast_id)
     if result is not None:
+        # Enrich with Polymarket comparison data
+        enriched = await service.enrich_with_comparisons([result])
+        result = enriched[0]
         await cache.set(key, result.model_dump(mode="json"), ttl=FULL_FORECAST_TTL)
         return result
 

@@ -13,6 +13,15 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
+__all__ = [
+    "EvidenceDTO",
+    "EnsembleInfoDTO",
+    "CalibrationDTO",
+    "ScenarioDTO",
+    "PolymarketComparisonData",
+    "ForecastResponse",
+]
+
 
 class EvidenceDTO(BaseModel):
     """A single piece of evidence supporting a scenario.
@@ -141,6 +150,43 @@ class ScenarioDTO(BaseModel):
 ScenarioDTO.model_rebuild()
 
 
+class PolymarketComparisonData(BaseModel):
+    """Polymarket comparison data attached to a forecast card.
+
+    Provides badge-level metadata for the frontend: market price, geopol
+    probability, divergence, provenance, and Brier scores (resolved only).
+    The frontend uses this to render inline comparison badges on forecast cards.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    comparison_id: int = Field(..., description="PolymarketComparison row ID")
+    polymarket_event_id: str = Field(..., description="Polymarket event identifier")
+    polymarket_title: str = Field(..., description="Polymarket question title")
+    polymarket_price: float | None = Field(
+        None, description="Current Polymarket market price (0-1)"
+    )
+    geopol_probability: float | None = Field(
+        None, description="Latest Geopol probability"
+    )
+    divergence: float | None = Field(
+        None, description="Geopol probability - Polymarket price"
+    )
+    provenance: str = Field(
+        ..., description="'polymarket_driven' or 'polymarket_tracked'"
+    )
+    status: str = Field(..., description="'active' or 'resolved'")
+    polymarket_slug: str = Field(
+        "", description="Polymarket event slug for URL construction"
+    )
+    geopol_brier: float | None = Field(
+        None, description="Geopol Brier score (resolved only)"
+    )
+    polymarket_brier: float | None = Field(
+        None, description="Polymarket Brier score (resolved only)"
+    )
+
+
 class ForecastResponse(BaseModel):
     """Complete forecast response — the primary API contract.
 
@@ -191,4 +237,8 @@ class ForecastResponse(BaseModel):
     )
     expires_at: datetime = Field(
         ..., description="When this forecast becomes stale and should be regenerated"
+    )
+    polymarket_comparison: Optional[PolymarketComparisonData] = Field(
+        None,
+        description="Polymarket comparison data if this forecast is linked to a market",
     )

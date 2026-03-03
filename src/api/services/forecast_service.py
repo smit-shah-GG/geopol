@@ -28,9 +28,10 @@ from src.api.schemas.forecast import (
     EnsembleInfoDTO,
     EvidenceDTO,
     ForecastResponse,
+    PolymarketComparisonData,
     ScenarioDTO,
 )
-from src.db.models import Prediction
+from src.db.models import PolymarketComparison, Prediction
 from src.forecasting.ensemble_predictor import EnsemblePrediction
 from src.forecasting.models import ForecastOutput, Scenario
 
@@ -245,6 +246,88 @@ class ForecastService:
         result = await self.session.execute(stmt)
         rows = result.scalars().all()
         return [self.prediction_to_dto(row) for row in rows]
+
+    async def enrich_with_comparisons(
+        self,
+        forecasts: list[ForecastResponse],
+    ) -> list[ForecastResponse]:
+        """Attach polymarket_comparison data to forecasts that have linked comparisons.
+
+        Uses a single batch query with IN clause to avoid N+1 queries. For each
+        matched comparison, computes divergence and determines provenance from the
+        Prediction row's provenance field.
+
+        Args:
+            forecasts: List of ForecastResponse DTOs to enrich.
+
+        Returns:
+            Same list with polymarket_comparison fields populated where applicable.
+        """
+        if not forecasts:
+            return forecasts
+
+        forecast_ids = [f.forecast_id for f in forecasts]
+
+        # Batch query: all comparisons linked to these forecasts
+        stmt = (
+            select(PolymarketComparison, Prediction.provenance)
+            .join(
+                Prediction,
+                Prediction.id == PolymarketComparison.geopol_prediction_id,
+            )
+            .where(PolymarketComparison.geopol_prediction_id.in_(forecast_ids))
+        )
+        result = await self.session.execute(stmt)
+        rows = result.all()
+
+        # Build lookup: prediction_id -> (comparison, provenance)
+        comparison_map: dict[str, tuple[PolymarketComparison, str | None]] = {}
+        for comp, prov in rows:
+            comparison_map[comp.geopol_prediction_id] = (comp, prov)
+
+        if not comparison_map:
+            return forecasts
+
+        enriched: list[ForecastResponse] = []
+        for forecast in forecasts:
+            match = comparison_map.get(forecast.forecast_id)
+            if match is None:
+                enriched.append(forecast)
+                continue
+
+            comp, pred_provenance = match
+
+            # Determine provenance: use Prediction.provenance if set,
+            # otherwise the existence of a comparison implies tracked
+            if pred_provenance and pred_provenance.startswith("polymarket"):
+                provenance = pred_provenance
+            else:
+                provenance = "polymarket_tracked"
+
+            # Compute divergence
+            divergence: float | None = None
+            if comp.geopol_probability is not None and comp.polymarket_price is not None:
+                divergence = round(comp.geopol_probability - comp.polymarket_price, 4)
+
+            comparison_data = PolymarketComparisonData(
+                comparison_id=comp.id,
+                polymarket_event_id=comp.polymarket_event_id,
+                polymarket_title=comp.polymarket_title,
+                polymarket_price=comp.polymarket_price,
+                geopol_probability=comp.geopol_probability,
+                divergence=divergence,
+                provenance=provenance,
+                status=comp.status,
+                polymarket_slug=comp.polymarket_slug,
+                geopol_brier=comp.geopol_brier,
+                polymarket_brier=comp.polymarket_brier,
+            )
+
+            enriched.append(
+                forecast.model_copy(update={"polymarket_comparison": comparison_data})
+            )
+
+        return enriched
 
     @staticmethod
     def prediction_to_dto(prediction: Prediction) -> ForecastResponse:
