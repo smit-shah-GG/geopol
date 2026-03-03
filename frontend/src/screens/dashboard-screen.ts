@@ -5,7 +5,7 @@
  *   Col 1: RiskIndexPanel
  *   Col 2: SearchBar, ForecastPanel
  *   Col 3: MyForecastsPanel, SourcesPanel
- *   Col 4: EventTimeline, SystemHealth, Calibration
+ *   Col 4: EventTimeline, SystemHealth, Polymarket
  *
  * Owns the RefreshScheduler lifecycle and all inter-panel event wiring.
  */
@@ -21,7 +21,7 @@ import { ForecastPanel } from '@/components/ForecastPanel';
 import { RiskIndexPanel } from '@/components/RiskIndexPanel';
 import { EventTimelinePanel } from '@/components/EventTimelinePanel';
 import { SystemHealthPanel } from '@/components/SystemHealthPanel';
-import { CalibrationPanel } from '@/components/CalibrationPanel';
+import { PolymarketPanel } from '@/components/PolymarketPanel';
 import { MyForecastsPanel } from '@/components/MyForecastsPanel';
 import { SourcesPanel } from '@/components/SourcesPanel';
 
@@ -67,10 +67,6 @@ function pushRequests(requests: ForecastRequestStatus[], panel: MyForecastsPanel
   panel.update(requests);
 }
 
-function pushSources(health: HealthResponse, panel: SourcesPanel): void {
-  panel.update(health);
-}
-
 // ---------------------------------------------------------------------------
 // Mount / Unmount
 // ---------------------------------------------------------------------------
@@ -84,7 +80,7 @@ export function mountDashboard(container: HTMLElement, ctx: GeoPolAppContext): v
   const riskIndexPanel = new RiskIndexPanel();
   const eventTimelinePanel = new EventTimelinePanel();
   const healthPanel = new SystemHealthPanel();
-  const calibrationPanel = new CalibrationPanel();
+  const polymarketPanel = new PolymarketPanel();
   const myForecastsPanel = new MyForecastsPanel();
   const sourcesPanel = new SourcesPanel();
 
@@ -99,14 +95,14 @@ export function mountDashboard(container: HTMLElement, ctx: GeoPolAppContext): v
   columns.col3.appendChild(sourcesPanel.getElement());
   columns.col4.appendChild(eventTimelinePanel.getElement());
   columns.col4.appendChild(healthPanel.getElement());
-  columns.col4.appendChild(calibrationPanel.getElement());
+  columns.col4.appendChild(polymarketPanel.getElement());
 
   // -- Register in context --
   ctx.panels['forecasts'] = forecastPanel;
   ctx.panels['risk-index'] = riskIndexPanel;
   ctx.panels['event-timeline'] = eventTimelinePanel;
   ctx.panels['system-health'] = healthPanel;
-  ctx.panels['calibration'] = calibrationPanel;
+  ctx.panels['polymarket'] = polymarketPanel;
   ctx.panels['my-forecasts'] = myForecastsPanel;
   ctx.panels['sources'] = sourcesPanel;
 
@@ -128,10 +124,8 @@ export function mountDashboard(container: HTMLElement, ctx: GeoPolAppContext): v
     pushCountries(countries, riskIndexPanel);
     searchBar?.updateCountries(countries);
     pushHealth(health, healthPanel);
-    pushSources(health, sourcesPanel);
     pushRequests(requests, myForecastsPanel);
-    calibrationPanel.updatePolymarketTop(polymarket);
-    eventTimelinePanel.refresh();
+    polymarketPanel.update(polymarket);
   };
 
   loadInitial().catch((err) => {
@@ -139,9 +133,8 @@ export function mountDashboard(container: HTMLElement, ctx: GeoPolAppContext): v
   });
 
   // -- Event wiring --
-  forecastSelectedHandler = ((e: CustomEvent<{ forecast: ForecastResponse }>) => {
-    const { forecast } = e.detail;
-    calibrationPanel.update([forecast.calibration]);
+  forecastSelectedHandler = ((_e: CustomEvent<{ forecast: ForecastResponse }>) => {
+    // Reserved for future cross-panel coordination on forecast selection
   }) as EventListener;
   window.addEventListener('forecast-selected', forecastSelectedHandler);
 
@@ -178,9 +171,22 @@ export function mountDashboard(container: HTMLElement, ctx: GeoPolAppContext): v
       fn: async () => {
         const health = await forecastClient.getHealth();
         pushHealth(health, healthPanel);
-        pushSources(health, sourcesPanel);
       },
       intervalMs: 30_000,
+    },
+    {
+      name: 'events',
+      fn: async () => {
+        await eventTimelinePanel.refresh();
+      },
+      intervalMs: 30_000,
+    },
+    {
+      name: 'sources',
+      fn: async () => {
+        await sourcesPanel.refresh();
+      },
+      intervalMs: 60_000,
     },
     {
       name: 'my-forecasts',
@@ -194,7 +200,7 @@ export function mountDashboard(container: HTMLElement, ctx: GeoPolAppContext): v
       name: 'polymarket',
       fn: async () => {
         const polymarket = await forecastClient.getPolymarketTop();
-        calibrationPanel.updatePolymarketTop(polymarket);
+        polymarketPanel.update(polymarket);
       },
       intervalMs: 300_000,
     },

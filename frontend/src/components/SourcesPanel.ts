@@ -1,23 +1,20 @@
 /**
- * SourcesPanel -- data source health and staleness indicators.
+ * SourcesPanel -- auto-discovered data source health from GET /sources.
  *
- * Derives from HealthResponse.subsystems, filtering to data-source-relevant
- * entries (GDELT, RSS, Polymarket, ChromaDB). Shows health dot, source name,
- * staleness indicator with color-coded relative time, and detail text.
+ * Shows each ingestion source's health dot, name, relative time since last
+ * update, events_last_run count, and detail text. Self-refreshes via
+ * RefreshScheduler (60s interval) -- no longer push-fed from health response.
  *
- * Updated from the existing health refresh cycle -- no independent fetch.
- * Fulfills FUX-06: data source visibility in Col 3.
+ * Fulfills Phase 17 auto-discovered source health requirement.
  */
 
 import { Panel } from './Panel';
 import { h, replaceChildren } from '@/utils/dom-utils';
-import type { HealthResponse, SubsystemStatus } from '@/types/api';
-
-/** Subsystem name substrings that identify data sources. */
-const SOURCE_KEYWORDS = ['gdelt', 'rss', 'polymarket', 'chromadb'] as const;
+import { forecastClient } from '@/services/forecast-client';
+import type { SourceStatusDTO } from '@/types/api';
 
 /** Staleness thresholds in milliseconds. */
-const STALE_WARN_MS = 30 * 60_000;   // 30 minutes
+const STALE_WARN_MS = 30 * 60_000;    // 30 minutes
 const STALE_CRIT_MS = 2 * 60 * 60_000; // 2 hours
 
 /** Relative time string from ISO timestamp. */
@@ -32,18 +29,13 @@ function relativeTime(iso: string): string {
   return `${days}d ago`;
 }
 
-/** CSS class for staleness based on checked_at age. */
-function stalenessClass(iso: string): string {
+/** CSS class for staleness based on last_update age. */
+function stalenessClass(iso: string | null): string {
+  if (!iso) return 'staleness-critical';
   const ageMs = Date.now() - new Date(iso).getTime();
   if (ageMs > STALE_CRIT_MS) return 'staleness-critical';
   if (ageMs > STALE_WARN_MS) return 'staleness-warning';
   return 'staleness-fresh';
-}
-
-/** Check if a subsystem name matches one of the data source keywords. */
-function isDataSource(name: string): boolean {
-  const lower = name.toLowerCase();
-  return SOURCE_KEYWORDS.some((kw) => lower.includes(kw));
 }
 
 export class SourcesPanel extends Panel {
@@ -51,19 +43,26 @@ export class SourcesPanel extends Panel {
     super({ id: 'sources', title: 'DATA SOURCES', showCount: false });
   }
 
-  /** External data injection from health refresh cycle. */
-  public update(health: HealthResponse): void {
-    this.renderSources(health);
+  /**
+   * Async refresh -- called by RefreshScheduler every 60s.
+   * Fetches auto-discovered source health from /sources.
+   */
+  public async refresh(): Promise<void> {
+    try {
+      const sources = await forecastClient.getSources();
+      this.renderSources(sources);
+    } catch (err: unknown) {
+      if (this.isAbortError(err)) return;
+      console.error('[SourcesPanel] refresh failed:', err);
+      this.showError('Failed to load source data');
+    }
   }
 
-  private renderSources(health: HealthResponse): void {
-    const sources = health.subsystems.filter((s) => isDataSource(s.name));
-
+  private renderSources(sources: SourceStatusDTO[]): void {
     if (sources.length === 0) {
       replaceChildren(this.content,
         h('div', { className: 'empty-state' },
-          'No source data available -- check /api/v1/health',
-        ),
+          'No source data available'),
       );
       return;
     }
@@ -72,17 +71,21 @@ export class SourcesPanel extends Panel {
     replaceChildren(this.content, ...rows);
   }
 
-  private buildSourceRow(s: SubsystemStatus): HTMLElement {
+  private buildSourceRow(s: SourceStatusDTO): HTMLElement {
     const dotClass = s.healthy ? 'status-dot healthy' : 'status-dot unhealthy';
-    const staleness = stalenessClass(s.checked_at);
-    const checkedAgo = relativeTime(s.checked_at);
-    const detail = s.detail ?? '';
+    const staleness = stalenessClass(s.last_update);
+    const lastUpdateText = s.last_update ? relativeTime(s.last_update) : 'never';
 
     return h('div', { className: 'source-row' },
       h('span', { className: dotClass }),
       h('span', { className: 'source-name' }, s.name),
-      h('span', { className: `source-staleness ${staleness}` }, checkedAgo),
-      detail ? h('span', { className: 'source-detail' }, detail) : null,
+      h('span', { className: `source-staleness ${staleness}` }, lastUpdateText),
+      s.events_last_run > 0
+        ? h('span', { className: 'source-count' }, `${s.events_last_run} events`)
+        : null,
+      s.detail
+        ? h('span', { className: 'source-detail' }, s.detail)
+        : null,
     );
   }
 }
