@@ -127,6 +127,22 @@ export interface PolymarketComparison {
   resolved_at: string | null;
 }
 
+// --- search.py ---
+
+/** GET /forecasts/search result item. */
+export interface SearchResult {
+  forecast: ForecastResponse;
+  relevance: number;
+}
+
+/** GET /forecasts/search response. */
+export interface SearchResponse {
+  results: SearchResult[];
+  total: number;
+  query: string;
+  suggestions: string[] | null;
+}
+
 /** Full response from GET /api/v1/calibration/polymarket. */
 export interface PolymarketComparisonResponse {
   active: PolymarketComparison[];

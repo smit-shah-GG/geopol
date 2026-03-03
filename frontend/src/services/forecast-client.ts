@@ -16,6 +16,7 @@ import type {
   HealthResponse,
   PaginatedResponse,
   PolymarketComparisonResponse,
+  SearchResponse,
 } from '@/types/api.ts';
 import {
   type BreakerDataState,
@@ -211,6 +212,24 @@ export class ForecastServiceClient {
       method: 'POST',
       body: JSON.stringify(body),
     });
+  }
+
+  /**
+   * GET /forecasts/search -- full-text search with optional country/category filters.
+   * NOT deduplicated (search terms change rapidly with each keystroke).
+   * NOT circuit-broken (user expects immediate search feedback).
+   * Caller passes AbortSignal for race condition prevention via AbortController.
+   */
+  async search(
+    q: string,
+    options?: { country?: string; category?: string; limit?: number; signal?: AbortSignal },
+  ): Promise<SearchResponse> {
+    const params = new URLSearchParams({ q });
+    if (options?.country) params.set('country', options.country);
+    if (options?.category) params.set('category', options.category);
+    if (options?.limit) params.set('limit', String(options.limit));
+    const path = `/forecasts/search?${params.toString()}`;
+    return this.fetchJson<SearchResponse>(path, { signal: options?.signal });
   }
 
   // -----------------------------------------------------------------------
