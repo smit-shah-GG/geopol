@@ -5,25 +5,25 @@
 See: .planning/PROJECT.md (updated 2026-03-02)
 
 **Core value:** Explainability -- every forecast must provide clear, traceable reasoning paths
-**Current focus:** Phase 14 -- Backend API Hardening
+**Current focus:** Phase 14 complete -- Backend API Hardening delivered
 
 ## Current Position
 
 Milestone: v2.1 Production UX & Live Data Integration
-Phase: 14 of 16 (Backend API Hardening)
-Plan: 03 of 04 (01, 02, 03 complete)
-Status: In progress
-Last activity: 2026-03-03 -- Completed 14-02-PLAN.md (Country Risk Aggregation Endpoint)
+Phase: 14 of 16 (Backend API Hardening) -- COMPLETE
+Plan: 04 of 04 (all complete)
+Status: Phase complete
+Last activity: 2026-03-03 -- Completed 14-04-PLAN.md (Question Submission Queue)
 
-Progress: [############################################........] 87% (52/60 plans lifetime)
-v2.1:    [###.......] 25% (3/12 plans)
+Progress: [#############################################.......] 88% (53/60 plans lifetime)
+v2.1:    [####......] 33% (4/12 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 52
+- Total plans completed: 53
 - Average duration: 11 minutes
-- Total execution time: 9.71 hours
+- Total execution time: 9.78 hours
 
 **By Phase:**
 
@@ -42,10 +42,10 @@ v2.1:    [###.......] 25% (3/12 plans)
 | 11-tkg-predictor-replacement | 3 | 21min | 7min |
 | 12-wm-derived-frontend | 7 | 36min | 5min |
 | 13-calibration-monitoring-hardening | 7 | 27min | 4min |
-| 14-backend-api-hardening | 3 | 13min | 4min |
+| 14-backend-api-hardening | 4 | 17min | 4min |
 
 **Recent Trend:**
-- Last 4 plans: 13-06 (6min), 14-01 (5min), 14-03 (3min), 14-02 (5min)
+- Last 4 plans: 14-01 (5min), 14-03 (3min), 14-02 (5min), 14-04 (4min)
 - Trend: Stable at ~4-5min/plan
 
 ## Accumulated Context
@@ -68,6 +68,10 @@ Key decisions affecting current work:
 - Nullable suggestions field in SearchResponse -- prevents breaking DTO change when LLM suggestions added later (2026-03-03)
 - sqlalchemy.text() for CTE country risk query -- 4-CTE analytical query unreadable as Core expressions (2026-03-03)
 - top_question renamed to top_forecast -- breaking change for frontend TypeScript types, deferred to Phase 15 (2026-03-03)
+- asyncio.Semaphore(3) over Celery/Redis queue for submission worker -- single-server deployment (2026-03-03)
+- Two-phase submit/confirm flow -- user reviews LLM-parsed interpretation before committing API budget (2026-03-03)
+- SELECT FOR UPDATE SKIP LOCKED for worker request claiming -- no blocking, no double-pickup (2026-03-03)
+- Graceful LLM parse fallback to defaults -- failed parse must never block submission (2026-03-03)
 
 ### Deferred Issues
 
@@ -85,6 +89,6 @@ Key decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-03-03
-Stopped at: Completed 14-02-PLAN.md (Country Risk Aggregation Endpoint)
+Stopped at: Completed 14-04-PLAN.md (Question Submission Queue) -- Phase 14 complete
 Resume file: None
-Next: `/gsd:execute-phase 14-04` -- Pagination + Filtering Hardening
+Next: `/gsd:plan-phase 15` -- URL Routing & Dashboard
