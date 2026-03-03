@@ -5,25 +5,25 @@
 See: .planning/PROJECT.md (updated 2026-03-02)
 
 **Core value:** Explainability -- every forecast must provide clear, traceable reasoning paths
-**Current focus:** Phase 17 in progress -- Live Data Feeds & Country Depth
+**Current focus:** Phase 17 complete -- Phase 18 next (Polymarket-Driven Forecasting)
 
 ## Current Position
 
 Milestone: v2.1 Production UX & Live Data Integration
 Phase: 17 of 18 (Live Data Feeds & Country Depth)
-Plan: 02 of 03
-Status: In progress
-Last activity: 2026-03-04 -- Completed 17-02-PLAN.md (Backend API Routes + Ingestion Daemons)
+Plan: 03 of 03
+Status: Phase complete
+Last activity: 2026-03-04 -- Completed 17-03-PLAN.md (Frontend Wiring)
 
-Progress: [##################################################] 98% (61/62 plans lifetime)
-v2.1:    [###########] 92% (12/13 plans)
+Progress: [####################################################] 100% (62/62 plans lifetime)
+v2.1:    [#############] 100% (13/13 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 61
+- Total plans completed: 62
 - Average duration: 11 minutes
-- Total execution time: 10.70 hours
+- Total execution time: 10.82 hours
 
 **By Phase:**
 
@@ -46,11 +46,11 @@ v2.1:    [###########] 92% (12/13 plans)
 | 15-url-routing-dashboard | 3 | 20min | 7min |
 
 | 16-globe-forecasts-screens | 3 | 16min | 5min |
-| 17-live-data-feeds-country-depth | 2 | 19min | 10min |
+| 17-live-data-feeds-country-depth | 3 | 26min | 9min |
 
 **Recent Trend:**
-- Last 4 plans: 16-03 (5min), 17-01 (7min), 17-02 (12min)
-- Trend: 17-02 slower due to content filter recovery on advisory poller
+- Last 4 plans: 17-01 (7min), 17-02 (12min), 17-03 (7min)
+- Trend: Consistent 7-12min range for Phase 17 frontend+backend wiring
 
 ## Accumulated Context
 
@@ -98,6 +98,12 @@ Key decisions affecting current work:
 - ACLED uses key+email query params (NOT OAuth2) per ACLED API docs (2026-03-04)
 - EU EEAS dropped from advisory sources -- no structured API exists (2026-03-04)
 - FCDO per-country fetches bounded by Semaphore(5) + 0.3s delay to respect GOV.UK rate limits (2026-03-04)
+- Events breaker independent from forecast breaker -- different failure modes (high-freq events vs low-freq forecasts) (2026-03-04)
+- SourcesPanel self-refreshes via /sources at 60s -- decoupled from health push (2026-03-04)
+- EventTimelinePanel renamed to EVENT FEED (multi-source: GDELT + ACLED) (2026-03-04)
+- CountryBriefPage lazy tab loading with null sentinel pattern (null=not loaded, []=loaded empty) (2026-03-04)
+- Client-side actor aggregation from 200-event window -- avoids dedicated backend endpoint (2026-03-04)
+- SourcesPanel push from health refresh replaced by independent /sources self-refresh (supersedes 2026-03-03 decision) (2026-03-04)
 
 ### Deferred Issues
 
@@ -121,6 +127,6 @@ Key decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-03-04
-Stopped at: Completed 17-02-PLAN.md (Backend API Routes + Ingestion Daemons)
+Stopped at: Completed 17-03-PLAN.md (Frontend Wiring) -- Phase 17 complete
 Resume file: None
-Next: Execute 17-03-PLAN.md (Frontend wiring: TypeScript types, panel data, country tabs)
+Next: /gsd:discuss-phase 18 (Polymarket-Driven Forecasting)
