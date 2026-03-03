@@ -13,9 +13,10 @@ keyword filter), and Gemini budget enforcement.
 All endpoints require API key authentication via ``verify_api_key``.
 
 Endpoints:
-    GET  /forecasts/{forecast_id}        -- Single forecast by ID (cache + DB)
-    GET  /forecasts/country/{iso_code}   -- Forecasts by country (cache + DB)
     GET  /forecasts/top                  -- Top risk forecasts (cache + DB)
+    GET  /forecasts/search               -- Full-text search (tsvector + GIN)
+    GET  /forecasts/country/{iso_code}   -- Forecasts by country (cache + DB)
+    GET  /forecasts/{forecast_id}        -- Single forecast by ID (cache + DB)
     POST /forecasts                      -- Live EnsemblePredictor + persist + cache
 """
 
@@ -28,6 +29,7 @@ from typing import Optional
 import redis.asyncio as aioredis
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.deps import get_cache, get_db, get_redis
@@ -48,6 +50,8 @@ from src.api.middleware.sanitize import (
 )
 from src.api.schemas.common import PaginatedResponse
 from src.api.schemas.forecast import ForecastResponse
+from src.api.schemas.search import SearchResponse, SearchResult
+from src.db.models import Prediction
 from src.api.services.cache_service import (
     FULL_FORECAST_TTL,
     SUMMARY_TTL,
@@ -161,6 +165,71 @@ async def get_top_forecasts(
         return forecasts[:limit]
 
     return []
+
+
+@router.get(
+    "/search",
+    response_model=SearchResponse,
+    summary="Search forecasts",
+    description=(
+        "Full-text search over forecast questions using PostgreSQL tsvector + GIN index. "
+        "Supports optional country and category filters. Results ranked by ts_rank relevance."
+    ),
+)
+async def search_forecasts(
+    q: str = Query(
+        ..., min_length=2, max_length=200, description="Search query text"
+    ),
+    country: Optional[str] = Query(
+        default=None, description="Filter by country ISO code"
+    ),
+    category: Optional[str] = Query(
+        default=None, description="Filter by forecast category"
+    ),
+    limit: int = Query(default=20, ge=1, le=50, description="Maximum results"),
+    _client: str = Depends(verify_api_key),
+    db: AsyncSession = Depends(get_db),
+) -> SearchResponse:
+    """Full-text search over forecast questions with optional filters.
+
+    Uses PostgreSQL ``plainto_tsquery`` for safe natural-language input parsing
+    (no injection risk from raw tsquery syntax) and ``ts_rank`` for relevance
+    ordering. The GIN index on ``question_tsv`` (migration 004) ensures sub-200ms
+    queries even at thousands of predictions.
+
+    Returns empty results (HTTP 200) for queries that match nothing or produce
+    empty tsqueries (e.g., all stop-words).
+    """
+    query_ts = func.plainto_tsquery("english", q)
+
+    # Build base query: match tsvector and compute relevance
+    rank_expr = func.ts_rank(Prediction.question_tsv, query_ts)
+    stmt = select(Prediction, rank_expr.label("relevance")).where(
+        Prediction.question_tsv.op("@@")(query_ts)
+    )
+
+    # Optional filters
+    if country:
+        stmt = stmt.where(Prediction.country_iso == country.upper())
+    if category:
+        stmt = stmt.where(Prediction.category == category)
+
+    # Total count before pagination
+    count_stmt = select(func.count()).select_from(stmt.subquery())
+    total = (await db.execute(count_stmt)).scalar_one()
+
+    # Order by relevance descending, apply limit
+    stmt = stmt.order_by(rank_expr.desc()).limit(limit)
+
+    result = await db.execute(stmt)
+    rows = result.all()
+
+    results: list[SearchResult] = []
+    for prediction, relevance in rows:
+        dto = ForecastService.prediction_to_dto(prediction)
+        results.append(SearchResult(forecast=dto, relevance=float(relevance)))
+
+    return SearchResponse(results=results, total=total, query=q)
 
 
 @router.get(
