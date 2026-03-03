@@ -11,19 +11,19 @@ See: .planning/PROJECT.md (updated 2026-03-02)
 
 Milestone: v2.1 Production UX & Live Data Integration
 Phase: 14 of 16 (Backend API Hardening)
-Plan: --
-Status: Ready to plan
-Last activity: 2026-03-02 -- v2.1 roadmap created (3 phases, 17 requirements)
+Plan: 01 of 04
+Status: In progress
+Last activity: 2026-03-03 -- Completed 14-01-PLAN.md (Schema Foundation + Fixture Removal)
 
-Progress: [##########################################] 100% (13/13 phases lifetime)
-v2.1:    [..........] 0% (0/3 phases)
+Progress: [##########################################..........] 83% (50/60 plans lifetime)
+v2.1:    [###.......] 8% (1/12 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 49
+- Total plans completed: 50
 - Average duration: 12 minutes
-- Total execution time: 9.50 hours
+- Total execution time: 9.58 hours
 
 **By Phase:**
 
@@ -42,9 +42,10 @@ v2.1:    [..........] 0% (0/3 phases)
 | 11-tkg-predictor-replacement | 3 | 21min | 7min |
 | 12-wm-derived-frontend | 7 | 36min | 5min |
 | 13-calibration-monitoring-hardening | 7 | 27min | 4min |
+| 14-backend-api-hardening | 1 | 5min | 5min |
 
 **Recent Trend:**
-- Last 4 plans: 13-04 (4min), 13-05 (3min), 13-07 (4min), 13-06 (6min)
+- Last 4 plans: 13-05 (3min), 13-07 (4min), 13-06 (6min), 14-01 (5min)
 - Trend: Stable at ~4-6min/plan
 
 ## Accumulated Context
@@ -60,6 +61,9 @@ Key decisions affecting current work:
 - Kill mock fixture fallback in forecasts.py -- return empty results when no data (2026-03-02)
 - Real country risk from PostgreSQL aggregation of predictions table -- not hardcoded list (2026-03-02)
 - Scenario tree node text: short label (~40 chars) + tooltip, not multiline text boxes (2026-03-02)
+- use_fixtures=False by default; production never sees fixture data (2026-03-03)
+- question_tsv uses GENERATED ALWAYS AS ... STORED rather than trigger-maintained (2026-03-03)
+- Bare except blocks removed from GET production paths; PostgreSQL errors propagate to 500 (2026-03-03)
 
 ### Deferred Issues
 
@@ -67,6 +71,7 @@ Key decisions affecting current work:
 - PostgreSQL tests (8 tests in test_forecast_persistence.py and test_concurrent_db.py) skip until Docker is running
 - TKG entity resolution mismatch: GDELT actor codes (USA, GOV) vs LLM entity names (US Department of the Treasury) -- structural gap requiring normalization layer
 - Mobile/responsive layout deferred -- three screens + globe = poor mobile experience
+- Migration 004 must be applied before persistence tests pass: `uv run alembic upgrade head`
 
 ### Blockers/Concerns
 
@@ -75,7 +80,7 @@ Key decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-03-02
-Stopped at: v2.1 roadmap created -- 3 phases (14-16), 17 requirements mapped
+Last session: 2026-03-03
+Stopped at: Completed 14-01-PLAN.md (Schema Foundation + Fixture Removal)
 Resume file: None
-Next: `/gsd:plan-phase 14` -- Backend API Hardening
+Next: `/gsd:execute-phase 14-02` -- Country Risk Aggregation Endpoint
