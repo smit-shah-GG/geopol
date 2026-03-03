@@ -5,25 +5,25 @@
 See: .planning/PROJECT.md (updated 2026-03-02)
 
 **Core value:** Explainability -- every forecast must provide clear, traceable reasoning paths
-**Current focus:** Phase 16 complete -- Globe & Forecasts Screens delivered
+**Current focus:** Phase 17 in progress -- Live Data Feeds & Country Depth
 
 ## Current Position
 
 Milestone: v2.1 Production UX & Live Data Integration
-Phase: 16 of 18 (Globe & Forecasts Screens) -- COMPLETE
-Plan: 03 of 03
-Status: Phase complete
-Last activity: 2026-03-03 -- Completed quick task 002: Post-Phase 16 UX fixes
+Phase: 17 of 18 (Live Data Feeds & Country Depth)
+Plan: 01 of TBD
+Status: In progress
+Last activity: 2026-03-04 -- Completed 17-01-PLAN.md (Data Layer Foundation)
 
-Progress: [##################################################] 98% (59/60 plans lifetime)
-v2.1:    [##########] 83% (10/12 plans)
+Progress: [##################################################] 98% (60/TBD plans lifetime)
+v2.1:    [###########] 85% (11/13+ plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 59
+- Total plans completed: 60
 - Average duration: 11 minutes
-- Total execution time: 10.38 hours
+- Total execution time: 10.50 hours
 
 **By Phase:**
 
@@ -46,10 +46,11 @@ v2.1:    [##########] 83% (10/12 plans)
 | 15-url-routing-dashboard | 3 | 20min | 7min |
 
 | 16-globe-forecasts-screens | 3 | 16min | 5min |
+| 17-live-data-feeds-country-depth | 1 | 7min | 7min |
 
 **Recent Trend:**
-- Last 4 plans: 16-01 (5min), 16-02 (6min), 16-03 (5min)
-- Trend: Consistent 5-6min -- UI component construction on established codebase
+- Last 4 plans: 16-02 (6min), 16-03 (5min), 17-01 (7min)
+- Trend: Consistent 5-7min -- data layer + DTO construction
 
 ## Accumulated Context
 
@@ -90,6 +91,9 @@ Key decisions affecting current work:
 - Globe drill-down uses country-brief-requested event (not country-selected) to open CountryBriefPage (2026-03-03)
 - LayerPillBar in separate Vite chunk (1.13 kB) -- only loaded on /globe route (2026-03-03)
 - getTopForecasts(50) for globe (vs 10 for dashboard) -- more markers for scatter layer (2026-03-03)
+- Generic keyset cursor (encode_keyset_cursor/decode_keyset_cursor) alongside existing forecast cursor -- no breaking changes (2026-03-04)
+- Event backfill yields 0 results (1.37M rows have NULL raw_json) -- country_iso populates on new ingestion only (2026-03-04)
+- query_top_actors uses UNION ALL actor1+actor2 with GROUP BY dedup for bilateral actor coverage (2026-03-04)
 
 ### Deferred Issues
 
@@ -112,7 +116,7 @@ Key decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-03-03
-Stopped at: Completed quick task 002: Post-Phase 16 UX fixes (6 issues)
+Last session: 2026-03-04
+Stopped at: Completed 17-01-PLAN.md (Data Layer Foundation)
 Resume file: None
-Next: `/gsd:discuss-phase 17` -- Live Data Feeds & Country Depth (then Phase 18: Polymarket-Driven Forecasting)
+Next: Execute 17-02-PLAN.md (API routes for events/articles/advisories/sources)
