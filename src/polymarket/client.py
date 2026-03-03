@@ -240,6 +240,38 @@ class PolymarketClient:
             self._record_failure(exc)
             return []
 
+    async def fetch_top_geopolitical(self, limit: int = 10) -> list[dict]:
+        """Return the top geopolitical events sorted by volume descending.
+
+        Fetches the full geo-filtered event set (up to 200), then sorts by
+        ``volume`` (string -> float, default 0.0) descending with ``liquidity``
+        as secondary sort key. Returns at most ``limit`` events.
+
+        Never raises. Returns empty list on upstream failure or empty data.
+        """
+        try:
+            events = await self.fetch_geopolitical_markets(limit=200)
+        except Exception:
+            # fetch_geopolitical_markets already swallows; belt-and-suspenders
+            return []
+
+        if not events:
+            return []
+
+        def _sort_key(e: dict) -> tuple[float, float]:
+            try:
+                vol = float(e.get("volume", "0") or "0")
+            except (ValueError, TypeError):
+                vol = 0.0
+            try:
+                liq = float(e.get("liquidity", "0") or "0")
+            except (ValueError, TypeError):
+                liq = 0.0
+            return (vol, liq)
+
+        events.sort(key=_sort_key, reverse=True)
+        return events[:limit]
+
     async def fetch_event_prices(self, event_id: str) -> list[dict]:
         """Fetch current market prices for a specific event.
 

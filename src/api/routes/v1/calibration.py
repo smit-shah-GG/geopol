@@ -69,6 +69,28 @@ class PolymarketComparisonResponse(BaseModel):
     seeking_more_matches: bool
 
 
+class PolymarketTopEventItem(BaseModel):
+    """Single event from GET /calibration/polymarket/top."""
+
+    event_id: str
+    title: str
+    slug: str
+    volume: float
+    liquidity: float
+    # Optional Geopol match data (None when no comparison row exists)
+    geopol_prediction_id: str | None = None
+    geopol_probability: float | None = None
+    geopol_question: str | None = None
+    match_confidence: float | None = None
+
+
+class PolymarketTopResponse(BaseModel):
+    """Full response for GET /calibration/polymarket/top."""
+
+    events: list[PolymarketTopEventItem]
+    total_geo_markets: int  # Geo events before top-N cut
+
+
 class CalibrationWeightItem(BaseModel):
     """Current calibration weight for a CAMEO code."""
 
@@ -143,6 +165,100 @@ async def get_polymarket_comparisons(
         summary=summary,
         seeking_more_matches=seeking,
     )
+
+
+@router.get(
+    "/polymarket/top",
+    response_model=PolymarketTopResponse,
+    summary="Top geopolitical Polymarket events by volume",
+    description=(
+        "Returns the top 10 geopolitical Polymarket events sorted by trading "
+        "volume, with optional Geopol forecast match data for cross-referencing."
+    ),
+)
+async def get_polymarket_top(
+    _client: str = Depends(verify_api_key),
+    db: AsyncSession = Depends(get_db),
+) -> PolymarketTopResponse:
+    """Fetch top geopolitical Polymarket events and cross-reference with Geopol predictions."""
+    from src.db.models import PolymarketComparison, Prediction
+    from src.polymarket.client import PolymarketClient
+
+    client = PolymarketClient()
+    try:
+        all_geo = await client.fetch_geopolitical_markets(limit=200)
+        top_events = await client.fetch_top_geopolitical(limit=10)
+    finally:
+        await client.close()
+
+    total_geo = len(all_geo)
+
+    # Gather event IDs from top events for DB lookup
+    top_event_ids = [str(e.get("id", "")) for e in top_events if e.get("id")]
+
+    # Cross-reference: find active comparisons for these event IDs
+    comparison_map: dict[str, tuple[str, float, float | None, str | None]] = {}
+    if top_event_ids:
+        stmt = (
+            select(
+                PolymarketComparison.polymarket_event_id,
+                PolymarketComparison.geopol_prediction_id,
+                PolymarketComparison.match_confidence,
+                PolymarketComparison.geopol_probability,
+            )
+            .where(PolymarketComparison.polymarket_event_id.in_(top_event_ids))
+            .where(PolymarketComparison.status == "active")
+        )
+        result = await db.execute(stmt)
+        rows = result.all()
+
+        # For matched rows, also fetch prediction question text
+        pred_ids = [r[1] for r in rows]
+        question_map: dict[str, str] = {}
+        if pred_ids:
+            pred_stmt = select(Prediction.id, Prediction.question).where(
+                Prediction.id.in_(pred_ids)
+            )
+            pred_result = await db.execute(pred_stmt)
+            question_map = {r[0]: r[1] for r in pred_result.all()}
+
+        for event_id, pred_id, confidence, geopol_prob in rows:
+            comparison_map[event_id] = (
+                pred_id,
+                confidence,
+                geopol_prob,
+                question_map.get(pred_id),
+            )
+
+    # Build response items
+    items: list[PolymarketTopEventItem] = []
+    for event in top_events:
+        event_id = str(event.get("id", ""))
+        try:
+            volume = float(event.get("volume", "0") or "0")
+        except (ValueError, TypeError):
+            volume = 0.0
+        try:
+            liquidity = float(event.get("liquidity", "0") or "0")
+        except (ValueError, TypeError):
+            liquidity = 0.0
+
+        match = comparison_map.get(event_id)
+        items.append(
+            PolymarketTopEventItem(
+                event_id=event_id,
+                title=event.get("title", ""),
+                slug=event.get("slug", ""),
+                volume=volume,
+                liquidity=liquidity,
+                geopol_prediction_id=match[0] if match else None,
+                geopol_probability=match[2] if match else None,
+                geopol_question=match[3] if match else None,
+                match_confidence=match[1] if match else None,
+            )
+        )
+
+    return PolymarketTopResponse(events=items, total_geo_markets=total_geo)
 
 
 @router.get(

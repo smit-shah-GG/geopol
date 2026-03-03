@@ -383,6 +383,10 @@ export class DeckGLMap {
 
     this.map.on('load', () => {
       this.initDeckOverlay();
+      // Force MapLibre to recalculate viewport dimensions.
+      // Container may not have had final computed dimensions at construction
+      // time (e.g., absolutely-positioned parent not yet laid out).
+      this.map!.resize();
     });
 
     // WebGL context loss/restore

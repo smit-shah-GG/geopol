@@ -94,7 +94,10 @@ export class RefreshScheduler implements AppModule {
     };
 
     this.refreshRunners.set(name, { run, intervalMs });
-    scheduleNext(computeDelay(intervalMs, document.visibilityState === 'hidden'));
+    // Fire first tick immediately (delay=0). Subsequent ticks use normal
+    // interval via the run() finally block. Safe because forecastClient
+    // dedup returns the same promise for concurrent identical requests.
+    scheduleNext(0);
   }
 
   flushStaleRefreshes(): void {
