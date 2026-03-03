@@ -255,7 +255,7 @@ def create_mock_country_risk(
         iso_code=iso_code,
         risk_score=risk_score,
         forecast_count=forecast_count,
-        top_question=f"Will a significant event occur in {iso_code} within 30 days?",
+        top_forecast=f"Will a significant event occur in {iso_code} within 30 days?",
         top_probability=round(random.uniform(0.2, 0.8), 2),
         trend=trend,  # type: ignore[arg-type]
         last_updated=now,
