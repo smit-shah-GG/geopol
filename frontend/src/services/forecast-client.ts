@@ -13,6 +13,7 @@
 import type {
   AdvisoryDTO,
   ArticleDTO,
+  ComparisonPanelResponse,
   ConfirmSubmissionResponse,
   CountryRiskSummary,
   EventDTO,
@@ -24,6 +25,7 @@ import type {
   PolymarketComparisonResponse,
   PolymarketTopResponse,
   SearchResponse,
+  SnapshotResponse,
   SourceStatusDTO,
 } from '@/types/api.ts';
 import {
@@ -87,6 +89,7 @@ const EMPTY_EVENTS: PaginatedResponse<EventDTO> = { items: [], next_cursor: null
 const EMPTY_ARTICLES: PaginatedResponse<ArticleDTO> = { items: [], next_cursor: null, has_more: false };
 const EMPTY_SOURCES: SourceStatusDTO[] = [];
 const EMPTY_ADVISORIES: AdvisoryDTO[] = [];
+const EMPTY_COMPARISONS: ComparisonPanelResponse = { comparisons: [], total: 0 };
 
 // ---------------------------------------------------------------------------
 // ForecastServiceClient
@@ -395,6 +398,35 @@ export class ForecastServiceClient {
         EMPTY_ADVISORIES,
       ),
     ) as Promise<AdvisoryDTO[]>;
+  }
+
+  // -----------------------------------------------------------------------
+  // Polymarket comparisons (Phase 18)
+  // -----------------------------------------------------------------------
+
+  /** GET /calibration/polymarket/comparisons -- all comparisons for ComparisonPanel. */
+  async getComparisons(): Promise<ComparisonPanelResponse> {
+    const key = '/calibration/polymarket/comparisons';
+    return this.dedup(key, () =>
+      this.forecastBreaker.execute(
+        () => this.fetchJson<ComparisonPanelResponse>(key),
+        EMPTY_COMPARISONS,
+      ),
+    ) as Promise<ComparisonPanelResponse>;
+  }
+
+  /** GET /calibration/polymarket/comparisons/{id}/snapshots -- sparkline data. */
+  async getSnapshots(comparisonId: number, limit?: number): Promise<SnapshotResponse> {
+    const params = limit ? `?limit=${limit}` : '';
+    const path = `/calibration/polymarket/comparisons/${comparisonId}/snapshots${params}`;
+    // NOT deduplicated (called on card expand, not polled)
+    // NOT circuit-broken (user-initiated, expects immediate feedback)
+    try {
+      return await this.fetchJson<SnapshotResponse>(path);
+    } catch (e: unknown) {
+      console.warn('[forecast-client] getSnapshots failed:', e);
+      return { comparison_id: comparisonId, snapshots: [], total_available: 0 };
+    }
   }
 
   // -----------------------------------------------------------------------

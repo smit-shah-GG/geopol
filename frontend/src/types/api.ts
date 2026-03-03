@@ -61,6 +61,7 @@ export interface ForecastResponse {
   calibration: CalibrationDTO;
   created_at: string;
   expires_at: string;
+  polymarket_comparison: PolymarketComparisonData | null;
 }
 
 // --- country.py ---
@@ -209,6 +210,61 @@ export interface PolymarketTopEvent {
 export interface PolymarketTopResponse {
   events: PolymarketTopEvent[];
   total_geo_markets: number;
+}
+
+/** Polymarket comparison data attached to a ForecastResponse. */
+export interface PolymarketComparisonData {
+  comparison_id: number;
+  polymarket_event_id: string;
+  polymarket_title: string;
+  polymarket_price: number | null;
+  geopol_probability: number | null;
+  divergence: number | null;
+  provenance: 'polymarket_driven' | 'polymarket_tracked';
+  status: 'active' | 'resolved';
+  polymarket_slug: string;
+  geopol_brier: number | null;
+  polymarket_brier: number | null;
+}
+
+/** Single entry in the ComparisonPanel. */
+export interface ComparisonPanelItem {
+  id: number;
+  polymarket_event_id: string;
+  polymarket_slug: string;
+  polymarket_title: string;
+  geopol_prediction_id: string;
+  match_confidence: number;
+  polymarket_price: number | null;
+  geopol_probability: number | null;
+  divergence: number | null;
+  status: 'active' | 'resolved';
+  provenance: 'polymarket_driven' | 'polymarket_tracked';
+  geopol_brier: number | null;
+  polymarket_brier: number | null;
+  polymarket_outcome: number | null;
+  resolved_at: string | null;
+  created_at: string;
+}
+
+/** Response from GET /calibration/polymarket/comparisons. */
+export interface ComparisonPanelResponse {
+  comparisons: ComparisonPanelItem[];
+  total: number;
+}
+
+/** Single sparkline data point. */
+export interface SnapshotPoint {
+  polymarket_price: number;
+  geopol_probability: number;
+  captured_at: string;
+}
+
+/** Response from GET /calibration/polymarket/comparisons/{id}/snapshots. */
+export interface SnapshotResponse {
+  comparison_id: number;
+  snapshots: SnapshotPoint[];
+  total_available: number;
 }
 
 // --- event.py ---
