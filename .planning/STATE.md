@@ -12,18 +12,18 @@ See: .planning/PROJECT.md (updated 2026-03-02)
 Milestone: v2.1 Production UX & Live Data Integration
 Phase: 15 of 16 (URL Routing & Dashboard)
 Plan: 03 of 03
-Status: Phase complete (pending 15-02 parallel commit)
-Last activity: 2026-03-03 -- Completed 15-03-PLAN.md (Dashboard Panels: MyForecasts + Sources)
+Status: Phase complete
+Last activity: 2026-03-03 -- Completed 15-02-PLAN.md (Forecast UX: Progressive Disclosure + Search + Tooltip)
 
-Progress: [###############################################.....] 92% (55/60 plans lifetime)
-v2.1:    [######....] 50% (6/12 plans)
+Progress: [################################################....] 93% (56/60 plans lifetime)
+v2.1:    [######....] 58% (7/12 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 55
+- Total plans completed: 56
 - Average duration: 11 minutes
-- Total execution time: 10.00 hours
+- Total execution time: 10.12 hours
 
 **By Phase:**
 
@@ -43,11 +43,11 @@ v2.1:    [######....] 50% (6/12 plans)
 | 12-wm-derived-frontend | 7 | 36min | 5min |
 | 13-calibration-monitoring-hardening | 7 | 27min | 4min |
 | 14-backend-api-hardening | 4 | 17min | 4min |
-| 15-url-routing-dashboard | 2 | 13min | 7min |
+| 15-url-routing-dashboard | 3 | 20min | 7min |
 
 **Recent Trend:**
-- Last 4 plans: 14-04 (4min), 15-01 (9min), 15-03 (4min)
-- Trend: 15-03 fast execution -- straightforward panel creation following established patterns
+- Last 4 plans: 15-01 (9min), 15-02 (7min), 15-03 (4min)
+- Trend: Phase 15 consistent 4-9min -- UI component work following established patterns
 
 ## Accumulated Context
 
@@ -79,6 +79,10 @@ Key decisions affecting current work:
 - SourcesPanel receives data via push from health refresh -- no independent /health calls (2026-03-03)
 - getRequests() shares health circuit breaker group -- low-priority polling endpoint (2026-03-03)
 - Mutations (submitQuestion, confirmSubmission) bypass dedup and circuit breaker for immediate feedback (2026-03-03)
+- Diff-based DOM updates in ForecastPanel via cardElements Map -- preserves expanded state across 60s refresh (2026-03-03)
+- Mini d3 tree limited to 2 depth levels with 20-char labels -- preview only, full detail in ScenarioExplorer (2026-03-03)
+- SearchBar as standalone class (not Panel subclass) -- no header/resize/badge overhead for inline control (2026-03-03)
+- ScenarioExplorer tooltip uses HTML div positioned via pageX/pageY -- not SVG title (2026-03-03)
 
 ### Deferred Issues
 
@@ -96,6 +100,6 @@ Key decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-03-03
-Stopped at: Completed 15-03-PLAN.md (Dashboard Panels: MyForecasts + Sources)
+Stopped at: Completed 15-02-PLAN.md (Forecast UX: Progressive Disclosure + Search + Tooltip)
 Resume file: None
 Next: Phase 15 complete -- proceed to /gsd:plan-phase 16
