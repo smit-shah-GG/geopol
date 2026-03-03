@@ -9,6 +9,7 @@ Tables:
     ingest_runs                -- Micro-batch GDELT ingest audit trail
     api_keys                   -- Per-client API key authentication
     pending_questions          -- Queued questions for budget-exhaustion carryover
+    forecast_requests          -- User-submitted forecast request queue + tracking
     polymarket_comparisons     -- Paired geopol-vs-Polymarket forecast tracking
     polymarket_snapshots       -- Time-series price/probability snapshots per comparison
 """
@@ -21,6 +22,7 @@ from typing import Any, Optional
 
 from sqlalchemy import (
     Boolean,
+    Computed,
     DateTime,
     Float,
     ForeignKey,
@@ -29,7 +31,7 @@ from sqlalchemy import (
     String,
     Text,
 )
-from sqlalchemy.dialects.postgresql import JSON
+from sqlalchemy.dialects.postgresql import JSON, TSVECTOR
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -88,6 +90,13 @@ class Prediction(Base):
     )
     expires_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False
+    )
+
+    # Full-text search on question -- generated column, GIN-indexed in migration 004
+    question_tsv = mapped_column(
+        TSVECTOR,
+        Computed("to_tsvector('english', question)", persisted=True),
+        nullable=True,
     )
 
     __table_args__ = (
@@ -207,6 +216,58 @@ class PendingQuestion(Base):
         return (
             f"<PendingQuestion(id={self.id}, category={self.category!r}, "
             f"status={self.status!r})>"
+        )
+
+
+class ForecastRequest(Base):
+    """User-submitted forecast request tracking through the generation pipeline.
+
+    Lifecycle: pending -> confirmed -> processing -> complete | failed.
+    Supports multi-country questions (country_iso_list is a JSON array of ISO codes).
+    Each country generates a separate Prediction row; prediction_ids links back.
+    """
+
+    __tablename__ = "forecast_requests"
+
+    id: Mapped[str] = mapped_column(
+        String(36), primary_key=True, default=_new_uuid
+    )
+    question: Mapped[str] = mapped_column(Text, nullable=False)
+    country_iso_list: Mapped[list[Any]] = mapped_column(
+        JSON, nullable=False, default=list
+    )
+    horizon_days: Mapped[int] = mapped_column(Integer, nullable=False, default=30)
+    category: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="GENERAL"
+    )
+    status: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="pending"
+    )  # pending | confirmed | processing | complete | failed
+    submitted_by: Mapped[str] = mapped_column(String(100), nullable=False)
+    submitted_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow
+    )
+    prediction_ids: Mapped[list[Any]] = mapped_column(
+        JSON, nullable=False, default=list
+    )
+    error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    retry_count: Mapped[int] = mapped_column(Integer, default=0)
+    parsed_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    completed_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    __table_args__ = (
+        Index("ix_forecast_requests_submitted_by", "submitted_by"),
+        Index("ix_forecast_requests_status", "status"),
+    )
+
+    def __repr__(self) -> str:
+        return (
+            f"<ForecastRequest(id={self.id!r}, status={self.status!r}, "
+            f"submitted_by={self.submitted_by!r})>"
         )
 
 
