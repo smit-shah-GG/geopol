@@ -92,6 +92,15 @@ class Prediction(Base):
         DateTime(timezone=True), nullable=False
     )
 
+    # Provenance: None (organic), "polymarket_driven", "polymarket_tracked"
+    provenance: Mapped[Optional[str]] = mapped_column(
+        String(30), nullable=True, index=True
+    )
+    # Direct dedup lookup for Polymarket-driven forecasts
+    polymarket_event_id: Mapped[Optional[str]] = mapped_column(
+        String(100), nullable=True, index=True
+    )
+
     # Full-text search on question -- generated column, GIN-indexed in migration 004
     question_tsv = mapped_column(
         TSVECTOR,

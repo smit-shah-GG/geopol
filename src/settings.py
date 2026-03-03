@@ -90,6 +90,9 @@ class Settings(BaseSettings):
     polymarket_enabled: bool = True
     polymarket_poll_interval: int = 3600  # 1 hour in seconds
     polymarket_match_threshold: float = 0.6
+    polymarket_volume_threshold: float = 100_000.0  # Min USD volume to auto-forecast
+    polymarket_daily_new_forecast_cap: int = 3  # Max new Polymarket-driven forecasts per UTC day
+    polymarket_daily_reforecast_cap: int = 5  # Max re-forecasts of active comparisons per UTC day
 
     # -- ACLED --
     acled_email: str = ""
