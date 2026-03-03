@@ -283,7 +283,12 @@ Plans:
   6. Scenario tree node labels display short text (~40 chars) by default; hovering over a node shows a tooltip with the full scenario description
   7. An Event Feed panel renders recent GDELT events and RSS article headlines in a compact timeline format with timestamps and source attribution
   8. A Sources panel displays active data sources (GDELT, RSS tiers, Polymarket) with health/staleness indicators showing last-updated time and status
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 15-01-PLAN.md -- Router + NavBar + 4-column layout + screen lifecycle + theme simplification + top_forecast rename
+- [ ] 15-02-PLAN.md -- ForecastPanel expandable cards + SearchBar + ScenarioExplorer tooltip (FUX-01, FUX-02, FUX-03)
+- [ ] 15-03-PLAN.md -- MyForecastsPanel + SourcesPanel + dashboard Col 3 wiring (FUX-04, FUX-05, FUX-06)
 
 ### Phase 16: Globe & Forecasts Screens
 **Goal**: The Globe screen provides full-viewport geospatial exploration with contextual drill-down on country click. The Forecasts screen provides a question submission workflow with queue status display. All three screens are complete and the v2.1 milestone is deliverable.
@@ -317,7 +322,7 @@ Sequential: Phase 14 -> Phase 15 -> Phase 16.
 | 12. WM-Derived Frontend | v2.0 | 7/7 | Complete | 2026-03-02 |
 | 13. Calibration & Monitoring | v2.0 | 7/7 | Complete | 2026-03-02 |
 | 14. Backend API Hardening | v2.1 | 4/4 | Complete | 2026-03-03 |
-| 15. URL Routing & Dashboard | v2.1 | 0/TBD | Not started | - |
+| 15. URL Routing & Dashboard | v2.1 | 0/3 | Not started | - |
 | 16. Globe & Forecasts Screens | v2.1 | 0/TBD | Not started | - |
 
 **Total:** 14 phases complete (v1.0 + v1.1 + v2.0 + Phase 14), 53 plans delivered. v2.1: 1/3 phases complete, 13 requirements pending.
