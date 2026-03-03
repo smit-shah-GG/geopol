@@ -28,8 +28,9 @@ import type { ForecastRequestStatus, ForecastResponse } from '@/types/api';
 /** CSS class for a given request status. */
 function statusCssClass(status: ForecastRequestStatus['status']): string {
   switch (status) {
-    case 'pending': return 'sq-status-pending';
-    case 'confirmed': return 'sq-status-confirmed';
+    case 'pending':
+    case 'confirmed':
+      return 'sq-status-queued';
     case 'processing': return 'sq-status-processing';
     case 'complete': return 'sq-status-complete';
     case 'failed': return 'sq-status-failed';
@@ -39,8 +40,9 @@ function statusCssClass(status: ForecastRequestStatus['status']): string {
 /** Human-readable status label. */
 function statusLabel(status: ForecastRequestStatus['status']): string {
   switch (status) {
-    case 'pending': return 'PENDING';
-    case 'confirmed': return 'CONFIRMED';
+    case 'pending':
+    case 'confirmed':
+      return 'QUEUED';
     case 'processing': return 'PROCESSING';
     case 'complete': return 'COMPLETE';
     case 'failed': return 'FAILED';

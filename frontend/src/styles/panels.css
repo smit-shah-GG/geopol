@@ -770,81 +770,6 @@
 }
 
 /* ========================================================================
-   Ensemble Breakdown (EnsembleBreakdownPanel)
-   ======================================================================== */
-
-.ensemble-section {
-  margin-bottom: var(--space-md);
-}
-
-.ensemble-label {
-  font-size: var(--font-size-xs);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  color: var(--text-muted);
-  margin-bottom: var(--space-xs);
-}
-
-.ensemble-bar {
-  display: flex;
-  height: 20px;
-  border-radius: 2px;
-  overflow: hidden;
-  background: var(--border-subtle);
-}
-
-.ensemble-segment {
-  height: 100%;
-  min-width: 2px;
-  transition: width var(--transition-base);
-}
-
-.ensemble-values {
-  display: flex;
-  gap: var(--space-lg);
-  margin-bottom: var(--space-md);
-  margin-top: var(--space-sm);
-}
-
-.ensemble-value {
-  display: flex;
-  align-items: center;
-  gap: var(--space-xs);
-  font-size: var(--font-size-sm);
-  color: var(--text-secondary);
-}
-
-.ensemble-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.ensemble-pct {
-  font-family: var(--font-mono);
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  color: var(--text-primary);
-}
-
-.ensemble-weights-text {
-  font-family: var(--font-mono);
-  font-size: var(--font-size-sm);
-  color: var(--text-secondary);
-  font-variant-numeric: tabular-nums;
-}
-
-.ensemble-temp {
-  font-family: var(--font-mono);
-  font-size: var(--font-size-md);
-  font-weight: 700;
-  color: var(--text-primary);
-  font-variant-numeric: tabular-nums;
-}
-
-/* ========================================================================
    System Health (SystemHealthPanel)
    ======================================================================== */
 
@@ -1787,16 +1712,10 @@
   white-space: nowrap;
 }
 
-.mf-status-badge.status-pending {
-  color: var(--semantic-warning);
-  background: rgba(230, 162, 60, 0.12);
-  border: 1px solid rgba(230, 162, 60, 0.25);
-}
-
-.mf-status-badge.status-confirmed {
-  color: var(--accent);
-  background: rgba(58, 123, 213, 0.12);
-  border: 1px solid rgba(58, 123, 213, 0.25);
+.mf-status-badge.status-queued {
+  color: var(--text-muted);
+  background: rgba(128, 144, 164, 0.12);
+  border: 1px solid rgba(128, 144, 164, 0.25);
 }
 
 .mf-status-badge.status-processing {
@@ -2955,16 +2874,10 @@
   white-space: nowrap;
 }
 
-.sq-status-pending {
+.sq-status-queued {
   color: var(--text-muted);
   background: rgba(128, 144, 164, 0.12);
   border: 1px solid rgba(128, 144, 164, 0.25);
-}
-
-.sq-status-confirmed {
-  color: var(--accent);
-  background: rgba(58, 123, 213, 0.12);
-  border: 1px solid rgba(58, 123, 213, 0.25);
 }
 
 .sq-status-processing {
