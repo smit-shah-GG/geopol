@@ -1734,6 +1734,165 @@
 }
 
 /* ========================================================================
+   My Forecasts Panel (MyForecastsPanel)
+   ======================================================================== */
+
+.mf-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-sm) var(--space-md);
+  border-bottom: 1px solid var(--border-subtle);
+  transition: background var(--transition-fast);
+}
+
+.mf-row--clickable {
+  cursor: pointer;
+}
+
+.mf-row--clickable:hover {
+  background: var(--bg-elevated);
+}
+
+.mf-row:last-child {
+  border-bottom: none;
+}
+
+.mf-row-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-sm);
+}
+
+.mf-question {
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+  line-height: var(--line-height-tight);
+  flex: 1;
+  min-width: 0;
+}
+
+.mf-status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  border-radius: 2px;
+  line-height: 1;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.mf-status-badge.status-pending {
+  color: var(--semantic-warning);
+  background: rgba(230, 162, 60, 0.12);
+  border: 1px solid rgba(230, 162, 60, 0.25);
+}
+
+.mf-status-badge.status-confirmed {
+  color: var(--accent);
+  background: rgba(58, 123, 213, 0.12);
+  border: 1px solid rgba(58, 123, 213, 0.25);
+}
+
+.mf-status-badge.status-processing {
+  color: var(--accent);
+  background: rgba(58, 123, 213, 0.12);
+  border: 1px solid rgba(58, 123, 213, 0.25);
+  animation: pulse-badge 1.5s ease-in-out infinite;
+}
+
+.mf-status-badge.status-complete {
+  color: var(--semantic-success);
+  background: rgba(46, 204, 113, 0.12);
+  border: 1px solid rgba(46, 204, 113, 0.25);
+}
+
+.mf-status-badge.status-failed {
+  color: var(--semantic-critical);
+  background: rgba(230, 57, 70, 0.12);
+  border: 1px solid rgba(230, 57, 70, 0.25);
+}
+
+@keyframes pulse-badge {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.mf-row-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.mf-countries {
+  letter-spacing: 0.5px;
+}
+
+.mf-horizon {
+  font-family: var(--font-mono);
+}
+
+.mf-error {
+  font-size: var(--font-size-xs);
+  color: var(--semantic-critical);
+  opacity: 0.8;
+  line-height: var(--line-height-tight);
+  margin-top: 2px;
+}
+
+/* ========================================================================
+   Sources Panel (SourcesPanel)
+   ======================================================================== */
+
+.source-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-xs) 0;
+}
+
+.source-name {
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+  min-width: 80px;
+}
+
+.source-staleness {
+  font-size: var(--font-size-xs);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.source-staleness.staleness-fresh {
+  color: var(--semantic-success);
+}
+
+.source-staleness.staleness-warning {
+  color: var(--semantic-warning);
+}
+
+.source-staleness.staleness-critical {
+  color: var(--semantic-critical);
+}
+
+.source-detail {
+  flex: 1;
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ========================================================================
    Screen Placeholder
    ======================================================================== */
 

@@ -3,8 +3,8 @@
  *
  * Column assignments:
  *   Col 1: RiskIndexPanel
- *   Col 2: ForecastPanel
- *   Col 3: (empty -- Plan 03 adds MyForecasts + Sources)
+ *   Col 2: SearchBar, ForecastPanel
+ *   Col 3: MyForecastsPanel, SourcesPanel
  *   Col 4: EventTimeline, EnsembleBreakdown, SystemHealth, Calibration
  *
  * Owns the RefreshScheduler lifecycle and all inter-panel event wiring.
@@ -14,7 +14,7 @@ import { createDashboardLayout } from '@/app/panel-layout';
 import { RefreshScheduler } from '@/app/refresh-scheduler';
 import { forecastClient } from '@/services/forecast-client';
 import type { GeoPolAppContext } from '@/app/app-context';
-import type { ForecastResponse, HealthResponse, CountryRiskSummary } from '@/types/api';
+import type { ForecastResponse, HealthResponse, CountryRiskSummary, ForecastRequestStatus } from '@/types/api';
 
 // Panels
 import { ForecastPanel } from '@/components/ForecastPanel';
@@ -23,6 +23,11 @@ import { EventTimelinePanel } from '@/components/EventTimelinePanel';
 import { EnsembleBreakdownPanel } from '@/components/EnsembleBreakdownPanel';
 import { SystemHealthPanel } from '@/components/SystemHealthPanel';
 import { CalibrationPanel } from '@/components/CalibrationPanel';
+import { MyForecastsPanel } from '@/components/MyForecastsPanel';
+import { SourcesPanel } from '@/components/SourcesPanel';
+
+// Search
+import { SearchBar } from '@/components/SearchBar';
 
 // Modals
 import { ScenarioExplorer } from '@/components/ScenarioExplorer';
@@ -35,6 +40,9 @@ import { CountryBriefPage } from '@/components/CountryBriefPage';
 let scheduler: RefreshScheduler | null = null;
 let forecastSelectedHandler: EventListener | null = null;
 let countrySelectedHandler: EventListener | null = null;
+
+// Search bar reference -- must be destroyed on unmount
+let searchBar: SearchBar | null = null;
 
 // Modal references -- must be destroyed on unmount to remove global listeners
 let scenarioExplorer: ScenarioExplorer | null = null;
@@ -56,6 +64,14 @@ function pushHealth(health: HealthResponse, panel: SystemHealthPanel): void {
   panel.update(health);
 }
 
+function pushRequests(requests: ForecastRequestStatus[], panel: MyForecastsPanel): void {
+  panel.update(requests);
+}
+
+function pushSources(health: HealthResponse, panel: SourcesPanel): void {
+  panel.update(health);
+}
+
 // ---------------------------------------------------------------------------
 // Mount / Unmount
 // ---------------------------------------------------------------------------
@@ -71,10 +87,18 @@ export function mountDashboard(container: HTMLElement, ctx: GeoPolAppContext): v
   const ensemblePanel = new EnsembleBreakdownPanel();
   const healthPanel = new SystemHealthPanel();
   const calibrationPanel = new CalibrationPanel();
+  const myForecastsPanel = new MyForecastsPanel();
+  const sourcesPanel = new SourcesPanel();
+
+  // -- Search bar at top of Col 2 --
+  searchBar = new SearchBar();
+  columns.col2.appendChild(searchBar.getElement());
 
   // -- Mount panels into columns --
   columns.col1.appendChild(riskIndexPanel.getElement());
   columns.col2.appendChild(forecastPanel.getElement());
+  columns.col3.appendChild(myForecastsPanel.getElement());
+  columns.col3.appendChild(sourcesPanel.getElement());
   columns.col4.appendChild(eventTimelinePanel.getElement());
   columns.col4.appendChild(ensemblePanel.getElement());
   columns.col4.appendChild(healthPanel.getElement());
@@ -87,6 +111,8 @@ export function mountDashboard(container: HTMLElement, ctx: GeoPolAppContext): v
   ctx.panels['ensemble'] = ensemblePanel;
   ctx.panels['system-health'] = healthPanel;
   ctx.panels['calibration'] = calibrationPanel;
+  ctx.panels['my-forecasts'] = myForecastsPanel;
+  ctx.panels['sources'] = sourcesPanel;
 
   // -- Modals (attach global event listeners in constructor) --
   scenarioExplorer = new ScenarioExplorer();
@@ -94,16 +120,20 @@ export function mountDashboard(container: HTMLElement, ctx: GeoPolAppContext): v
 
   // -- Initial data load --
   const loadInitial = async (): Promise<void> => {
-    const [forecasts, countries, health, polymarket] = await Promise.all([
+    const [forecasts, countries, health, polymarket, requests] = await Promise.all([
       forecastClient.getTopForecasts(10),
       forecastClient.getCountries(),
       forecastClient.getHealth(),
       forecastClient.getPolymarket(),
+      forecastClient.getRequests(),
     ]);
 
     pushForecasts(forecasts, forecastPanel);
     pushCountries(countries, riskIndexPanel);
+    searchBar?.updateCountries(countries);
     pushHealth(health, healthPanel);
+    pushSources(health, sourcesPanel);
+    pushRequests(requests, myForecastsPanel);
     calibrationPanel.updatePolymarket(polymarket);
     eventTimelinePanel.refresh();
   };
@@ -144,6 +174,7 @@ export function mountDashboard(container: HTMLElement, ctx: GeoPolAppContext): v
       fn: async () => {
         const countries = await forecastClient.getCountries();
         pushCountries(countries, riskIndexPanel);
+        searchBar?.updateCountries(countries);
       },
       intervalMs: 120_000,
     },
@@ -152,6 +183,15 @@ export function mountDashboard(container: HTMLElement, ctx: GeoPolAppContext): v
       fn: async () => {
         const health = await forecastClient.getHealth();
         pushHealth(health, healthPanel);
+        pushSources(health, sourcesPanel);
+      },
+      intervalMs: 30_000,
+    },
+    {
+      name: 'my-forecasts',
+      fn: async () => {
+        const requests = await forecastClient.getRequests();
+        pushRequests(requests, myForecastsPanel);
       },
       intervalMs: 30_000,
     },
@@ -189,6 +229,12 @@ export function unmountDashboard(ctx: GeoPolAppContext): void {
     panel.destroy();
   }
   ctx.panels = {};
+
+  // Destroy search bar
+  if (searchBar) {
+    searchBar.destroy();
+    searchBar = null;
+  }
 
   // Destroy modals (removes global event listeners)
   if (scenarioExplorer) {
