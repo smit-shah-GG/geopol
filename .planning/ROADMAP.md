@@ -253,7 +253,7 @@ Phase 14 (backend API hardening) --- unblocks real data for frontend
 - [x] **Phase 14: Backend API Hardening** -- Kill fixture fallback, real country risk aggregation, question submission queue, full-text search endpoint
 - [x] **Phase 15: URL Routing & Dashboard Screen** -- Three-screen URL routing, information-dense dashboard with progressive disclosure, search UI, event feed, sources panel
 - [x] **Phase 16: Globe & Forecasts Screens** -- Full-viewport globe with contextual drill-down, forecast submission queue UI, layer toggle controls
-- [ ] **Phase 17: Live Data Feeds & Country Depth** -- Backend event/article API endpoints, wire EventTimelinePanel to real data, additional data source ingestion, country screen subpages with real data
+- [x] **Phase 17: Live Data Feeds & Country Depth** -- Backend event/article API endpoints, wire EventTimelinePanel to real data, additional data source ingestion, country screen subpages with real data
 - [ ] **Phase 18: Polymarket-Driven Forecasting** -- Poll Polymarket for active geopolitical questions, run Geopol pipeline on matched questions, comparison tracking over time, Col 2 Polymarket panel
 
 ## Phase Details
@@ -329,9 +329,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 17-01-PLAN.md -- Data layer foundation: SQLite schema migration (country_iso + source columns, backfill, indexes), Event model update, EventStorage query expansion, Pydantic DTOs, settings
-- [ ] 17-02-PLAN.md -- Backend API routes (events, articles, sources, advisories) + ACLED poller + advisory poller
-- [ ] 17-03-PLAN.md -- Frontend wiring: TypeScript types, forecast-client methods, EventTimelinePanel, SourcesPanel, CountryBriefPage tabs
+- [x] 17-01-PLAN.md -- Data layer foundation: SQLite schema migration (country_iso + source columns, backfill, indexes), Event model update, EventStorage query expansion, Pydantic DTOs, settings
+- [x] 17-02-PLAN.md -- Backend API routes (events, articles, sources, advisories) + ACLED poller + advisory poller
+- [x] 17-03-PLAN.md -- Frontend wiring: TypeScript types, forecast-client methods, EventTimelinePanel, SourcesPanel, CountryBriefPage tabs
 
 ### Phase 18: Polymarket-Driven Forecasting
 **Goal**: The system actively polls Polymarket for geopolitical questions, runs Geopol's forecasting pipeline on matching questions, and tracks probability comparisons over time. A dedicated dashboard panel shows Polymarket questions alongside Geopol's competing forecasts, providing direct calibration signal and demonstrable accuracy comparison.
@@ -363,7 +363,7 @@ Sequential: Phase 14 -> Phase 15 -> Phase 16. Then Phase 17 and Phase 18 can run
 | 14. Backend API Hardening | v2.1 | 4/4 | Complete | 2026-03-03 |
 | 15. URL Routing & Dashboard | v2.1 | 3/3 | Complete | 2026-03-03 |
 | 16. Globe & Forecasts Screens | v2.1 | 3/3 | Complete | 2026-03-03 |
-| 17. Live Data Feeds & Country Depth | v2.1 | 0/3 | Planned | - |
+| 17. Live Data Feeds & Country Depth | v2.1 | 3/3 | Complete | 2026-03-04 |
 | 18. Polymarket-Driven Forecasting | v2.1 | 0/TBD | Not started | - |
 
-**Total:** 16 phases complete (v1.0 + v1.1 + v2.0 + Phases 14-16), 59 plans delivered. v2.1: 3/5 phases complete, Phase 17 planned (3 plans in 3 waves), Phase 18 requirements TBD.
+**Total:** 17 phases complete (v1.0 + v1.1 + v2.0 + Phases 14-17), 62 plans delivered. v2.1: 4/5 phases complete, Phase 18 requirements TBD.
