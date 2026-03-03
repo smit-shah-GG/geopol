@@ -5,25 +5,25 @@
 See: .planning/PROJECT.md (updated 2026-03-02)
 
 **Core value:** Explainability -- every forecast must provide clear, traceable reasoning paths
-**Current focus:** Phase 14 complete -- Backend API Hardening delivered
+**Current focus:** Phase 15 in progress -- URL Routing & Dashboard Screen
 
 ## Current Position
 
 Milestone: v2.1 Production UX & Live Data Integration
-Phase: 14 of 16 (Backend API Hardening) -- COMPLETE
-Plan: 04 of 04 (all complete)
-Status: Phase complete
-Last activity: 2026-03-03 -- Completed 14-04-PLAN.md (Question Submission Queue)
+Phase: 15 of 16 (URL Routing & Dashboard)
+Plan: 01 of 03
+Status: In progress
+Last activity: 2026-03-03 -- Completed 15-01-PLAN.md (Screen Routing & Dashboard Infrastructure)
 
-Progress: [#############################################.......] 88% (53/60 plans lifetime)
-v2.1:    [####......] 33% (4/12 plans)
+Progress: [##############################################......] 90% (54/60 plans lifetime)
+v2.1:    [#####.....] 42% (5/12 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 53
+- Total plans completed: 54
 - Average duration: 11 minutes
-- Total execution time: 9.78 hours
+- Total execution time: 9.93 hours
 
 **By Phase:**
 
@@ -43,10 +43,11 @@ v2.1:    [####......] 33% (4/12 plans)
 | 12-wm-derived-frontend | 7 | 36min | 5min |
 | 13-calibration-monitoring-hardening | 7 | 27min | 4min |
 | 14-backend-api-hardening | 4 | 17min | 4min |
+| 15-url-routing-dashboard | 1 | 9min | 9min |
 
 **Recent Trend:**
-- Last 4 plans: 14-01 (5min), 14-03 (3min), 14-02 (5min), 14-04 (4min)
-- Trend: Stable at ~4-5min/plan
+- Last 4 plans: 14-02 (5min), 14-04 (4min), 15-01 (9min)
+- Trend: 15-01 slightly longer due to structural refactor (3-column -> 4-column, flat -> router)
 
 ## Accumulated Context
 
@@ -67,11 +68,14 @@ Key decisions affecting current work:
 - plainto_tsquery over to_tsquery for search -- safe natural-language input, no injection risk (2026-03-03)
 - Nullable suggestions field in SearchResponse -- prevents breaking DTO change when LLM suggestions added later (2026-03-03)
 - sqlalchemy.text() for CTE country risk query -- 4-CTE analytical query unreadable as Core expressions (2026-03-03)
-- top_question renamed to top_forecast -- breaking change for frontend TypeScript types, deferred to Phase 15 (2026-03-03)
+- top_question renamed to top_forecast -- completed in 15-01 (2026-03-03)
 - asyncio.Semaphore(3) over Celery/Redis queue for submission worker -- single-server deployment (2026-03-03)
 - Two-phase submit/confirm flow -- user reviews LLM-parsed interpretation before committing API budget (2026-03-03)
 - SELECT FOR UPDATE SKIP LOCKED for worker request claiming -- no blocking, no double-pickup (2026-03-03)
 - Graceful LLM parse fallback to defaults -- failed parse must never block submission (2026-03-03)
+- View Transition API with sync fallback for screen switches (2026-03-03)
+- Module-scoped state for screen mount/unmount lifecycle (2026-03-03)
+- DeckGLMap dynamic import at route level for code-splitting (2026-03-03)
 
 ### Deferred Issues
 
@@ -89,6 +93,6 @@ Key decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-03-03
-Stopped at: Completed 14-04-PLAN.md (Question Submission Queue) -- Phase 14 complete
+Stopped at: Completed 15-01-PLAN.md (Screen Routing & Dashboard Infrastructure)
 Resume file: None
-Next: `/gsd:plan-phase 15` -- URL Routing & Dashboard
+Next: Execute 15-02-PLAN.md
