@@ -11,19 +11,19 @@ See: .planning/PROJECT.md (updated 2026-03-02)
 
 Milestone: v2.1 Production UX & Live Data Integration
 Phase: 16 of 18 (Globe & Forecasts Screens)
-Plan: 01 of 03
+Plan: 02 of 03
 Status: In progress
-Last activity: 2026-03-03 -- Completed 16-01-PLAN.md (Shared Expandable Card + DeckGLMap Public API)
+Last activity: 2026-03-03 -- Completed 16-02-PLAN.md (Globe Screen + Layer Pill Bar + Drill-Down)
 
-Progress: [################################################....] 95% (57/60 plans lifetime)
-v2.1:    [########..] 67% (8/12 plans)
+Progress: [#################################################...] 97% (58/60 plans lifetime)
+v2.1:    [#########.] 75% (9/12 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 57
+- Total plans completed: 58
 - Average duration: 11 minutes
-- Total execution time: 10.20 hours
+- Total execution time: 10.30 hours
 
 **By Phase:**
 
@@ -45,11 +45,11 @@ v2.1:    [########..] 67% (8/12 plans)
 | 14-backend-api-hardening | 4 | 17min | 4min |
 | 15-url-routing-dashboard | 3 | 20min | 7min |
 
-| 16-globe-forecasts-screens | 1 | 5min | 5min |
+| 16-globe-forecasts-screens | 2 | 11min | 6min |
 
 **Recent Trend:**
-- Last 4 plans: 15-02 (7min), 15-03 (4min), 16-01 (5min)
-- Trend: Consistent 4-7min -- extraction/refactor work on established codebase
+- Last 4 plans: 15-03 (4min), 16-01 (5min), 16-02 (6min)
+- Trend: Consistent 4-6min -- UI component construction on established codebase
 
 ## Accumulated Context
 
@@ -87,6 +87,9 @@ Key decisions affecting current work:
 - ScenarioExplorer tooltip uses HTML div positioned via pageX/pageY -- not SVG title (2026-03-03)
 - forecast-selected CustomEvent dispatches on window for cross-screen listening (2026-03-03)
 - DeckGLMap layer defaults unchanged (all true); globe screen calls setLayerDefaults() post-construction (2026-03-03)
+- Globe drill-down uses country-brief-requested event (not country-selected) to open CountryBriefPage (2026-03-03)
+- LayerPillBar in separate Vite chunk (1.13 kB) -- only loaded on /globe route (2026-03-03)
+- getTopForecasts(50) for globe (vs 10 for dashboard) -- more markers for scatter layer (2026-03-03)
 
 ### Deferred Issues
 
@@ -104,6 +107,6 @@ Key decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-03-03
-Stopped at: Completed 16-01-PLAN.md (Shared Expandable Card + DeckGLMap Public API)
+Stopped at: Completed 16-02-PLAN.md (Globe Screen + Layer Pill Bar + Drill-Down)
 Resume file: None
-Next: 16-02-PLAN.md -- Globe Screen + Layer Pill Bar (then 16-03: Forecasts Screen)
+Next: 16-03-PLAN.md -- Forecasts Screen (submission form + queue)
