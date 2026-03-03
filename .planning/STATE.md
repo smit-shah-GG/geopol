@@ -5,25 +5,25 @@
 See: .planning/PROJECT.md (updated 2026-03-02)
 
 **Core value:** Explainability -- every forecast must provide clear, traceable reasoning paths
-**Current focus:** Phase 18 in progress (Polymarket-Driven Forecasting)
+**Current focus:** v2.1 COMPLETE -- Phase 18 done (Polymarket-Driven Forecasting)
 
 ## Current Position
 
 Milestone: v2.1 Production UX & Live Data Integration
 Phase: 18 of 18 (Polymarket-Driven Forecasting)
-Plan: 02 of 03
-Status: In progress
-Last activity: 2026-03-04 -- Completed 18-02-PLAN.md (API Layer for Polymarket Comparisons)
+Plan: 03 of 03
+Status: MILESTONE COMPLETE
+Last activity: 2026-03-04 -- Completed 18-03-PLAN.md (Frontend ComparisonPanel + Badges)
 
-Progress: [####################################################] 100% (64/65 plans lifetime)
-v2.1:    [###############-----] 75% (15/20 plans)
+Progress: [########################################################] 100% (65/65 plans lifetime)
+v2.1:    [####################] 100% (16/16 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 64
+- Total plans completed: 65
 - Average duration: 10 minutes
-- Total execution time: 11.0 hours
+- Total execution time: 11.1 hours
 
 **By Phase:**
 
@@ -47,11 +47,11 @@ v2.1:    [###############-----] 75% (15/20 plans)
 
 | 16-globe-forecasts-screens | 3 | 16min | 5min |
 | 17-live-data-feeds-country-depth | 3 | 26min | 9min |
-| 18-polymarket-driven-forecasting | 2 | 8min | 4min |
+| 18-polymarket-driven-forecasting | 3 | 14min | 5min |
 
 **Recent Trend:**
-- Last 4 plans: 17-03 (7min), 18-01 (5min), 18-02 (3min)
-- Trend: Fast execution on well-scoped API extension plans
+- Last 4 plans: 18-01 (5min), 18-02 (3min), 18-03 (6min)
+- Trend: Consistent 3-6min execution on well-scoped frontend/API plans
 
 ## Accumulated Context
 
@@ -114,6 +114,8 @@ Key decisions affecting current work:
 - Batch IN-clause for forecast-to-comparison enrichment -- no N+1 (2026-03-04)
 - Provenance fallback: Prediction.provenance null + comparison exists = polymarket_tracked (2026-03-04)
 - Divergence sign convention: geopol_probability - polymarket_price (positive = geopol more bullish) (2026-03-04)
+- Lazy sparkline loading via dynamic import on card expand -- not polled (2026-03-04)
+- Divergence color coding: 3-tier (div-low <10pp, div-medium 10-20pp, div-high >20pp) (2026-03-04)
 
 ### Deferred Issues
 
@@ -138,6 +140,6 @@ Key decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-03-04
-Stopped at: Completed 18-02-PLAN.md (API Layer for Polymarket Comparisons)
+Stopped at: Completed 18-03-PLAN.md (Frontend ComparisonPanel + Badges) -- v2.1 MILESTONE COMPLETE
 Resume file: None
-Next: Execute 18-03-PLAN.md (Frontend ComparisonPanel + Badges)
+Next: v2.1 milestone complete. All 18 phases (65 plans) delivered.
