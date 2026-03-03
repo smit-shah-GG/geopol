@@ -91,6 +91,19 @@ class Settings(BaseSettings):
     polymarket_poll_interval: int = 3600  # 1 hour in seconds
     polymarket_match_threshold: float = 0.6
 
+    # -- ACLED --
+    acled_email: str = ""
+    acled_password: str = ""
+    acled_poll_interval: int = 86400  # Daily in seconds
+    acled_event_types: list[str] = [
+        "Battles",
+        "Explosions/Remote violence",
+        "Violence against civilians",
+    ]
+
+    # -- Government Advisories --
+    advisory_poll_interval: int = 86400  # Daily in seconds
+
     # -- Logging (file rotation) --
     log_dir: str = "data/logs"
     log_retention_days: int = 30
