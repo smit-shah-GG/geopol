@@ -34,6 +34,7 @@ class Settings(BaseSettings):
 
     # -- Runtime --
     environment: Literal["development", "production", "testing"] = "development"
+    use_fixtures: bool = False  # Enable mock fixture fallback (dev only, USE_FIXTURES=1)
 
     # -- API --
     api_key_header: str = "X-API-Key"

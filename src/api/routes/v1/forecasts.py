@@ -2,8 +2,9 @@
 Forecast CRUD endpoints with real data, caching, rate limiting, and sanitization.
 
 GET endpoints query PostgreSQL via ForecastService with ForecastCache
-(3-tier: memory -> Redis -> PostgreSQL). Mock fixtures serve as fallback
-when PostgreSQL has no data (preserving Phase 9 development behavior).
+(3-tier: memory -> Redis -> PostgreSQL). Mock fixtures are available only
+when USE_FIXTURES=1 is set (development convenience). Production returns
+PostgreSQL results only -- empty results yield empty responses, not fixtures.
 
 POST invokes live EnsemblePredictor with rate limiting (per-API-key daily
 quota), input sanitization (prompt injection blocklist + geopolitical
@@ -12,9 +13,9 @@ keyword filter), and Gemini budget enforcement.
 All endpoints require API key authentication via ``verify_api_key``.
 
 Endpoints:
-    GET  /forecasts/{forecast_id}        -- Single forecast by ID (cache + DB + fixture)
-    GET  /forecasts/country/{iso_code}   -- Forecasts by country (cache + DB + fixture)
-    GET  /forecasts/top                  -- Top risk forecasts (cache + DB + fixture)
+    GET  /forecasts/{forecast_id}        -- Single forecast by ID (cache + DB)
+    GET  /forecasts/country/{iso_code}   -- Forecasts by country (cache + DB)
+    GET  /forecasts/top                  -- Top risk forecasts (cache + DB)
     POST /forecasts                      -- Live EnsemblePredictor + persist + cache
 """
 
@@ -56,13 +57,15 @@ from src.api.services.cache_service import (
     cache_key_for_top,
 )
 from src.api.services.forecast_service import ForecastService
+from src.settings import get_settings
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-# In-memory mock forecast registry, populated from fixtures on first access.
-# Kept as development fallback when PostgreSQL has no real data.
+# --- Dev-only fixture infrastructure (USE_FIXTURES=1) ---
+# Preserved for local development when PostgreSQL has no real data.
+# Never active in production (use_fixtures defaults to False).
 _fixture_cache: dict[str, ForecastResponse] | None = None
 
 
@@ -132,7 +135,7 @@ async def get_top_forecasts(
 ) -> list[ForecastResponse]:
     """Return the top N forecasts sorted by probability descending.
 
-    Query order: cache -> PostgreSQL -> mock fixtures.
+    Query order: cache -> PostgreSQL. Fixture fallback only when USE_FIXTURES=1.
     """
     # Check cache
     key = cache_key_for_top(limit)
@@ -141,22 +144,23 @@ async def get_top_forecasts(
         return [ForecastResponse(**item) for item in cached]
 
     # Query PostgreSQL
-    try:
-        service = ForecastService(db)
-        result = await service.get_top_forecasts(limit=limit)
-        if result:
-            data = [item.model_dump(mode="json") for item in result]
-            await cache.set(key, data, ttl=SUMMARY_TTL)
-            return result
-    except Exception as exc:
-        logger.warning("PostgreSQL top forecasts query failed: %s", exc)
+    service = ForecastService(db)
+    result = await service.get_top_forecasts(limit=limit)
+    if result:
+        data = [item.model_dump(mode="json") for item in result]
+        await cache.set(key, data, ttl=SUMMARY_TTL)
+        return result
 
-    # Fall back to fixtures
-    fixture_cache = _get_fixture_cache()
-    forecasts = sorted(
-        fixture_cache.values(), key=lambda f: f.probability, reverse=True
-    )
-    return forecasts[:limit]
+    # Fixture fallback (dev only)
+    settings = get_settings()
+    if settings.use_fixtures:
+        fixture_cache = _get_fixture_cache()
+        forecasts = sorted(
+            fixture_cache.values(), key=lambda f: f.probability, reverse=True
+        )
+        return forecasts[:limit]
+
+    return []
 
 
 @router.get(
@@ -175,7 +179,8 @@ async def get_forecasts_by_country(
 ) -> PaginatedResponse[ForecastResponse]:
     """Return forecasts for a country.
 
-    Query order: cache (only for first page) -> PostgreSQL -> mock fixtures.
+    Query order: cache (only for first page) -> PostgreSQL. Fixture fallback
+    only when USE_FIXTURES=1.
     """
     iso_upper = iso_code.upper()
 
@@ -192,47 +197,50 @@ async def get_forecasts_by_country(
             )
 
     # Query PostgreSQL
-    try:
-        service = ForecastService(db)
-        result = await service.get_forecasts_by_country(
-            country_iso=iso_upper, cursor=cursor, limit=limit
+    service = ForecastService(db)
+    result = await service.get_forecasts_by_country(
+        country_iso=iso_upper, cursor=cursor, limit=limit
+    )
+    if result.items:
+        # Cache first page only
+        if cursor is None:
+            data = {
+                "items": [item.model_dump(mode="json") for item in result.items],
+                "next_cursor": result.next_cursor,
+                "has_more": result.has_more,
+            }
+            await cache.set(cache_key_for_country(iso_upper), data, ttl=SUMMARY_TTL)
+        return result
+
+    # Fixture fallback (dev only)
+    settings = get_settings()
+    if settings.use_fixtures:
+        fixture_cache = _get_fixture_cache()
+        country_forecasts = [
+            f for f in fixture_cache.values()
+            if f.forecast_id.startswith(f"fc-{iso_upper.lower()}-")
+            or _guess_country_iso(f) == iso_upper
+        ]
+
+        if not country_forecasts:
+            try:
+                fixture = load_fixture(iso_upper)
+                fixture_cache[fixture.forecast_id] = fixture
+                country_forecasts = [fixture]
+            except FileNotFoundError:
+                pass
+
+        items = country_forecasts[:limit]
+        has_more = len(country_forecasts) > limit
+
+        return PaginatedResponse[ForecastResponse](
+            items=items,
+            next_cursor=None,
+            has_more=has_more,
         )
-        if result.items:
-            # Cache first page only
-            if cursor is None:
-                data = {
-                    "items": [item.model_dump(mode="json") for item in result.items],
-                    "next_cursor": result.next_cursor,
-                    "has_more": result.has_more,
-                }
-                await cache.set(cache_key_for_country(iso_upper), data, ttl=SUMMARY_TTL)
-            return result
-    except Exception as exc:
-        logger.warning("PostgreSQL country query failed for %s: %s", iso_upper, exc)
-
-    # Fall back to fixtures
-    fixture_cache = _get_fixture_cache()
-    country_forecasts = [
-        f for f in fixture_cache.values()
-        if f.forecast_id.startswith(f"fc-{iso_upper.lower()}-")
-        or _guess_country_iso(f) == iso_upper
-    ]
-
-    if not country_forecasts:
-        try:
-            fixture = load_fixture(iso_upper)
-            fixture_cache[fixture.forecast_id] = fixture
-            country_forecasts = [fixture]
-        except FileNotFoundError:
-            pass
-
-    items = country_forecasts[:limit]
-    has_more = len(country_forecasts) > limit
 
     return PaginatedResponse[ForecastResponse](
-        items=items,
-        next_cursor=None,
-        has_more=has_more,
+        items=[], next_cursor=None, has_more=False
     )
 
 
@@ -250,7 +258,8 @@ async def get_forecast_by_id(
 ) -> ForecastResponse:
     """Return a single forecast by its ID.
 
-    Query order: cache -> PostgreSQL -> mock fixtures -> 404.
+    Query order: cache -> PostgreSQL -> 404. Fixture fallback only when
+    USE_FIXTURES=1.
     """
     # 1. Check cache
     key = cache_key_for_forecast(forecast_id)
@@ -259,20 +268,19 @@ async def get_forecast_by_id(
         return ForecastResponse(**cached)
 
     # 2. Try PostgreSQL
-    try:
-        service = ForecastService(db)
-        result = await service.get_forecast_by_id(forecast_id)
-        if result is not None:
-            await cache.set(key, result.model_dump(mode="json"), ttl=FULL_FORECAST_TTL)
-            return result
-    except Exception as exc:
-        logger.warning("PostgreSQL lookup failed for %s: %s", forecast_id, exc)
+    service = ForecastService(db)
+    result = await service.get_forecast_by_id(forecast_id)
+    if result is not None:
+        await cache.set(key, result.model_dump(mode="json"), ttl=FULL_FORECAST_TTL)
+        return result
 
-    # 3. Fall back to mock fixture cache
-    fixture_cache = _get_fixture_cache()
-    forecast = fixture_cache.get(forecast_id)
-    if forecast is not None:
-        return forecast
+    # 3. Fixture fallback (dev only)
+    settings = get_settings()
+    if settings.use_fixtures:
+        fixture_cache = _get_fixture_cache()
+        forecast = fixture_cache.get(forecast_id)
+        if forecast is not None:
+            return forecast
 
     # 4. Not found
     raise HTTPException(
@@ -361,7 +369,10 @@ async def create_forecast(
 
 
 def _guess_country_iso(forecast: ForecastResponse) -> str | None:
-    """Extract country ISO from forecast_id convention: fc-{iso}-{hash}."""
+    """Extract country ISO from forecast_id convention: fc-{iso}-{hash}.
+
+    Dev-only: only reachable when USE_FIXTURES=1 is set.
+    """
     parts = forecast.forecast_id.split("-")
     if len(parts) >= 2:
         return parts[1].upper()
