@@ -132,8 +132,8 @@ Removed requirements:
 
 - [x] **SCREEN-01**: Frontend uses URL-based routing (`/dashboard`, `/globe`, `/forecasts`) with browser history support -- each screen is bookmarkable and shareable
 - [x] **SCREEN-02**: Dashboard screen (`/dashboard`) uses scrollable column layout with collapsible sections, no globe -- freed space allocated to feeds, sources, search, and expanded forecast cards
-- [ ] **SCREEN-03**: Globe screen (`/globe`) renders full-viewport deck.gl globe with contextual overlay panels that appear on interaction
-- [ ] **SCREEN-04**: Forecasts screen (`/forecasts`) displays question submission form with LLM-parsed confirmation and queue showing pending/processing/complete status
+- [x] **SCREEN-03**: Globe screen (`/globe`) renders full-viewport deck.gl globe with contextual overlay panels that appear on interaction
+- [x] **SCREEN-04**: Forecasts screen (`/forecasts`) displays question submission form with LLM-parsed confirmation and queue showing pending/processing/complete status
 
 ### Forecast UX
 
@@ -146,16 +146,37 @@ Removed requirements:
 
 ### Globe Interaction
 
-- [ ] **GLOBE-01**: Country click on globe opens slide-in panel showing all forecasts for that country, risk timeline, and GDELT event sparkline
-- [ ] **GLOBE-02**: Choropleth layer colors countries by real aggregate risk score derived from predictions table (not mock data)
-- [ ] **GLOBE-03**: Layer toggle UI controls for forecast markers, conflict arcs, heatmap, and scenario zone layers
+- [x] **GLOBE-01**: Country click on globe opens slide-in panel showing all forecasts for that country, risk timeline, and GDELT event sparkline
+- [x] **GLOBE-02**: Choropleth layer colors countries by real aggregate risk score derived from predictions table (not mock data)
+- [x] **GLOBE-03**: Layer toggle UI controls for forecast markers, conflict arcs, heatmap, and scenario zone layers
 
 ### Backend API
 
-- [ ] **BAPI-01**: Remove mock fixture fallback in `forecasts.py` -- return empty results when PostgreSQL has no data for a country; fixes Myanmar-under-Syria bleed-through
-- [ ] **BAPI-02**: Real country risk aggregation endpoint (`GET /api/v1/countries`) returns per-country forecast_count, risk_score (composite 0-100 index combining count + probability + Goldstein severity, with exponential time decay), trend (rising/stable/falling via 7-day delta), and top_forecast (most recent) -- all computed from `predictions` table
-- [ ] **BAPI-03**: Question submission queue: new `forecast_requests` table, `POST /api/v1/forecasts/submit` accepting natural language question, LLM parsing to structured form (country_iso, horizon_days, category), `GET /api/v1/forecasts/requests` for status listing
-- [ ] **BAPI-04**: Full-text search endpoint `GET /api/v1/forecasts/search?q=...&category=...&country=...` using PostgreSQL `ts_vector` + GIN index on `predictions.question`
+- [x] **BAPI-01**: Remove mock fixture fallback in `forecasts.py` -- return empty results when PostgreSQL has no data for a country; fixes Myanmar-under-Syria bleed-through
+- [x] **BAPI-02**: Real country risk aggregation endpoint (`GET /api/v1/countries`) returns per-country forecast_count, risk_score (composite 0-100 index combining count + probability + Goldstein severity, with exponential time decay), trend (rising/stable/falling via 7-day delta), and top_forecast (most recent) -- all computed from `predictions` table
+- [x] **BAPI-03**: Question submission queue: new `forecast_requests` table, `POST /api/v1/forecasts/submit` accepting natural language question, LLM parsing to structured form (country_iso, horizon_days, category), `GET /api/v1/forecasts/requests` for status listing
+- [x] **BAPI-04**: Full-text search endpoint `GET /api/v1/forecasts/search?q=...&category=...&country=...` using PostgreSQL `ts_vector` + GIN index on `predictions.question`
+
+### Live Data Feeds & Country Depth (Phase 17)
+
+*Requirements TBD -- define during `/gsd:discuss-phase 17`*
+
+Scope areas:
+- Backend event/article API endpoints (expose GDELT events and RSS articles as first-class API resources)
+- Wire EventTimelinePanel to real GDELT data (replace mock events)
+- Additional data source ingestion beyond GDELT + RSS
+- Country screen subpages fleshed out with real data (economic indicators, entity graphs, event timelines, source coverage)
+
+### Polymarket-Driven Forecasting (Phase 18)
+
+*Requirements TBD -- define during `/gsd:discuss-phase 18`*
+
+Scope areas:
+- Poll Polymarket for active geopolitical questions
+- Run Geopol forecasting pipeline on matched Polymarket questions
+- Track Geopol probability vs. market price over time
+- Dashboard Col 2 panel showing Polymarket questions with Geopol's competing forecasts
+- Calibration comparison: head-to-head accuracy tracking
 
 ## Future Requirements (Backlog)
 
@@ -267,11 +288,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FUX-04 | Phase 15 | Complete |
 | FUX-05 | Phase 15 | Complete |
 | FUX-06 | Phase 15 | Complete |
-| SCREEN-03 | Phase 16 | Pending |
-| SCREEN-04 | Phase 16 | Pending |
-| GLOBE-01 | Phase 16 | Pending |
-| GLOBE-02 | Phase 16 | Pending |
-| GLOBE-03 | Phase 16 | Pending |
+| SCREEN-03 | Phase 16 | Complete |
+| SCREEN-04 | Phase 16 | Complete |
+| GLOBE-01 | Phase 16 | Complete |
+| GLOBE-02 | Phase 16 | Complete |
+| GLOBE-03 | Phase 16 | Complete |
 
 **v2.0 Coverage:**
 - v2.0 requirements: 50 total (8 INFRA + 7 API + 8 FE + 6 INGEST + 5 AUTO + 6 CAL + 5 TKG + 5 MON)
@@ -286,14 +307,16 @@ Which phases cover which requirements. Updated during roadmap creation.
 - Phase 13: 11 requirements (CAL-01..06, MON-01..05)
 
 **v2.1 Coverage:**
-- v2.1 requirements: 17 total (4 SCREEN + 6 FUX + 3 GLOBE + 4 BAPI)
-- Mapped to phases: 17/17
+- v2.1 requirements: 17 defined + TBD (Phases 17-18 requirements pending discuss-phase)
+- Mapped to phases: 17/17 (defined), Phases 17-18 scope areas identified
 - Unmapped: 0
 
 **v2.1 Phase distribution:**
-- Phase 14: 4 requirements (BAPI-01..04)
-- Phase 15: 8 requirements (SCREEN-01, SCREEN-02, FUX-01..06)
-- Phase 16: 5 requirements (SCREEN-03, SCREEN-04, GLOBE-01..03)
+- Phase 14: 4 requirements (BAPI-01..04) -- Complete
+- Phase 15: 8 requirements (SCREEN-01, SCREEN-02, FUX-01..06) -- Complete
+- Phase 16: 5 requirements (SCREEN-03, SCREEN-04, GLOBE-01..03) -- Complete
+- Phase 17: TBD (Live Data Feeds & Country Depth) -- Scope identified, requirements pending
+- Phase 18: TBD (Polymarket-Driven Forecasting) -- Scope identified, requirements pending
 
 ---
 *Requirements defined: 2026-02-14*
@@ -301,3 +324,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 *Updated: 2026-02-27 -- Added INGEST-06 (RSS feed -> RAG enrichment from WM's 298-domain feed list) and CAL-06 (Polymarket calibration comparison)*
 *Updated: 2026-03-02 -- v2.0 shipped; v2.1 requirements defined (17 requirements across 4 categories)*
 *Updated: 2026-03-02 -- v2.1 roadmap created; 17 requirements mapped to Phases 14-16*
+*Updated: 2026-03-03 -- v2.1 extended with Phases 17-18 (Live Data Feeds + Polymarket-Driven Forecasting); milestone scope 14-18*

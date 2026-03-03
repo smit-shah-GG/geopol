@@ -252,7 +252,7 @@ Phase 14 (backend API hardening) --- unblocks real data for frontend
 
 - [x] **Phase 14: Backend API Hardening** -- Kill fixture fallback, real country risk aggregation, question submission queue, full-text search endpoint
 - [x] **Phase 15: URL Routing & Dashboard Screen** -- Three-screen URL routing, information-dense dashboard with progressive disclosure, search UI, event feed, sources panel
-- [ ] **Phase 16: Globe & Forecasts Screens** -- Full-viewport globe with contextual drill-down, forecast submission queue UI, layer toggle controls
+- [x] **Phase 16: Globe & Forecasts Screens** -- Full-viewport globe with contextual drill-down, forecast submission queue UI, layer toggle controls
 - [ ] **Phase 17: Live Data Feeds & Country Depth** -- Backend event/article API endpoints, wire EventTimelinePanel to real data, additional data source ingestion, country screen subpages with real data
 - [ ] **Phase 18: Polymarket-Driven Forecasting** -- Poll Polymarket for active geopolitical questions, run Geopol pipeline on matched questions, comparison tracking over time, Col 2 Polymarket panel
 
@@ -309,9 +309,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 16-01-PLAN.md -- Shared expandable card utility extraction + DeckGLMap public API extensions (flyToCountry, setLayerVisible, remove built-in toggles)
-- [ ] 16-02-PLAN.md -- Globe screen: full-viewport globe with GlobeHud, LayerPillBar, GlobeDrillDown, data loading, refresh scheduling (SCREEN-03, GLOBE-01, GLOBE-02, GLOBE-03)
-- [ ] 16-03-PLAN.md -- Forecasts screen: SubmissionForm (three-state inline transform), SubmissionQueue (status badges, elapsed timer, expandable completed forecasts), two-column layout (SCREEN-04)
+- [x] 16-01-PLAN.md -- Shared expandable card utility extraction + DeckGLMap public API extensions (flyToCountry, setLayerVisible, remove built-in toggles)
+- [x] 16-02-PLAN.md -- Globe screen: full-viewport globe with GlobeHud, LayerPillBar, GlobeDrillDown, data loading, refresh scheduling (SCREEN-03, GLOBE-01, GLOBE-02, GLOBE-03)
+- [x] 16-03-PLAN.md -- Forecasts screen: SubmissionForm (three-state inline transform), SubmissionQueue (status badges, elapsed timer, expandable completed forecasts), two-column layout (SCREEN-04)
 
 ### Phase 17: Live Data Feeds & Country Depth
 **Goal**: Every panel and country screen displays real, live data from multiple sources. Backend exposes event and article API endpoints. EventTimelinePanel shows real GDELT events instead of mock data. Country screens are fleshed out with meaningful subpages populated from live data. Additional data sources beyond GDELT and RSS are ingested and surfaced.
@@ -349,8 +349,8 @@ Sequential: Phase 14 -> Phase 15 -> Phase 16. Then Phase 17 and Phase 18 can run
 | 13. Calibration & Monitoring | v2.0 | 7/7 | Complete | 2026-03-02 |
 | 14. Backend API Hardening | v2.1 | 4/4 | Complete | 2026-03-03 |
 | 15. URL Routing & Dashboard | v2.1 | 3/3 | Complete | 2026-03-03 |
-| 16. Globe & Forecasts Screens | v2.1 | 0/3 | Not started | - |
+| 16. Globe & Forecasts Screens | v2.1 | 3/3 | Complete | 2026-03-03 |
 | 17. Live Data Feeds & Country Depth | v2.1 | 0/TBD | Not started | - |
 | 18. Polymarket-Driven Forecasting | v2.1 | 0/TBD | Not started | - |
 
-**Total:** 15 phases complete (v1.0 + v1.1 + v2.0 + Phases 14-15), 56 plans delivered. Phase 16: 3 plans in 2 waves. v2.1: 2/5 phases complete, 5+ requirements pending (Phases 17-18 requirements TBD).
+**Total:** 16 phases complete (v1.0 + v1.1 + v2.0 + Phases 14-16), 59 plans delivered. v2.1: 3/5 phases complete (all defined requirements delivered), Phases 17-18 requirements TBD.
