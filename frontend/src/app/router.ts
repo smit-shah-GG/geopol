@@ -58,23 +58,50 @@ export class Router {
       return;
     }
 
+    // Set currentRoute eagerly BEFORE the async swap. This prevents a
+    // re-entrant resolve() (triggered by rapid navigation or popstate during
+    // an in-flight startViewTransition callback) from seeing stale state and
+    // short-circuiting via the `route === this.currentRoute` guard above.
+    const prevRoute = this.currentRoute;
+    this.currentRoute = route;
+
     const doSwap = async (): Promise<void> => {
-      if (this.currentRoute) {
-        this.currentRoute.unmount();
+      try {
+        if (prevRoute) {
+          prevRoute.unmount();
+        }
+      } catch (e) {
+        console.error('[Router] Unmount failed:', e);
       }
       this.container.innerHTML = '';
       await route.mount(this.container);
-      this.currentRoute = route;
     };
 
-    // Use View Transition API if available for a smooth crossfade
+    // Use View Transition API if available for a smooth crossfade.
+    // Await updateCallbackDone so doSwap completes before we dispatch route-changed.
     const doc = document as Document & {
-      startViewTransition?: (cb: () => Promise<void> | void) => void;
+      startViewTransition?: (cb: () => Promise<void> | void) => {
+        updateCallbackDone: Promise<void>;
+        finished: Promise<void>;
+      };
     };
-    if (typeof doc.startViewTransition === 'function') {
-      doc.startViewTransition(() => doSwap());
-    } else {
-      await doSwap();
+    try {
+      if (typeof doc.startViewTransition === 'function') {
+        const transition = doc.startViewTransition(() => doSwap());
+        await transition.updateCallbackDone;
+      } else {
+        await doSwap();
+      }
+    } catch (e) {
+      // If transition or mount fails, ensure we still have a usable state.
+      // Fall back to direct swap without transition animation.
+      console.error('[Router] Screen transition failed:', e);
+      try {
+        this.container.innerHTML = '';
+        await route.mount(this.container);
+      } catch (retryErr) {
+        console.error('[Router] Fallback mount also failed:', retryErr);
+      }
     }
 
     window.dispatchEvent(new CustomEvent('route-changed', { detail: { path } }));

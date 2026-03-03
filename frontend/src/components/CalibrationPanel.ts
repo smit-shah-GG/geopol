@@ -76,6 +76,7 @@ export class CalibrationPanel extends Panel {
       h('div', { className: 'empty-state' },
         'Calibration data populates as predictions resolve',
       ),
+      this.polymarketContainer,
     );
   }
 

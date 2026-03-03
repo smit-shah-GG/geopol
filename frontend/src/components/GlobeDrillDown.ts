@@ -153,10 +153,31 @@ export class GlobeDrillDown {
     // Guard: discard stale response
     if (token !== this.requestToken) return;
 
+    // Render -- wrapped in try/catch so a malformed API response (e.g.
+    // circuit breaker cache returning wrong type) never leaves the panel
+    // stuck on "Loading forecasts..."
+    try {
+      this.renderData(countryName, upperIso, forecasts, risk);
+    } catch (err) {
+      console.error('[GlobeDrillDown] Render failed:', err);
+      clearChildren(this.content);
+      this.content.appendChild(
+        h('div', { className: 'drilldown-error' }, 'Failed to render data'),
+      );
+    }
+  }
+
+  /** Render fetched data into the panel. Separated for error boundary. */
+  private renderData(
+    countryName: string,
+    iso: string,
+    forecasts: PaginatedResponse<ForecastResponse>,
+    risk: CountryRiskSummary | null,
+  ): void {
     // Render risk score
-    if (risk) {
-      const scorePct = (risk.risk_score * 100).toFixed(1);
-      const sev = severityClass(risk.risk_score);
+    if (risk && typeof risk.risk_score === 'number') {
+      const scorePct = risk.risk_score.toFixed(1);
+      const sev = severityClass(risk.risk_score / 100);
       const arrow = trendArrow(risk.trend);
       const tc = trendClass(risk.trend);
       this.headerRisk.className = `drilldown-risk severity-${sev}`;
@@ -173,7 +194,8 @@ export class GlobeDrillDown {
     clearChildren(this.content);
     this.cardElements.clear();
 
-    if (forecasts.items.length === 0) {
+    const items = Array.isArray(forecasts?.items) ? forecasts.items : [];
+    if (items.length === 0) {
       this.content.appendChild(
         h('div', { className: 'drilldown-empty' },
           `No active forecasts for ${countryName}`,
@@ -181,11 +203,11 @@ export class GlobeDrillDown {
       );
     } else {
       const forecastsLabel = h('div', { className: 'drilldown-section-label' },
-        `FORECASTS (${forecasts.items.length})`,
+        `FORECASTS (${items.length})`,
       );
       this.content.appendChild(forecastsLabel);
 
-      for (const f of forecasts.items) {
+      for (const f of items) {
         const card = buildExpandableCard(f, {
           expandedIds: this.expandedIds,
           onToggle: (id: string, cardEl: HTMLElement) => {
@@ -213,7 +235,7 @@ export class GlobeDrillDown {
     viewDetailsLink.addEventListener('click', () => {
       window.dispatchEvent(
         new CustomEvent('country-brief-requested', {
-          detail: { iso: upperIso },
+          detail: { iso },
           bubbles: true,
         }),
       );

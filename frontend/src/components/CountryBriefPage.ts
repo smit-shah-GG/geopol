@@ -177,7 +177,7 @@ export class CountryBriefPage {
   private readonly onCountrySelected: (e: Event) => void;
   private readonly onKeyDown: (e: KeyboardEvent) => void;
 
-  constructor() {
+  constructor(opts?: { autoOpen?: boolean }) {
     this.onCountrySelected = (e: Event) => {
       const detail = (e as CustomEvent<{ iso: string }>).detail;
       this.open(detail.iso);
@@ -187,7 +187,11 @@ export class CountryBriefPage {
       if (e.key === 'Escape') this.close();
     };
 
-    window.addEventListener('country-selected', this.onCountrySelected);
+    // autoOpen defaults to true (dashboard behavior).
+    // Globe screen passes { autoOpen: false } because it wires country-brief-requested instead.
+    if (opts?.autoOpen !== false) {
+      window.addEventListener('country-selected', this.onCountrySelected);
+    }
   }
 
   // ==================================================================

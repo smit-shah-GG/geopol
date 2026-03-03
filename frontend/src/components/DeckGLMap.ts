@@ -409,6 +409,11 @@ export class DeckGLMap {
     });
 
     this.map.addControl(this.overlay as unknown as maplibregl.IControl);
+
+    // Safety net: if data was pushed (updateRiskScores/updateForecasts) or
+    // layer defaults were set before the map fired 'load', those rebuildLayers()
+    // calls were no-ops (overlay was null). Rebuild now to apply pending state.
+    this.rebuildLayers();
   }
 
   // =========================================================================
@@ -447,7 +452,7 @@ export class DeckGLMap {
             if (!code) return defFill;
             const score = riskMap.get(code);
             if (score === undefined) return defFill;
-            return riskColor(score);
+            return riskColor(score / 100);
           },
           getLineColor: stroke,
           getLineWidth: 1,
@@ -604,7 +609,7 @@ export class DeckGLMap {
       const code = normalizeCode(feature.properties);
       const name = countryGeometry.getNameByIso(code ?? '') ?? code ?? 'Unknown';
       const score = code ? this.riskScores.get(code) : undefined;
-      const scoreStr = score !== undefined ? (score * 100).toFixed(1) + '%' : 'N/A';
+      const scoreStr = score !== undefined ? score.toFixed(1) + '%' : 'N/A';
       content = `<strong>${name}</strong><br/>Risk: ${scoreStr}`;
     } else if (info.layer.id === 'ActiveForecastMarkers') {
       const marker = info.object as MarkerDatum;

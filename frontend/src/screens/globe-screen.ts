@@ -109,11 +109,9 @@ export async function mountGlobe(
     // CountryBriefPage auto-registers country-selected listener -- we override below)
     scenarioExplorer = new ScenarioExplorerClass();
 
-    // CountryBriefPage: we wire it to country-brief-requested, NOT country-selected.
-    // Creating it will auto-register a country-selected listener, which would
-    // cause it to open on every globe click. We destroy that listener and
-    // wire manually via country-brief-requested.
-    countryBriefPage = new CountryBriefPageClass();
+    // CountryBriefPage: disable auto-open on country-selected (that's dashboard behavior).
+    // On the globe, we wire it to country-brief-requested via the drill-down sidebar button.
+    countryBriefPage = new CountryBriefPageClass({ autoOpen: false });
 
     // Wire events
     wireEvents(ctx);

@@ -19,14 +19,16 @@ v1_router = APIRouter()
 # Health is public — no auth prefix tag
 v1_router.include_router(health_router, tags=["health"])
 
-# Forecast endpoints
+# Submission endpoints MUST be included BEFORE forecasts_router.
+# Both share the /forecasts prefix, and forecasts_router has a /{forecast_id}
+# catch-all that would swallow /requests and /submit if matched first.
+v1_router.include_router(submissions_router, prefix="/forecasts", tags=["submissions"])
+
+# Forecast endpoints (/{forecast_id} wildcard — must come after fixed paths)
 v1_router.include_router(forecasts_router, prefix="/forecasts", tags=["forecasts"])
 
 # Country risk endpoints
 v1_router.include_router(countries_router, prefix="/countries", tags=["countries"])
-
-# Submission endpoints (submit, confirm, list requests) -- shares /forecasts prefix
-v1_router.include_router(submissions_router, prefix="/forecasts", tags=["submissions"])
 
 # Calibration endpoints (Polymarket comparison, weight management)
 v1_router.include_router(calibration_router, prefix="/calibration", tags=["calibration"])

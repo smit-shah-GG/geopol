@@ -121,7 +121,13 @@ export class ForecastServiceClient {
     ) as Promise<ForecastResponse[]>;
   }
 
-  /** GET /forecasts/country/{iso}?cursor=&limit= */
+  /**
+   * GET /forecasts/country/{iso}?cursor=&limit=
+   *
+   * Does NOT use forecastBreaker.execute() — the shared breaker caches by
+   * breaker (not by URL), so getTopForecasts() would poison this response
+   * with a ForecastResponse[] instead of PaginatedResponse<ForecastResponse>.
+   */
   async getForecastsByCountry(
     iso: string,
     cursor?: string,
@@ -132,12 +138,12 @@ export class ForecastServiceClient {
     if (limit !== undefined) searchParams.set('limit', String(limit));
     const qs = searchParams.toString();
     const path = `/forecasts/country/${encodeURIComponent(iso)}${qs ? `?${qs}` : ''}`;
-    return this.dedup(path, () =>
-      this.forecastBreaker.execute(
-        () => this.fetchJson<PaginatedResponse<ForecastResponse>>(path),
-        EMPTY_PAGINATED,
-      ),
-    ) as Promise<PaginatedResponse<ForecastResponse>>;
+    try {
+      return await this.fetchJson<PaginatedResponse<ForecastResponse>>(path);
+    } catch (e: unknown) {
+      console.warn('[forecast-client] getForecastsByCountry failed:', e);
+      return EMPTY_PAGINATED;
+    }
   }
 
   /** GET /forecasts/{id} -- returns null on 404 */
@@ -162,15 +168,21 @@ export class ForecastServiceClient {
     ) as Promise<CountryRiskSummary[]>;
   }
 
-  /** GET /countries/{iso} -- returns null on 404 */
+  /**
+   * GET /countries/{iso} -- returns null on 404.
+   *
+   * Does NOT use countryBreaker.execute() — the shared breaker caches by
+   * breaker (not by URL), so getCountries() would poison this response
+   * with a CountryRiskSummary[] instead of a single CountryRiskSummary.
+   */
   async getCountryRisk(iso: string): Promise<CountryRiskSummary | null> {
     const path = `/countries/${encodeURIComponent(iso)}`;
-    return this.dedup(path, () =>
-      this.countryBreaker.execute(
-        () => this.fetchJsonNullable<CountryRiskSummary>(path),
-        null as unknown as CountryRiskSummary,
-      ),
-    ) as Promise<CountryRiskSummary | null>;
+    try {
+      return await this.fetchJsonNullable<CountryRiskSummary>(path);
+    } catch (e: unknown) {
+      console.warn('[forecast-client] getCountryRisk failed:', e);
+      return null;
+    }
   }
 
   /** GET /health (no API key required) */
