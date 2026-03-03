@@ -15,6 +15,7 @@ import type {
   ForecastResponse,
   HealthResponse,
   PaginatedResponse,
+  PolymarketComparisonResponse,
 } from '@/types/api.ts';
 import {
   type BreakerDataState,
@@ -61,6 +62,12 @@ const FALLBACK_HEALTH: HealthResponse = {
   subsystems: [],
   timestamp: new Date().toISOString(),
   version: 'unknown',
+};
+const FALLBACK_POLYMARKET: PolymarketComparisonResponse = {
+  active: [],
+  resolved: [],
+  summary: { active_count: 0, resolved_count: 0, geopol_avg_brier: null, polymarket_avg_brier: null, geopol_wins: 0 },
+  seeking_more_matches: true,
 };
 
 // ---------------------------------------------------------------------------
@@ -170,6 +177,17 @@ export class ForecastServiceClient {
         FALLBACK_HEALTH,
       ),
     ) as Promise<HealthResponse>;
+  }
+
+  /** GET /calibration/polymarket */
+  async getPolymarket(): Promise<PolymarketComparisonResponse> {
+    const key = '/calibration/polymarket';
+    return this.dedup(key, () =>
+      this.forecastBreaker.execute(
+        () => this.fetchJson<PolymarketComparisonResponse>(key),
+        FALLBACK_POLYMARKET,
+      ),
+    ) as Promise<PolymarketComparisonResponse>;
   }
 
   /**

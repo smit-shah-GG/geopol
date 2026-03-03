@@ -124,15 +124,17 @@ async function boot(): Promise<void> {
   // -- Initial data load --
   // Coordinated parallel fetch: update() pushes data to panels and map
   const update = async (): Promise<void> => {
-    const [forecasts, countries, health] = await Promise.all([
+    const [forecasts, countries, health, polymarket] = await Promise.all([
       forecastClient.getTopForecasts(10),
       forecastClient.getCountries(),
       forecastClient.getHealth(),
+      forecastClient.getPolymarket(),
     ]);
 
     pushForecasts(forecasts, forecastPanel, deckMap);
     pushCountries(countries, riskIndexPanel, deckMap);
     pushHealth(health, healthPanel);
+    calibrationPanel.updatePolymarket(polymarket);
 
     // EventTimeline renders mock data on first load
     eventTimelinePanel.refresh();
@@ -188,6 +190,14 @@ async function boot(): Promise<void> {
           pushHealth(health, healthPanel);
         },
         intervalMs: 30_000,
+      },
+      {
+        name: 'polymarket',
+        fn: async () => {
+          const polymarket = await forecastClient.getPolymarket();
+          calibrationPanel.updatePolymarket(polymarket);
+        },
+        intervalMs: 300_000,
       },
     ]);
   };

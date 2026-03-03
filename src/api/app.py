@@ -14,6 +14,7 @@ Start with::
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 from collections.abc import AsyncGenerator
@@ -67,10 +68,22 @@ async def _lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     if settings.environment == "development":
         await _seed_dev_api_key()
 
+    # 5. Polymarket background matching cycle
+    polymarket_task: asyncio.Task | None = None
+    if settings.polymarket_enabled:
+        polymarket_task = asyncio.create_task(_polymarket_loop(settings))
+        logger.info("Polymarket matching loop started (interval=%ds)", settings.polymarket_poll_interval)
+
     yield
 
     # Shutdown
     logger.info("Geopol API shutting down")
+    if polymarket_task is not None:
+        polymarket_task.cancel()
+        try:
+            await polymarket_task
+        except asyncio.CancelledError:
+            pass
     await _close_redis()
     await close_db()
 
@@ -101,6 +114,52 @@ async def _seed_dev_api_key() -> None:
             "Could not seed dev API key (database may not be migrated). "
             "Run 'alembic upgrade head' first."
         )
+
+
+async def _polymarket_loop(settings) -> None:
+    """Periodic Polymarket matching cycle.
+
+    Runs run_matching_cycle() + capture_snapshots() on the configured
+    interval. Errors are logged and swallowed — the loop must not crash.
+    """
+    import aiohttp
+
+    from src.db.postgres import async_session_factory
+    from src.forecasting.gemini_client import GeminiClient
+    from src.polymarket.client import PolymarketClient
+    from src.polymarket.comparison import PolymarketComparisonService
+    from src.polymarket.matcher import PolymarketMatcher
+
+    # Wait for first cycle to let the app finish booting
+    await asyncio.sleep(30)
+
+    try:
+        gemini_client = GeminiClient()
+    except Exception:
+        logger.warning("Polymarket loop: Gemini client unavailable, matching disabled")
+        return
+
+    matcher = PolymarketMatcher(gemini_client, match_threshold=settings.polymarket_match_threshold)
+
+    while True:
+        try:
+            async with aiohttp.ClientSession() as http_session:
+                pm_client = PolymarketClient(session=http_session)
+                service = PolymarketComparisonService(
+                    async_session_factory=async_session_factory,
+                    polymarket_client=pm_client,
+                    matcher=matcher,
+                    settings=settings,
+                )
+                result = await service.run_matching_cycle()
+                logger.info("Polymarket matching: %s", result)
+                await service.capture_snapshots()
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            logger.exception("Polymarket matching cycle failed")
+
+        await asyncio.sleep(settings.polymarket_poll_interval)
 
 
 def create_app() -> FastAPI:
