@@ -45,7 +45,8 @@ This phase does NOT add new UI screens or new panel types. It fills existing sca
 - UI display only — does NOT enter knowledge graph or affect TKG training
 
 ### Additional Data Sources — Government Advisories
-- Three feeds: US State Department, EU EEAS, UK FCDO travel advisories
+- Two feeds: US State Department and UK FCDO travel advisories
+- **EU EEAS dropped:** Research found no structured API or machine-readable feed for EU EEAS travel advisories. EEAS publishes advice as unstructured web pages only. Two reliable sources (US State Dept JSON API, UK FCDO GOV.UK Content API) provide sufficient coverage. EU EEAS can be reconsidered if a structured feed becomes available in the future.
 - Daily polling frequency
 - Advisory risk levels displayed on country pages but NOT factored into computed risk score — risk score stays purely forecast-derived
 - UI display only — no knowledge graph integration
@@ -62,7 +63,7 @@ This phase does NOT add new UI screens or new panel types. It fills existing sca
 - Advisory API client implementation details (parsing, caching)
 - Cursor encoding format for pagination
 - Exact per-panel refresh intervals (directional: events fast, articles medium, advisories slow)
-- Error/retry behavior for external API calls (ACLED, State Dept, EEAS, FCDO)
+- Error/retry behavior for external API calls (ACLED, State Dept, FCDO)
 
 </decisions>
 
@@ -83,6 +84,7 @@ This phase does NOT add new UI screens or new panel types. It fills existing sca
 - Risk dashboard with trend charts on country pages — analytics-centric view could be a future enhancement
 - ACLED protest/riot/strategic development event types — add if armed conflict subset proves valuable
 - Sanctions lists (OFAC SDN, EU restrictive measures) — entity-level data, different use case from country-level advisories
+- EU EEAS travel advisories — no structured API currently available; revisit if machine-readable feed emerges
 
 </deferred>
 
