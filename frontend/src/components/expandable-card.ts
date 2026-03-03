@@ -12,7 +12,7 @@
  */
 
 import { h } from '@/utils/dom-utils';
-import type { ForecastResponse, EvidenceDTO, ScenarioDTO } from '@/types/api';
+import type { ForecastResponse, EvidenceDTO, ScenarioDTO, PolymarketComparisonData, SnapshotPoint } from '@/types/api';
 import * as d3 from 'd3';
 
 // ---------------------------------------------------------------------------
@@ -161,6 +161,20 @@ export function buildExpandableCard(
     ),
   );
 
+  // Polymarket badge -- small icon indicating market linkage
+  const pmData = f.polymarket_comparison;
+  if (pmData) {
+    const badgeTitle = pmData.provenance === 'polymarket_driven'
+      ? 'Polymarket-driven forecast'
+      : 'Polymarket-tracked forecast';
+    const badge = h('span', {
+      className: 'pm-badge',
+      title: badgeTitle,
+    });
+    const metaDiv = card.querySelector('.forecast-meta');
+    if (metaDiv) metaDiv.prepend(badge);
+  }
+
   // Click header area to toggle expansion
   const header = card.querySelector('.forecast-card-header') as HTMLElement;
   header.addEventListener('click', (e: MouseEvent) => {
@@ -256,6 +270,11 @@ export function buildExpandedContent(f: ForecastResponse): HTMLElement {
       ),
     ),
   );
+
+  // Polymarket comparison row (if linked)
+  if (f.polymarket_comparison) {
+    leftCol.appendChild(buildInlineComparison(f.polymarket_comparison));
+  }
 
   // -- Right column: mini tree + evidence + "View Full Analysis" --
   const rightCol = h('div', { className: 'expanded-right' });
@@ -429,7 +448,20 @@ export function updateCardInPlace(
   const time = card.querySelector('.forecast-time');
   if (time) time.textContent = relativeTime(f.created_at);
 
-  // If expanded, update expanded content too
+  // Sync Polymarket badge with current data
+  const existingBadge = card.querySelector('.pm-badge');
+  if (f.polymarket_comparison && !existingBadge) {
+    const badgeTitle = f.polymarket_comparison.provenance === 'polymarket_driven'
+      ? 'Polymarket-driven forecast'
+      : 'Polymarket-tracked forecast';
+    const badge = h('span', { className: 'pm-badge', title: badgeTitle });
+    const metaDiv = card.querySelector('.forecast-meta');
+    if (metaDiv) metaDiv.prepend(badge);
+  } else if (!f.polymarket_comparison && existingBadge) {
+    existingBadge.remove();
+  }
+
+  // If expanded, update expanded content too (rebuilds comparison section)
   if (expandedIds.has(f.forecast_id)) {
     const expandedContent = card.querySelector('.expanded-content');
     if (expandedContent) {
@@ -440,4 +472,104 @@ export function updateCardInPlace(
 
   // Store updated reference for "View Full Analysis" click
   card.dataset['forecastData'] = JSON.stringify(f);
+}
+
+// ---------------------------------------------------------------------------
+// Polymarket comparison: inline expanded section + sparkline
+// ---------------------------------------------------------------------------
+
+/** Build the inline comparison section shown in expanded card left column. */
+function buildInlineComparison(comp: PolymarketComparisonData): HTMLElement {
+  const pmPrice = comp.polymarket_price;
+  const div = comp.divergence;
+
+  const divClass = div !== null && Math.abs(div) > 0.15 ? 'high-divergence' : 'low-divergence';
+  const divText = div !== null
+    ? `${div > 0 ? '+' : ''}${(div * 100).toFixed(1)}pp`
+    : '--';
+
+  const section = h('div', { className: 'expanded-comparison-section' },
+    h('div', { className: 'expanded-section-label' }, 'vs Polymarket'),
+    h('div', { className: 'comparison-values' },
+      h('span', { className: 'comparison-market' },
+        `Market: ${pmPrice !== null ? (pmPrice * 100).toFixed(1) + '%' : '--'}`,
+      ),
+      h('span', { className: `comparison-divergence ${divClass}` }, divText),
+    ),
+    // Sparkline container -- lazy-loaded
+    h('div', {
+      className: 'sparkline-container',
+      dataset: { comparisonId: String(comp.comparison_id) },
+    }, 'Loading sparkline...'),
+  );
+
+  // Lazy-load sparkline data
+  const container = section.querySelector('.sparkline-container') as HTMLElement;
+  loadSparkline(comp.comparison_id, container);
+
+  return section;
+}
+
+/** Lazy-load sparkline snapshot data and render SVG into the container. */
+async function loadSparkline(comparisonId: number, container: HTMLElement): Promise<void> {
+  const { forecastClient } = await import('@/services/forecast-client');
+  const response = await forecastClient.getSnapshots(comparisonId, 30);
+
+  if (response.snapshots.length < 2) {
+    container.textContent = 'Insufficient data for sparkline';
+    container.classList.add('sparkline-empty');
+    return;
+  }
+
+  container.textContent = '';
+  container.appendChild(renderSparklineSVG(response.snapshots));
+}
+
+/** Render a dual-line sparkline SVG (Polymarket blue, Geopol orange). */
+function renderSparklineSVG(snapshots: SnapshotPoint[]): SVGSVGElement {
+  const W = 180;
+  const H = 40;
+  const pad = 2;
+
+  const xScale = d3.scaleLinear()
+    .domain([0, snapshots.length - 1])
+    .range([pad, W - pad]);
+  const yScale = d3.scaleLinear()
+    .domain([0, 1])
+    .range([H - pad, pad]);
+
+  const pmLine = d3.line<SnapshotPoint>()
+    .x((_d, i) => xScale(i))
+    .y(d => yScale(d.polymarket_price));
+  const gpLine = d3.line<SnapshotPoint>()
+    .x((_d, i) => xScale(i))
+    .y(d => yScale(d.geopol_probability));
+
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.setAttribute('width', String(W));
+  svg.setAttribute('height', String(H));
+  svg.classList.add('sparkline-svg');
+
+  // Polymarket line (accent blue)
+  const pmPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  const pmD = pmLine(snapshots);
+  if (pmD) pmPath.setAttribute('d', pmD);
+  pmPath.setAttribute('fill', 'none');
+  pmPath.setAttribute('stroke', 'var(--accent)');
+  pmPath.setAttribute('stroke-width', '1.5');
+  pmPath.setAttribute('opacity', '0.9');
+  svg.appendChild(pmPath);
+
+  // Geopol line (critical orange)
+  const gpPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  const gpD = gpLine(snapshots);
+  if (gpD) gpPath.setAttribute('d', gpD);
+  gpPath.setAttribute('fill', 'none');
+  gpPath.setAttribute('stroke', 'var(--semantic-critical)');
+  gpPath.setAttribute('stroke-width', '1.5');
+  gpPath.setAttribute('opacity', '0.9');
+  svg.appendChild(gpPath);
+
+  return svg;
 }
