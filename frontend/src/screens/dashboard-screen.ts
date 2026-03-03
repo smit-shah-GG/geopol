@@ -5,7 +5,7 @@
  *   Col 1: RiskIndexPanel
  *   Col 2: SearchBar, ForecastPanel
  *   Col 3: MyForecastsPanel, SourcesPanel
- *   Col 4: EventTimeline, EnsembleBreakdown, SystemHealth, Calibration
+ *   Col 4: EventTimeline, SystemHealth, Calibration
  *
  * Owns the RefreshScheduler lifecycle and all inter-panel event wiring.
  */
@@ -20,7 +20,6 @@ import type { ForecastResponse, HealthResponse, CountryRiskSummary, ForecastRequ
 import { ForecastPanel } from '@/components/ForecastPanel';
 import { RiskIndexPanel } from '@/components/RiskIndexPanel';
 import { EventTimelinePanel } from '@/components/EventTimelinePanel';
-import { EnsembleBreakdownPanel } from '@/components/EnsembleBreakdownPanel';
 import { SystemHealthPanel } from '@/components/SystemHealthPanel';
 import { CalibrationPanel } from '@/components/CalibrationPanel';
 import { MyForecastsPanel } from '@/components/MyForecastsPanel';
@@ -84,7 +83,6 @@ export function mountDashboard(container: HTMLElement, ctx: GeoPolAppContext): v
   const forecastPanel = new ForecastPanel();
   const riskIndexPanel = new RiskIndexPanel();
   const eventTimelinePanel = new EventTimelinePanel();
-  const ensemblePanel = new EnsembleBreakdownPanel();
   const healthPanel = new SystemHealthPanel();
   const calibrationPanel = new CalibrationPanel();
   const myForecastsPanel = new MyForecastsPanel();
@@ -100,7 +98,6 @@ export function mountDashboard(container: HTMLElement, ctx: GeoPolAppContext): v
   columns.col3.appendChild(myForecastsPanel.getElement());
   columns.col3.appendChild(sourcesPanel.getElement());
   columns.col4.appendChild(eventTimelinePanel.getElement());
-  columns.col4.appendChild(ensemblePanel.getElement());
   columns.col4.appendChild(healthPanel.getElement());
   columns.col4.appendChild(calibrationPanel.getElement());
 
@@ -108,7 +105,6 @@ export function mountDashboard(container: HTMLElement, ctx: GeoPolAppContext): v
   ctx.panels['forecasts'] = forecastPanel;
   ctx.panels['risk-index'] = riskIndexPanel;
   ctx.panels['event-timeline'] = eventTimelinePanel;
-  ctx.panels['ensemble'] = ensemblePanel;
   ctx.panels['system-health'] = healthPanel;
   ctx.panels['calibration'] = calibrationPanel;
   ctx.panels['my-forecasts'] = myForecastsPanel;
@@ -124,7 +120,7 @@ export function mountDashboard(container: HTMLElement, ctx: GeoPolAppContext): v
       forecastClient.getTopForecasts(10),
       forecastClient.getCountries(),
       forecastClient.getHealth(),
-      forecastClient.getPolymarket(),
+      forecastClient.getPolymarketTop(),
       forecastClient.getRequests(),
     ]);
 
@@ -134,7 +130,7 @@ export function mountDashboard(container: HTMLElement, ctx: GeoPolAppContext): v
     pushHealth(health, healthPanel);
     pushSources(health, sourcesPanel);
     pushRequests(requests, myForecastsPanel);
-    calibrationPanel.updatePolymarket(polymarket);
+    calibrationPanel.updatePolymarketTop(polymarket);
     eventTimelinePanel.refresh();
   };
 
@@ -145,7 +141,6 @@ export function mountDashboard(container: HTMLElement, ctx: GeoPolAppContext): v
   // -- Event wiring --
   forecastSelectedHandler = ((e: CustomEvent<{ forecast: ForecastResponse }>) => {
     const { forecast } = e.detail;
-    ensemblePanel.update(forecast);
     calibrationPanel.update([forecast.calibration]);
   }) as EventListener;
   window.addEventListener('forecast-selected', forecastSelectedHandler);
@@ -198,8 +193,8 @@ export function mountDashboard(container: HTMLElement, ctx: GeoPolAppContext): v
     {
       name: 'polymarket',
       fn: async () => {
-        const polymarket = await forecastClient.getPolymarket();
-        calibrationPanel.updatePolymarket(polymarket);
+        const polymarket = await forecastClient.getPolymarketTop();
+        calibrationPanel.updatePolymarketTop(polymarket);
       },
       intervalMs: 300_000,
     },

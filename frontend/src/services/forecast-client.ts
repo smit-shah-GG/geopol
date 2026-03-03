@@ -19,6 +19,7 @@ import type {
   PaginatedResponse,
   ParsedQuestionResponse,
   PolymarketComparisonResponse,
+  PolymarketTopResponse,
   SearchResponse,
 } from '@/types/api.ts';
 import {
@@ -73,6 +74,10 @@ const FALLBACK_POLYMARKET: PolymarketComparisonResponse = {
   resolved: [],
   summary: { active_count: 0, resolved_count: 0, geopol_avg_brier: null, polymarket_avg_brier: null, geopol_wins: 0 },
   seeking_more_matches: true,
+};
+const FALLBACK_POLYMARKET_TOP: PolymarketTopResponse = {
+  events: [],
+  total_geo_markets: 0,
 };
 
 // ---------------------------------------------------------------------------
@@ -205,6 +210,17 @@ export class ForecastServiceClient {
         FALLBACK_POLYMARKET,
       ),
     ) as Promise<PolymarketComparisonResponse>;
+  }
+
+  /** GET /calibration/polymarket/top */
+  async getPolymarketTop(): Promise<PolymarketTopResponse> {
+    const key = '/calibration/polymarket/top';
+    return this.dedup(key, () =>
+      this.forecastBreaker.execute(
+        () => this.fetchJson<PolymarketTopResponse>(key),
+        FALLBACK_POLYMARKET_TOP,
+      ),
+    ) as Promise<PolymarketTopResponse>;
   }
 
   /**

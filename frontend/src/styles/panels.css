@@ -956,6 +956,101 @@
   height: auto;
 }
 
+/* ---- Polymarket Top Events (inside CalibrationPanel) ---- */
+
+.polymarket-section {
+  margin-top: var(--space-lg);
+}
+
+.polymarket-section-inner {
+  /* Wrapper for section-label + table + footer */
+}
+
+.polymarket-table {
+  margin-bottom: var(--space-sm);
+}
+
+.polymarket-row {
+  display: flex;
+  align-items: center;
+  padding: var(--space-xs) 0;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+}
+
+.polymarket-row.polymarket-header {
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.polymarket-row.odd {
+  background: var(--bg-surface);
+}
+
+.polymarket-cell {
+  font-variant-numeric: tabular-nums;
+}
+
+.polymarket-cell-question {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-secondary);
+}
+
+.polymarket-cell-vol {
+  min-width: 52px;
+  text-align: right;
+  padding-right: var(--space-sm);
+  color: var(--text-muted);
+}
+
+.polymarket-cell-prob {
+  min-width: 52px;
+  text-align: right;
+  padding-right: var(--space-sm);
+}
+
+.polymarket-cell-conf {
+  min-width: 40px;
+  text-align: right;
+  color: var(--text-muted);
+}
+
+.polymarket-matched {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.polymarket-link {
+  color: var(--text-secondary);
+  text-decoration: none;
+}
+
+.polymarket-link:hover {
+  color: var(--text-primary);
+  text-decoration: underline;
+}
+
+.polymarket-footer {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  text-align: center;
+  padding: var(--space-xs) 0;
+}
+
+.polymarket-seeking {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  font-style: italic;
+  margin-bottom: var(--space-sm);
+}
+
 /* ========================================================================
    DeckGLMap -- Layer Toggle Panel + Map Tooltip + Attribution
    ======================================================================== */

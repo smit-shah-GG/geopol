@@ -190,3 +190,23 @@ export interface PolymarketComparisonResponse {
   };
   seeking_more_matches: boolean;
 }
+
+/** Single event from GET /calibration/polymarket/top. */
+export interface PolymarketTopEvent {
+  event_id: string;
+  title: string;
+  slug: string;
+  volume: number;
+  liquidity: number;
+  // Optional Geopol match data
+  geopol_prediction_id: string | null;
+  geopol_probability: number | null;
+  geopol_question: string | null;
+  match_confidence: number | null;
+}
+
+/** GET /calibration/polymarket/top response. */
+export interface PolymarketTopResponse {
+  events: PolymarketTopEvent[];
+  total_geo_markets: number;
+}
