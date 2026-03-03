@@ -11,19 +11,19 @@ See: .planning/PROJECT.md (updated 2026-03-02)
 
 Milestone: v2.1 Production UX & Live Data Integration
 Phase: 18 of 18 (Polymarket-Driven Forecasting)
-Plan: 01 of 03
+Plan: 02 of 03
 Status: In progress
-Last activity: 2026-03-04 -- Completed 18-01-PLAN.md (Auto-Forecast Pipeline)
+Last activity: 2026-03-04 -- Completed 18-02-PLAN.md (API Layer for Polymarket Comparisons)
 
-Progress: [####################################################] 100% (63/65 plans lifetime)
-v2.1:    [##############------] 70% (14/20 plans)
+Progress: [####################################################] 100% (64/65 plans lifetime)
+v2.1:    [###############-----] 75% (15/20 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 63
+- Total plans completed: 64
 - Average duration: 10 minutes
-- Total execution time: 10.9 hours
+- Total execution time: 11.0 hours
 
 **By Phase:**
 
@@ -47,11 +47,11 @@ v2.1:    [##############------] 70% (14/20 plans)
 
 | 16-globe-forecasts-screens | 3 | 16min | 5min |
 | 17-live-data-feeds-country-depth | 3 | 26min | 9min |
-| 18-polymarket-driven-forecasting | 1 | 5min | 5min |
+| 18-polymarket-driven-forecasting | 2 | 8min | 4min |
 
 **Recent Trend:**
-- Last 4 plans: 17-02 (12min), 17-03 (7min), 18-01 (5min)
-- Trend: Fast execution on well-scoped orchestration plans
+- Last 4 plans: 17-03 (7min), 18-01 (5min), 18-02 (3min)
+- Trend: Fast execution on well-scoped API extension plans
 
 ## Accumulated Context
 
@@ -111,6 +111,9 @@ Key decisions affecting current work:
 - Country extraction tiered: heuristic COUNTRY_NAME_TO_ISO first (zero cost), Gemini LLM fallback (2026-03-04)
 - CAMEO extraction always via LLM -- per-CAMEO calibration weights require accuracy (2026-03-04)
 - Daily reforecast guard via _last_reforecast_date flag -- simpler than DB count per cycle (2026-03-04)
+- Batch IN-clause for forecast-to-comparison enrichment -- no N+1 (2026-03-04)
+- Provenance fallback: Prediction.provenance null + comparison exists = polymarket_tracked (2026-03-04)
+- Divergence sign convention: geopol_probability - polymarket_price (positive = geopol more bullish) (2026-03-04)
 
 ### Deferred Issues
 
@@ -135,6 +138,6 @@ Key decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-03-04
-Stopped at: Completed 18-01-PLAN.md (Auto-Forecast Pipeline)
+Stopped at: Completed 18-02-PLAN.md (API Layer for Polymarket Comparisons)
 Resume file: None
-Next: Execute 18-02-PLAN.md (Badges + Inline Comparison)
+Next: Execute 18-03-PLAN.md (Frontend ComparisonPanel + Badges)
