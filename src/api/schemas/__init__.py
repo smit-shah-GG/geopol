@@ -30,6 +30,12 @@ from src.api.schemas.health import (
     SubsystemStatus,
 )
 from src.api.schemas.search import SearchResponse, SearchResult
+from src.api.schemas.submission import (
+    ConfirmSubmissionResponse,
+    ForecastRequestStatus,
+    ParsedQuestionResponse,
+    SubmitQuestionRequest,
+)
 
 __all__ = [
     # Forecast DTOs
@@ -47,6 +53,11 @@ __all__ = [
     # Search
     "SearchResult",
     "SearchResponse",
+    # Submission
+    "SubmitQuestionRequest",
+    "ParsedQuestionResponse",
+    "ForecastRequestStatus",
+    "ConfirmSubmissionResponse",
     # Common
     "ProblemDetail",
     "PaginatedResponse",
