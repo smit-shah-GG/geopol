@@ -3,6 +3,9 @@ Calibration API endpoints: Polymarket comparison and weight management.
 
 Endpoints:
     GET /calibration/polymarket -- Active/resolved comparisons + summary stats
+    GET /calibration/polymarket/top -- Top geopolitical Polymarket events by volume
+    GET /calibration/polymarket/comparisons -- All comparisons for ComparisonPanel
+    GET /calibration/polymarket/comparisons/{id}/snapshots -- Sparkline time-series
     GET /calibration/weights    -- Current per-CAMEO calibration weights
     GET /calibration/weights/history -- Weight version history with filters
 """
@@ -115,6 +118,50 @@ class CalibrationWeightHistoryItem(BaseModel):
     flag_reason: str | None
 
 
+class ComparisonPanelItem(BaseModel):
+    """Single comparison for the ComparisonPanel (active or resolved)."""
+
+    id: int
+    polymarket_event_id: str
+    polymarket_slug: str
+    polymarket_title: str
+    geopol_prediction_id: str
+    match_confidence: float
+    polymarket_price: float | None
+    geopol_probability: float | None
+    divergence: float | None  # computed: geopol - polymarket
+    status: str  # active | resolved
+    provenance: str  # polymarket_driven | polymarket_tracked
+    geopol_brier: float | None = None
+    polymarket_brier: float | None = None
+    polymarket_outcome: float | None = None
+    resolved_at: str | None = None
+    created_at: str
+
+
+class ComparisonPanelResponse(BaseModel):
+    """Full response for GET /calibration/polymarket/comparisons."""
+
+    comparisons: list[ComparisonPanelItem]
+    total: int
+
+
+class SnapshotPoint(BaseModel):
+    """Single time-series data point for sparkline rendering."""
+
+    polymarket_price: float
+    geopol_probability: float
+    captured_at: str
+
+
+class SnapshotResponse(BaseModel):
+    """Time-series snapshot data for a comparison pair."""
+
+    comparison_id: int
+    snapshots: list[SnapshotPoint]
+    total_available: int  # total snapshots before sampling
+
+
 # ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
@@ -186,12 +233,11 @@ async def get_polymarket_top(
 
     client = PolymarketClient()
     try:
-        all_geo = await client.fetch_geopolitical_markets(limit=200)
-        top_events = await client.fetch_top_geopolitical(limit=10)
+        top_events, total_geo = await client.fetch_top_geopolitical(
+            limit=10, fetch_limit=100,
+        )
     finally:
         await client.close()
-
-    total_geo = len(all_geo)
 
     # Gather event IDs from top events for DB lookup
     top_event_ids = [str(e.get("id", "")) for e in top_events if e.get("id")]
@@ -230,16 +276,16 @@ async def get_polymarket_top(
                 question_map.get(pred_id),
             )
 
-    # Build response items
+    # Build response items — volume/liquidity are already floats from the API
     items: list[PolymarketTopEventItem] = []
     for event in top_events:
         event_id = str(event.get("id", ""))
         try:
-            volume = float(event.get("volume", "0") or "0")
+            volume = float(event.get("volume", 0) or 0)
         except (ValueError, TypeError):
             volume = 0.0
         try:
-            liquidity = float(event.get("liquidity", "0") or "0")
+            liquidity = float(event.get("liquidity", 0) or 0)
         except (ValueError, TypeError):
             liquidity = 0.0
 
@@ -259,6 +305,142 @@ async def get_polymarket_top(
         )
 
     return PolymarketTopResponse(events=items, total_geo_markets=total_geo)
+
+
+@router.get(
+    "/polymarket/comparisons",
+    response_model=ComparisonPanelResponse,
+    summary="All comparisons for ComparisonPanel",
+    description=(
+        "Returns all active and resolved Polymarket-vs-Geopol comparisons "
+        "in a single list ordered by created_at DESC, with divergence and "
+        "provenance computed per item. Designed for the ComparisonPanel UI."
+    ),
+)
+async def get_comparison_panel(
+    _client: str = Depends(verify_api_key),
+    db: AsyncSession = Depends(get_db),
+) -> ComparisonPanelResponse:
+    """Fetch all comparisons with provenance for the ComparisonPanel."""
+    from src.polymarket.comparison import PolymarketComparisonService
+    from contextlib import asynccontextmanager
+    from src.db.models import Prediction
+
+    @asynccontextmanager
+    async def _session_wrapper():
+        yield db
+
+    service = PolymarketComparisonService.__new__(PolymarketComparisonService)
+    service._session_factory = _session_wrapper
+
+    all_items = await service.get_all_comparisons()
+
+    if not all_items:
+        return ComparisonPanelResponse(comparisons=[], total=0)
+
+    # Batch-fetch provenance from Prediction rows for all comparison items
+    pred_ids = [item["geopol_prediction_id"] for item in all_items]
+    prov_stmt = select(Prediction.id, Prediction.provenance).where(
+        Prediction.id.in_(pred_ids)
+    )
+    prov_result = await db.execute(prov_stmt)
+    provenance_map: dict[str, str | None] = {
+        pid: prov for pid, prov in prov_result.all()
+    }
+
+    comparisons: list[ComparisonPanelItem] = []
+    for item in all_items:
+        pred_prov = provenance_map.get(item["geopol_prediction_id"])
+        if pred_prov and pred_prov.startswith("polymarket"):
+            provenance = pred_prov
+        else:
+            provenance = "polymarket_tracked"
+
+        # Compute divergence
+        gp = item.get("geopol_probability")
+        pp = item.get("polymarket_price")
+        divergence: float | None = None
+        if gp is not None and pp is not None:
+            divergence = round(gp - pp, 4)
+
+        comparisons.append(
+            ComparisonPanelItem(
+                id=item["id"],
+                polymarket_event_id=item["polymarket_event_id"],
+                polymarket_slug=item.get("polymarket_slug", ""),
+                polymarket_title=item["polymarket_title"],
+                geopol_prediction_id=item["geopol_prediction_id"],
+                match_confidence=item["match_confidence"],
+                polymarket_price=pp,
+                geopol_probability=gp,
+                divergence=divergence,
+                status=item["status"],
+                provenance=provenance,
+                geopol_brier=item.get("geopol_brier"),
+                polymarket_brier=item.get("polymarket_brier"),
+                polymarket_outcome=item.get("polymarket_outcome"),
+                resolved_at=item.get("resolved_at"),
+                created_at=item["created_at"],
+            )
+        )
+
+    return ComparisonPanelResponse(comparisons=comparisons, total=len(comparisons))
+
+
+@router.get(
+    "/polymarket/comparisons/{comparison_id}/snapshots",
+    response_model=SnapshotResponse,
+    summary="Sparkline snapshot data for a comparison",
+    description=(
+        "Returns sampled time-series snapshot data for a single comparison pair. "
+        "If more than `limit` snapshots exist, evenly samples to get exactly "
+        "`limit` points spanning the full time range."
+    ),
+)
+async def get_comparison_snapshots(
+    comparison_id: int,
+    limit: int = Query(default=30, ge=1, le=100, description="Maximum data points"),
+    _client: str = Depends(verify_api_key),
+    db: AsyncSession = Depends(get_db),
+) -> SnapshotResponse:
+    """Fetch sampled snapshots for sparkline rendering."""
+    from src.polymarket.comparison import PolymarketComparisonService
+    from contextlib import asynccontextmanager
+    from sqlalchemy import func as sa_func
+    from src.db.models import PolymarketSnapshot
+
+    @asynccontextmanager
+    async def _session_wrapper():
+        yield db
+
+    service = PolymarketComparisonService.__new__(PolymarketComparisonService)
+    service._session_factory = _session_wrapper
+
+    # Get total count for response metadata
+    count_stmt = (
+        select(sa_func.count())
+        .where(PolymarketSnapshot.comparison_id == comparison_id)
+        .select_from(PolymarketSnapshot)
+    )
+    count_result = await db.execute(count_stmt)
+    total_available = count_result.scalar() or 0
+
+    snapshots_data = await service.get_snapshots_for_comparison(comparison_id, limit)
+
+    snapshots = [
+        SnapshotPoint(
+            polymarket_price=s["polymarket_price"],
+            geopol_probability=s["geopol_probability"],
+            captured_at=s["captured_at"],
+        )
+        for s in snapshots_data
+    ]
+
+    return SnapshotResponse(
+        comparison_id=comparison_id,
+        snapshots=snapshots,
+        total_available=total_available,
+    )
 
 
 @router.get(
