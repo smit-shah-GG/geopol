@@ -209,14 +209,6 @@
 .panel.span-4 { min-height: 520px; }
 
 /* ========================================================================
-   Light Theme Panel Overrides
-   ======================================================================== */
-
-[data-theme="light"] .panel-info-tooltip {
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
-}
-
-/* ========================================================================
    Empty State
    ======================================================================== */
 
@@ -777,16 +769,6 @@
   }
 }
 
-/* ---- Light theme overrides ---- */
-
-[data-theme="light"] .scenario-explorer-backdrop {
-  background: rgba(0, 0, 0, 0.6);
-}
-
-[data-theme="light"] .evidence-source-card {
-  border-color: var(--border);
-}
-
 /* ========================================================================
    Ensemble Breakdown (EnsembleBreakdownPanel)
    ======================================================================== */
@@ -1143,16 +1125,6 @@
 
 .map-attribution a:hover {
   text-decoration: underline;
-}
-
-/* ---- Light theme map overrides ---- */
-
-[data-theme="light"] .map-layer-toggles {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-[data-theme="light"] .map-tooltip {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 /* ========================================================================
@@ -1740,16 +1712,6 @@
   padding-top: var(--space-xs);
 }
 
-/* ---- Light theme country brief overrides ---- */
-
-[data-theme="light"] .country-brief-backdrop {
-  background: rgba(0, 0, 0, 0.6);
-}
-
-[data-theme="light"] .forecast-detail-card {
-  border-color: var(--border);
-}
-
 /* ---- Responsive ---- */
 
 @media (max-width: 768px) {
@@ -1769,4 +1731,20 @@
     padding: var(--space-xs) var(--space-sm);
     font-size: 9px;
   }
+}
+
+/* ========================================================================
+   Screen Placeholder
+   ======================================================================== */
+
+.screen-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  color: var(--text-muted);
+  font-size: var(--font-size-lg);
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 2px;
 }

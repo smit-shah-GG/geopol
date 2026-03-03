@@ -1,18 +1,17 @@
 /*
  * Geopol -- Intelligence/Analyst Aesthetic
  *
- * Dark-first design with monospace typography, muted accent colors,
+ * Dark-only design with monospace typography, muted accent colors,
  * and information-density optimized for analyst workflows.
  *
  * Inspired by terminal UIs, Bloomberg terminals, and SCIF displays.
  */
 
 /* ========================================================================
-   CSS Custom Properties (Theme Variables)
+   CSS Custom Properties (Dark Theme)
    ======================================================================== */
 
 :root {
-  /* --- Dark theme (default) --- */
   --bg: #0a0e14;
   --bg-surface: #111620;
   --bg-elevated: #1a2030;
@@ -97,48 +96,6 @@
   --scrollbar-track: transparent;
 }
 
-/* --- Light theme --- */
-[data-theme="light"] {
-  --bg: #e8ecf0;
-  --bg-surface: #f4f6f8;
-  --bg-elevated: #ffffff;
-  --bg-overlay: rgba(232, 236, 240, 0.92);
-
-  --border: #c8d0d8;
-  --border-subtle: #dce2e8;
-  --border-focus: #2a6bc5;
-
-  --text-primary: #1a2030;
-  --text-secondary: #506070;
-  --text-muted: #8090a4;
-  --text-inverse: #f4f6f8;
-
-  --accent: #2a6bc5;
-  --accent-hover: #1a5bb5;
-  --accent-muted: rgba(42, 107, 197, 0.12);
-
-  --semantic-critical: #d32f2f;
-  --semantic-warning: #d48806;
-  --semantic-success: #27a95e;
-  --semantic-info: #2a6bc5;
-  --semantic-neutral: #6b7a8d;
-
-  --prob-low: #27a95e;
-  --prob-medium: #d48806;
-  --prob-high: #d32f2f;
-  --prob-extreme: #b71c1c;
-
-  --badge-live: #27a95e;
-  --badge-cached: #d48806;
-  --badge-unavailable: #d32f2f;
-
-  --panel-bg: #f4f6f8;
-  --panel-header-bg: #eaecf0;
-  --panel-border: #c8d0d8;
-
-  --scrollbar-thumb: #b0b8c4;
-}
-
 /* ========================================================================
    Reset & Base
    ======================================================================== */
@@ -204,14 +161,14 @@ body {
 }
 
 /* ========================================================================
-   App Header
+   Navigation Bar
    ======================================================================== */
 
-.app-header {
+.nav-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 40px;
+  height: 36px;
   padding: 0 var(--space-lg);
   background: var(--bg-surface);
   border-bottom: 1px solid var(--border);
@@ -219,13 +176,12 @@ body {
   z-index: var(--z-header);
 }
 
-.header-left {
+.nav-left {
   display: flex;
   align-items: center;
-  gap: var(--space-md);
 }
 
-.header-logo {
+.nav-logo {
   font-family: var(--font-mono);
   font-size: var(--font-size-lg);
   font-weight: 700;
@@ -234,70 +190,82 @@ body {
   user-select: none;
 }
 
-.header-subtitle {
-  font-size: var(--font-size-xs);
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 1px;
-}
-
-.header-right {
+.nav-links {
   display: flex;
   align-items: center;
-  gap: var(--space-sm);
+  gap: var(--space-xs);
 }
 
-.header-theme-toggle {
-  padding: 4px 10px;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border);
-  border-radius: 3px;
-  color: var(--text-secondary);
+.nav-link {
+  padding: 4px 12px;
   font-family: var(--font-mono);
   font-size: var(--font-size-xs);
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  text-transform: uppercase;
+  font-weight: 600;
   letter-spacing: 1px;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--text-muted);
+  border-radius: 3px;
+  transition: all var(--transition-fast);
 }
 
-.header-theme-toggle:hover {
+.nav-link:hover {
+  color: var(--text-secondary);
   background: var(--accent-muted);
+}
+
+.nav-link--active {
   color: var(--accent);
-  border-color: var(--accent);
+  background: var(--accent-muted);
 }
 
 /* ========================================================================
-   Panel Grid
+   Screen Container
    ======================================================================== */
 
-.panel-grid {
+.screen-container {
   flex: 1;
-  display: grid;
-  grid-template-columns: 25% 50% 25%;
-  grid-template-rows: 1fr 1fr 1fr;
-  grid-template-areas:
-    "forecasts   map  risk-index"
-    "ensemble    map  health"
-    "calibration map  events";
-  gap: 1px;
-  overflow: hidden;
-  background: var(--bg);
-}
-
-.grid-slot {
-  overflow: hidden;
   display: flex;
   flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
 }
 
-.grid-slot > .panel {
+/* ========================================================================
+   Dashboard 4-Column Layout
+   ======================================================================== */
+
+.dashboard-columns {
+  display: flex;
   flex: 1;
   min-height: 0;
+  overflow: hidden;
 }
 
-.grid-slot--map {
+.dashboard-col {
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
   min-height: 0;
+}
+
+.dashboard-col--1 { width: 15%; }
+.dashboard-col--2 { width: 35%; }
+.dashboard-col--3 { width: 30%; }
+.dashboard-col--4 { width: 20%; }
+
+.dashboard-col + .dashboard-col {
+  border-left: 1px solid var(--border);
+}
+
+/* ========================================================================
+   View Transitions
+   ======================================================================== */
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 150ms;
 }
 
 /* ========================================================================
@@ -398,46 +366,15 @@ body {
 }
 
 /* ========================================================================
-   Responsive
+   Responsive (mobile deferred -- minimal breakpoint)
    ======================================================================== */
 
-@media (max-width: 1200px) {
-  .panel-grid {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto;
-    grid-template-areas:
-      "map"
-      "forecasts"
-      "risk-index"
-      "ensemble"
-      "health"
-      "calibration"
-      "events";
-    overflow-y: auto;
-    overflow-x: hidden;
-  }
-
-  .grid-slot--map {
-    min-height: 400px;
-  }
-}
-
 @media (max-width: 768px) {
-  .header-subtitle {
-    display: none;
-  }
-
-  .grid-slot--map {
-    min-height: 300px;
-  }
-}
-
-@media (max-width: 480px) {
-  .app-header {
-    padding: 0 var(--space-sm);
-  }
-
-  .header-logo {
+  .nav-logo {
     font-size: var(--font-size-md);
+  }
+
+  .nav-bar {
+    padding: 0 var(--space-sm);
   }
 }
