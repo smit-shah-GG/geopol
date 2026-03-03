@@ -19,7 +19,7 @@ import { HeatmapLayer } from '@deck.gl/aggregation-layers';
 import maplibregl from 'maplibre-gl';
 import type { Feature, Geometry, FeatureCollection } from 'geojson';
 import { countryGeometry, normalizeCode } from '@/services/country-geometry.ts';
-import { getCurrentTheme } from '@/utils/theme-manager.ts';
+
 import { h } from '@/utils/dom-utils.ts';
 import type { ForecastResponse, CountryRiskSummary } from '@/types/api.ts';
 
@@ -28,7 +28,7 @@ import type { ForecastResponse, CountryRiskSummary } from '@/types/api.ts';
 // ---------------------------------------------------------------------------
 
 const DARK_STYLE = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
-const LIGHT_STYLE = 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json';
+// Light style removed -- dark-only theme
 
 /** Layer IDs for toggle state tracking */
 const LAYER_IDS = [
@@ -70,25 +70,19 @@ function riskColor(score: number, alpha = 180): RGBA {
   ];
 }
 
-/** Theme-aware accent color for scenario zone highlights. */
+/** Accent color for scenario zone highlights (dark theme). */
 function accentColor(): RGBA {
-  return getCurrentTheme() === 'dark'
-    ? [0, 212, 255, 60]
-    : [0, 140, 200, 50];
+  return [0, 212, 255, 60];
 }
 
-/** Theme-aware default country fill (no risk data). */
+/** Default country fill (no risk data) -- dark theme. */
 function defaultFill(): RGBA {
-  return getCurrentTheme() === 'dark'
-    ? [40, 44, 52, 120]
-    : [180, 185, 195, 80];
+  return [40, 44, 52, 120];
 }
 
-/** Theme-aware country stroke. */
+/** Country stroke -- dark theme. */
 function countryStroke(): RGBA {
-  return getCurrentTheme() === 'dark'
-    ? [80, 85, 95, 160]
-    : [140, 145, 155, 120];
+  return [80, 85, 95, 160];
 }
 
 // ---------------------------------------------------------------------------
@@ -152,12 +146,10 @@ export class DeckGLMap {
   constructor(container: HTMLElement) {
     this.container = container;
 
-    this.onThemeChanged = (e: Event) => {
-      const theme = (e as CustomEvent<{ theme: string }>).detail?.theme;
-      if (theme === 'dark' || theme === 'light') {
-        this.switchBasemap(theme);
-        this.rebuildLayers();
-      }
+    this.onThemeChanged = () => {
+      // Dark-only: no basemap switch needed, but rebuild layers
+      // in case any color derivations change.
+      this.rebuildLayers();
     };
 
     this.setupDOM();
@@ -314,10 +306,9 @@ export class DeckGLMap {
     const basemapContainer = this.wrapper?.querySelector('.deckgl-basemap') as HTMLElement | null;
     if (!basemapContainer) return;
 
-    const theme = getCurrentTheme();
     this.map = new maplibregl.Map({
       container: basemapContainer,
-      style: theme === 'light' ? LIGHT_STYLE : DARK_STYLE,
+      style: DARK_STYLE,
       center: [30, 20],
       zoom: 1.8,
       renderWorldCopies: false,
@@ -429,7 +420,6 @@ export class DeckGLMap {
 
     // Layer 3: KnowledgeGraphArcs
     if (this.layerVisible.KnowledgeGraphArcs && this.arcs.length > 0 && this.selectedCountry) {
-      const isDark = getCurrentTheme() === 'dark';
       layers.push(
         new ArcLayer<ArcDatum>({
           id: 'KnowledgeGraphArcs',
@@ -437,8 +427,8 @@ export class DeckGLMap {
           pickable: false,
           getSourcePosition: (d) => d.source,
           getTargetPosition: (d) => d.target,
-          getSourceColor: isDark ? [0, 200, 255, 180] : [0, 140, 200, 160],
-          getTargetColor: isDark ? [255, 100, 100, 180] : [200, 60, 60, 160],
+          getSourceColor: [0, 200, 255, 180],
+          getTargetColor: [255, 100, 100, 180],
           getWidth: 2,
           greatCircle: true,
         }),
@@ -622,16 +612,6 @@ export class DeckGLMap {
   // =========================================================================
   // Basemap switching
   // =========================================================================
-
-  private switchBasemap(theme: 'dark' | 'light'): void {
-    if (!this.map) return;
-    const style = theme === 'light' ? LIGHT_STYLE : DARK_STYLE;
-    this.map.setStyle(style);
-    // deck.gl layers are re-added on style load
-    this.map.once('styledata', () => {
-      this.rebuildLayers();
-    });
-  }
 
   // =========================================================================
   // Layer toggle UI

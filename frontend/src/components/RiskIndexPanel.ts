@@ -82,9 +82,9 @@ export class RiskIndexPanel extends Panel {
 
   private buildRow(c: CountryRiskSummary): HTMLElement {
     const sev = riskSeverity(c.risk_score);
-    const question = c.top_question.length > 60
-      ? c.top_question.slice(0, 57) + '...'
-      : c.top_question;
+    const question = c.top_forecast.length > 60
+      ? c.top_forecast.slice(0, 57) + '...'
+      : c.top_forecast;
 
     const row = h('div', { className: 'risk-row', dataset: { iso: c.iso_code } },
       h('span', { className: 'risk-country' }, `${isoToFlag(c.iso_code)} ${c.iso_code}`),

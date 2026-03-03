@@ -70,7 +70,7 @@ export interface CountryRiskSummary {
   iso_code: string;
   risk_score: number;
   forecast_count: number;
-  top_question: string;
+  top_forecast: string;
   top_probability: number;
   trend: 'rising' | 'stable' | 'falling';
   last_updated: string;
