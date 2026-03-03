@@ -210,3 +210,64 @@ export interface PolymarketTopResponse {
   events: PolymarketTopEvent[];
   total_geo_markets: number;
 }
+
+// --- event.py ---
+
+/** A single GDELT or ACLED event from GET /events. */
+export interface EventDTO {
+  id: number;
+  gdelt_id: string | null;
+  event_date: string;
+  actor1_code: string | null;
+  actor2_code: string | null;
+  event_code: string | null;
+  quad_class: number | null;
+  goldstein_scale: number | null;
+  num_mentions: number | null;
+  num_sources: number | null;
+  tone: number | null;
+  url: string | null;
+  title: string | null;
+  country_iso: string | null;
+  source: string;
+}
+
+// --- article.py ---
+
+/** An RSS/ChromaDB article chunk from GET /articles. */
+export interface ArticleDTO {
+  chunk_id: string;
+  title: string;
+  url: string;
+  source_feed: string;
+  country_iso: string | null;
+  published_at: string | null;
+  snippet: string;
+  relevance_score: number | null;
+}
+
+// --- advisory.py ---
+
+/** A government travel advisory from GET /advisories. */
+export interface AdvisoryDTO {
+  source: string;
+  country_iso: string | null;
+  level: number;
+  level_description: string;
+  title: string;
+  summary: string;
+  published_at: string | null;
+  updated_at: string | null;
+  url: string | null;
+}
+
+// --- source.py ---
+
+/** Ingestion source health status from GET /sources. */
+export interface SourceStatusDTO {
+  name: string;
+  healthy: boolean;
+  last_update: string | null;
+  events_last_run: number;
+  detail: string;
+}

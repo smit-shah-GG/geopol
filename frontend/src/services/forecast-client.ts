@@ -11,8 +11,11 @@
  */
 
 import type {
+  AdvisoryDTO,
+  ArticleDTO,
   ConfirmSubmissionResponse,
   CountryRiskSummary,
+  EventDTO,
   ForecastRequestStatus,
   ForecastResponse,
   HealthResponse,
@@ -21,6 +24,7 @@ import type {
   PolymarketComparisonResponse,
   PolymarketTopResponse,
   SearchResponse,
+  SourceStatusDTO,
 } from '@/types/api.ts';
 import {
   type BreakerDataState,
@@ -79,6 +83,10 @@ const FALLBACK_POLYMARKET_TOP: PolymarketTopResponse = {
   events: [],
   total_geo_markets: 0,
 };
+const EMPTY_EVENTS: PaginatedResponse<EventDTO> = { items: [], next_cursor: null, has_more: false };
+const EMPTY_ARTICLES: PaginatedResponse<ArticleDTO> = { items: [], next_cursor: null, has_more: false };
+const EMPTY_SOURCES: SourceStatusDTO[] = [];
+const EMPTY_ADVISORIES: AdvisoryDTO[] = [];
 
 // ---------------------------------------------------------------------------
 // ForecastServiceClient
@@ -103,6 +111,13 @@ export class ForecastServiceClient {
   private readonly healthBreaker = createCircuitBreaker<unknown>({
     name: 'health',
     maxFailures: 3,
+    cooldownMs: 15_000,
+    cacheTtlMs: 30_000,
+  });
+
+  private readonly eventsBreaker = createCircuitBreaker<unknown>({
+    name: 'events',
+    maxFailures: 2,
     cooldownMs: 15_000,
     cacheTtlMs: 30_000,
   });
@@ -307,11 +322,87 @@ export class ForecastServiceClient {
   }
 
   // -----------------------------------------------------------------------
+  // Events, articles, sources, advisories (Phase 17)
+  // -----------------------------------------------------------------------
+
+  /** GET /events with optional filter parameters and keyset cursor pagination. */
+  async getEvents(params?: {
+    country?: string;
+    start_date?: string;
+    end_date?: string;
+    cameo_code?: string;
+    source?: string;
+    limit?: number;
+    cursor?: string;
+  }): Promise<PaginatedResponse<EventDTO>> {
+    const sp = new URLSearchParams();
+    if (params) {
+      for (const [k, v] of Object.entries(params)) {
+        if (v !== undefined) sp.set(k, String(v));
+      }
+    }
+    const qs = sp.toString();
+    const key = `/events${qs ? `?${qs}` : ''}`;
+    return this.dedup(key, () =>
+      this.eventsBreaker.execute(
+        () => this.fetchJson<PaginatedResponse<EventDTO>>(key),
+        EMPTY_EVENTS as unknown as PaginatedResponse<EventDTO>,
+      ),
+    ) as Promise<PaginatedResponse<EventDTO>>;
+  }
+
+  /** GET /articles with optional filter parameters. */
+  async getArticles(params?: {
+    country?: string;
+    text?: string;
+    semantic?: boolean;
+    limit?: number;
+  }): Promise<PaginatedResponse<ArticleDTO>> {
+    const sp = new URLSearchParams();
+    if (params) {
+      for (const [k, v] of Object.entries(params)) {
+        if (v !== undefined) sp.set(k, String(v));
+      }
+    }
+    const qs = sp.toString();
+    const key = `/articles${qs ? `?${qs}` : ''}`;
+    return this.dedup(key, () =>
+      this.forecastBreaker.execute(
+        () => this.fetchJson<PaginatedResponse<ArticleDTO>>(key),
+        EMPTY_ARTICLES as unknown as PaginatedResponse<ArticleDTO>,
+      ),
+    ) as Promise<PaginatedResponse<ArticleDTO>>;
+  }
+
+  /** GET /sources (public, no auth). Auto-discovered ingestion source health. */
+  async getSources(): Promise<SourceStatusDTO[]> {
+    const key = '/sources';
+    return this.dedup(key, () =>
+      this.healthBreaker.execute(
+        () => this.fetchJson<SourceStatusDTO[]>(key, { skipAuth: true }),
+        EMPTY_SOURCES,
+      ),
+    ) as Promise<SourceStatusDTO[]>;
+  }
+
+  /** GET /advisories with optional country filter. */
+  async getAdvisories(country?: string): Promise<AdvisoryDTO[]> {
+    const qs = country ? `?country=${encodeURIComponent(country)}` : '';
+    const key = `/advisories${qs}`;
+    return this.dedup(key, () =>
+      this.healthBreaker.execute(
+        () => this.fetchJson<AdvisoryDTO[]>(key),
+        EMPTY_ADVISORIES,
+      ),
+    ) as Promise<AdvisoryDTO[]>;
+  }
+
+  // -----------------------------------------------------------------------
   // Data state for UI badges
   // -----------------------------------------------------------------------
 
   /** Return the circuit breaker data state for a given endpoint group. */
-  getDataState(endpoint: 'forecast' | 'country' | 'health'): BreakerDataState {
+  getDataState(endpoint: 'forecast' | 'country' | 'health' | 'events'): BreakerDataState {
     switch (endpoint) {
       case 'forecast':
         return this.forecastBreaker.getDataState();
@@ -319,6 +410,8 @@ export class ForecastServiceClient {
         return this.countryBreaker.getDataState();
       case 'health':
         return this.healthBreaker.getDataState();
+      case 'events':
+        return this.eventsBreaker.getDataState();
     }
   }
 
