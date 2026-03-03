@@ -5,25 +5,25 @@
 See: .planning/PROJECT.md (updated 2026-03-02)
 
 **Core value:** Explainability -- every forecast must provide clear, traceable reasoning paths
-**Current focus:** Phase 17 complete -- Phase 18 next (Polymarket-Driven Forecasting)
+**Current focus:** Phase 18 in progress (Polymarket-Driven Forecasting)
 
 ## Current Position
 
 Milestone: v2.1 Production UX & Live Data Integration
-Phase: 17 of 18 (Live Data Feeds & Country Depth)
-Plan: 03 of 03
-Status: Phase complete
-Last activity: 2026-03-04 -- Completed 17-03-PLAN.md (Frontend Wiring)
+Phase: 18 of 18 (Polymarket-Driven Forecasting)
+Plan: 01 of 03
+Status: In progress
+Last activity: 2026-03-04 -- Completed 18-01-PLAN.md (Auto-Forecast Pipeline)
 
-Progress: [####################################################] 100% (62/62 plans lifetime)
-v2.1:    [#############] 100% (13/13 plans)
+Progress: [####################################################] 100% (63/65 plans lifetime)
+v2.1:    [##############------] 70% (14/20 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 62
-- Average duration: 11 minutes
-- Total execution time: 10.82 hours
+- Total plans completed: 63
+- Average duration: 10 minutes
+- Total execution time: 10.9 hours
 
 **By Phase:**
 
@@ -47,10 +47,11 @@ v2.1:    [#############] 100% (13/13 plans)
 
 | 16-globe-forecasts-screens | 3 | 16min | 5min |
 | 17-live-data-feeds-country-depth | 3 | 26min | 9min |
+| 18-polymarket-driven-forecasting | 1 | 5min | 5min |
 
 **Recent Trend:**
-- Last 4 plans: 17-01 (7min), 17-02 (12min), 17-03 (7min)
-- Trend: Consistent 7-12min range for Phase 17 frontend+backend wiring
+- Last 4 plans: 17-02 (12min), 17-03 (7min), 18-01 (5min)
+- Trend: Fast execution on well-scoped orchestration plans
 
 ## Accumulated Context
 
@@ -104,6 +105,12 @@ Key decisions affecting current work:
 - CountryBriefPage lazy tab loading with null sentinel pattern (null=not loaded, []=loaded empty) (2026-03-04)
 - Client-side actor aggregation from 200-event window -- avoids dedicated backend endpoint (2026-03-04)
 - SourcesPanel push from health refresh replaced by independent /sources self-refresh (supersedes 2026-03-03 decision) (2026-03-04)
+- Fresh EnsemblePredictor instance per prediction -- holds mutable _forecast_output state (2026-03-04)
+- Reforecast overwrites existing Prediction row -- historical values preserved in polymarket_snapshots (2026-03-04)
+- Split daily caps: 3 new + 5 reforecast (8 total within 25 Gemini budget) (2026-03-04)
+- Country extraction tiered: heuristic COUNTRY_NAME_TO_ISO first (zero cost), Gemini LLM fallback (2026-03-04)
+- CAMEO extraction always via LLM -- per-CAMEO calibration weights require accuracy (2026-03-04)
+- Daily reforecast guard via _last_reforecast_date flag -- simpler than DB count per cycle (2026-03-04)
 
 ### Deferred Issues
 
@@ -112,6 +119,7 @@ Key decisions affecting current work:
 - TKG entity resolution mismatch: GDELT actor codes (USA, GOV) vs LLM entity names (US Department of the Treasury) -- structural gap requiring normalization layer
 - Mobile/responsive layout deferred -- three screens + globe = poor mobile experience
 - Migration 004 must be applied before persistence tests pass: `uv run alembic upgrade head`
+- Migration 005 must be applied for Polymarket auto-forecasting: `uv run alembic upgrade head`
 
 ### Blockers/Concerns
 
@@ -127,6 +135,6 @@ Key decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-03-04
-Stopped at: Completed 17-03-PLAN.md (Frontend Wiring) -- Phase 17 complete
+Stopped at: Completed 18-01-PLAN.md (Auto-Forecast Pipeline)
 Resume file: None
-Next: /gsd:discuss-phase 18 (Polymarket-Driven Forecasting)
+Next: Execute 18-02-PLAN.md (Badges + Inline Comparison)
