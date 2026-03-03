@@ -255,10 +255,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | MON-03 | Phase 13 | Complete |
 | MON-04 | Phase 13 | Complete |
 | MON-05 | Phase 13 | Complete |
-| BAPI-01 | Phase 14 | Pending |
-| BAPI-02 | Phase 14 | Pending |
-| BAPI-03 | Phase 14 | Pending |
-| BAPI-04 | Phase 14 | Pending |
+| BAPI-01 | Phase 14 | Complete |
+| BAPI-02 | Phase 14 | Complete |
+| BAPI-03 | Phase 14 | Complete |
+| BAPI-04 | Phase 14 | Complete |
 | SCREEN-01 | Phase 15 | Pending |
 | SCREEN-02 | Phase 15 | Pending |
 | FUX-01 | Phase 15 | Pending |

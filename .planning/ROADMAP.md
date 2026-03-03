@@ -246,7 +246,7 @@ Phase 14 (backend API hardening) --- unblocks real data for frontend
               +---> Phase 16 (globe + forecasts screens) --- completes remaining screens
 ```
 
-- [ ] **Phase 14: Backend API Hardening** -- Kill fixture fallback, real country risk aggregation, question submission queue, full-text search endpoint
+- [x] **Phase 14: Backend API Hardening** -- Kill fixture fallback, real country risk aggregation, question submission queue, full-text search endpoint
 - [ ] **Phase 15: URL Routing & Dashboard Screen** -- Three-screen URL routing, information-dense dashboard with progressive disclosure, search UI, event feed, sources panel
 - [ ] **Phase 16: Globe & Forecasts Screens** -- Full-viewport globe with contextual drill-down, forecast submission queue UI, layer toggle controls
 
@@ -265,10 +265,10 @@ Phase 14 (backend API hardening) --- unblocks real data for frontend
 **Plans**: 4 plans
 
 Plans:
-- [ ] 14-01-PLAN.md -- DB schema (forecast_requests + tsvector), fixture removal (BAPI-01), USE_FIXTURES dev flag
-- [ ] 14-02-PLAN.md -- Real country risk aggregation from PostgreSQL with CTE-based scoring (BAPI-02)
-- [ ] 14-03-PLAN.md -- Full-text search endpoint using tsvector + GIN index (BAPI-04)
-- [ ] 14-04-PLAN.md -- Question submission queue: LLM parsing, submit/confirm flow, async worker (BAPI-03)
+- [x] 14-01-PLAN.md -- DB schema (forecast_requests + tsvector), fixture removal (BAPI-01), USE_FIXTURES dev flag
+- [x] 14-02-PLAN.md -- Real country risk aggregation from PostgreSQL with CTE-based scoring (BAPI-02)
+- [x] 14-03-PLAN.md -- Full-text search endpoint using tsvector + GIN index (BAPI-04)
+- [x] 14-04-PLAN.md -- Question submission queue: LLM parsing, submit/confirm flow, async worker (BAPI-03)
 
 ### Phase 15: URL Routing & Dashboard Screen
 **Goal**: The single-screen layout is replaced by three URL-routed screens. The Dashboard screen (`/dashboard`) is a dense information display with progressive disclosure on forecast cards, full-text search, event feed, data source health, and a "My Forecasts" section showing user-submitted questions.
@@ -316,8 +316,8 @@ Sequential: Phase 14 -> Phase 15 -> Phase 16.
 | 11. TKG Replacement | v2.0 | 3/3 | Complete | 2026-03-01 |
 | 12. WM-Derived Frontend | v2.0 | 7/7 | Complete | 2026-03-02 |
 | 13. Calibration & Monitoring | v2.0 | 7/7 | Complete | 2026-03-02 |
-| 14. Backend API Hardening | v2.1 | 0/4 | Planned | - |
+| 14. Backend API Hardening | v2.1 | 4/4 | Complete | 2026-03-03 |
 | 15. URL Routing & Dashboard | v2.1 | 0/TBD | Not started | - |
 | 16. Globe & Forecasts Screens | v2.1 | 0/TBD | Not started | - |
 
-**Total:** 13 phases complete (v1.0 + v1.1 + v2.0), 49 plans delivered. v2.1: 0/3 phases started, 17 requirements pending.
+**Total:** 14 phases complete (v1.0 + v1.1 + v2.0 + Phase 14), 53 plans delivered. v2.1: 1/3 phases complete, 13 requirements pending.
