@@ -400,7 +400,12 @@ Phases 21 and 22 are independent tracks after Phase 20 and can run in parallel.
   3. Manual trigger buttons next to each job allow the operator to force-run any job immediately; clicking a trigger button initiates the job and the process table updates to reflect the running state
   4. The configuration editor displays runtime-adjustable settings (polling intervals, daily caps, eval samples) with input validation; saving persists changes to the `system_config` PostgreSQL table and changes take effect on the next job execution without restart
   5. The log viewer shows the most recent structured log entries (last 1000 from in-memory ring buffer) filterable by severity (ERROR/WARN/INFO) and subsystem -- not reading from the filesystem
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 19-01-PLAN.md -- Admin backend: ring buffer, SystemConfig model, admin API endpoints
+- [ ] 19-02-PLAN.md -- Admin frontend shell: route, auth modal, layout, admin client, styles
+- [ ] 19-03-PLAN.md -- Admin panels: ProcessTable, ConfigEditor, LogViewer, SourceManager
 
 ### Phase 20: Daemon Consolidation
 **Goal**: All background jobs run under a single APScheduler instance inside the FastAPI process, replacing scattered systemd timers and standalone daemon processes. The admin dashboard's pause/resume/trigger controls become functional. Heavy jobs retain OS-level memory isolation via ProcessPoolExecutor.
