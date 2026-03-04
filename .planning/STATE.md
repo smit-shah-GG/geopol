@@ -11,19 +11,19 @@ See: .planning/PROJECT.md (updated 2026-03-04)
 
 Milestone: v3.0 Operational Command & Verification
 Phase: 19 of 25 (Admin Dashboard Foundation)
-Plan: --
-Status: Ready to plan
-Last activity: 2026-03-04 -- v3.0 roadmap created (7 phases, 38 requirements)
+Plan: 01 of 03
+Status: In progress
+Last activity: 2026-03-05 -- Completed 19-01-PLAN.md (admin backend API)
 
-Progress: [########################################################] 100% (65/65 plans lifetime)
-v3.0:    [                    ] 0% (0/? plans)
+Progress: [########################################################] 100% (66/66+ plans lifetime)
+v3.0:    [######              ] 33% (1/3 plans in phase 19)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 65
+- Total plans completed: 66
 - Average duration: 10 minutes
-- Total execution time: 11.1 hours
+- Total execution time: 11.2 hours
 
 **By Phase:**
 
@@ -47,6 +47,7 @@ v3.0:    [                    ] 0% (0/? plans)
 | 16-globe-forecasts-screens | 3 | 16min | 5min |
 | 17-live-data-feeds-country-depth | 3 | 26min | 9min |
 | 18-polymarket-driven-forecasting | 3 | 14min | 5min |
+| 19-admin-dashboard-foundation | 1 | 7min | 7min |
 
 ## Accumulated Context
 
@@ -64,6 +65,9 @@ Key decisions affecting current work:
 - Globe layer pills: Arcs/Heatmap/Scenarios are no-ops -- data-wiring fix, not toggle fix (2026-03-04)
 - uvicorn --workers 1 is a hard constraint with APScheduler in-process (2026-03-04)
 - POLECAT/ICEWS deferred to v3.1+ (PLOVER-to-CAMEO mapping untested) (2026-03-04)
+- Admin auth: X-Admin-Key header separate from X-API-Key, router-level dependency (2026-03-05)
+- trigger_job returns 501 for rss/polymarket/tkg until Phase 20 APScheduler (2026-03-05)
+- system_config values wrapped as {"v": value} for type-preserving JSON round-trip (2026-03-05)
 
 ### Deferred Issues
 
@@ -86,7 +90,7 @@ Key decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-03-04
-Stopped at: v3.0 roadmap created -- 7 phases (19-25), 38 requirements mapped
+Last session: 2026-03-05
+Stopped at: Completed 19-01-PLAN.md (admin backend API)
 Resume file: None
-Next: `/gsd:plan-phase 19`
+Next: `/gsd:execute-phase` 19-02
