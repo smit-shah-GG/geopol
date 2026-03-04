@@ -54,6 +54,13 @@ async def _lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # 1. Logging
     setup_logging(level=settings.log_level, json_format=settings.log_json)
+
+    # Attach ring buffer to root logger for admin /logs endpoint
+    from src.api.log_buffer import get_ring_buffer
+
+    ring = get_ring_buffer()
+    logging.getLogger().addHandler(ring)
+
     logger.info("Geopol API starting (env=%s)", settings.environment)
 
     # 2. Database
