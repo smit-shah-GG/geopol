@@ -65,7 +65,7 @@ class TiRGNTrainingConfig:
     num_negatives: int = 10
     grad_clip: float = 1.0
     checkpoint_interval: int = 10
-    eval_interval: int = 5
+    eval_interval: int = 1
 
     # TiRGN-specific
     history_rate: float = 0.3
@@ -416,8 +416,9 @@ def train_tirgn(
         # VRAM monitoring
         vram_mb = _get_vram_used_mb()
 
-        # Log per-epoch metrics
+        # Log per-epoch metrics (use global_step for wandb monotonicity)
         epoch_metrics: dict[str, float] = {
+            "train/epoch": float(epoch),
             "train/loss": avg_loss,
             "train/lr": config.learning_rate,
             "system/epoch_duration_s": epoch_duration,
@@ -473,7 +474,7 @@ def train_tirgn(
                     best_epoch,
                 )
                 early_stopped = True
-                training_logger.log_metrics(epoch_metrics, step=epoch)
+                training_logger.log_metrics(epoch_metrics, step=global_step)
                 break
         else:
             logger.info(
@@ -484,7 +485,7 @@ def train_tirgn(
                 epoch_duration,
             )
 
-        training_logger.log_metrics(epoch_metrics, step=epoch)
+        training_logger.log_metrics(epoch_metrics, step=global_step)
 
         # Periodic checkpoint
         if epoch % config.checkpoint_interval == 0:

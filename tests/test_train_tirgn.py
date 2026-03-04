@@ -150,7 +150,7 @@ def test_training_config_defaults() -> None:
     assert config.num_negatives == 10
     assert config.grad_clip == 1.0
     assert config.checkpoint_interval == 10
-    assert config.eval_interval == 5
+    assert config.eval_interval == 1
 
     # TiRGN-specific
     assert config.history_rate == 0.3

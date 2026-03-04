@@ -256,16 +256,27 @@ class TiRGN(nnx.Module):
             edge_type = snap_slice[1]    # (max_edges,)
             edge_mask = snap_slice[2]    # (max_edges,)
 
-            # Relation GRU: aggregate per-relation context, project, evolve
-            rel_context = self._aggregate_relation_context_masked(
-                edge_index, edge_type, edge_mask, h, num_rels
-            )
-            rel_projected = self.rel_input_proj(rel_context)
-            r_new = self.relation_gru(r, rel_projected)
+            # Checkpoint the entire snapshot step: recompute intermediates
+            # during backward instead of storing them across all 31 snapshots.
+            # Without this, scan stores ~400 MB of basis_msgs per R-GCN layer
+            # per snapshot → 2 layers × 31 snapshots × 400 MB ≈ 25 GB OOM.
+            @jax.checkpoint
+            def _step(h, r, edge_index, edge_type, edge_mask):
+                # Relation GRU: aggregate per-relation context, project, evolve
+                rel_context = self._aggregate_relation_context_masked(
+                    edge_index, edge_type, edge_mask, h, num_rels
+                )
+                rel_projected = self.rel_input_proj(rel_context)
+                r_new = self.relation_gru(r, rel_projected)
 
-            # R-GCN + Entity GRU
-            x = self._encode_snapshot_masked(h, edge_index, edge_type, edge_mask, training)
-            h_new = self.entity_gru(h, x)
+                # R-GCN + Entity GRU
+                x = self._encode_snapshot_masked(
+                    h, edge_index, edge_type, edge_mask, training
+                )
+                h_new = self.entity_gru(h, x)
+                return h_new, r_new
+
+            h_new, r_new = _step(h, r, edge_index, edge_type, edge_mask)
 
             return (h_new, r_new), None
 
