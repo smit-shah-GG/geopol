@@ -6,6 +6,7 @@
 - v1.1 Tech Debt Remediation -- Phases 6-8 (shipped 2026-01-30)
 - v2.0 Operationalization & Forecast Quality -- Phases 9-13 (shipped 2026-03-02)
 - v2.1 Production UX & Live Data Integration -- Phases 14-18 (shipped 2026-03-04)
+- v3.0 Operational Command & Verification -- Phases 19-25 (in progress)
 
 ## Phases
 
@@ -228,7 +229,8 @@ Plans:
 
 </details>
 
-### v2.1 Production UX & Live Data Integration
+<details>
+<summary>v2.1 Production UX & Live Data Integration (Phases 14-18) - SHIPPED 2026-03-04</summary>
 
 **Milestone Goal:** Restructure the single-screen dashboard into a three-screen URL-routed application with progressive disclosure, real data-driven country risk, user-submitted forecast questions, full-text search, live data feeds, deep country drill-down, and Polymarket-driven comparative forecasting -- transforming the v2.0 demo into a usable analytical tool.
 
@@ -255,8 +257,6 @@ Phase 14 (backend API hardening) --- unblocks real data for frontend
 - [x] **Phase 16: Globe & Forecasts Screens** -- Full-viewport globe with contextual drill-down, forecast submission queue UI, layer toggle controls
 - [x] **Phase 17: Live Data Feeds & Country Depth** -- Backend event/article API endpoints, wire EventTimelinePanel to real data, additional data source ingestion, country screen subpages with real data
 - [x] **Phase 18: Polymarket-Driven Forecasting** -- Poll Polymarket for active geopolitical questions, run Geopol pipeline on matched questions, comparison tracking over time, Col 2 Polymarket panel
-
-## Phase Details
 
 ### Phase 14: Backend API Hardening
 **Goal**: API endpoints serve real aggregated data instead of mock fixtures, accept user-submitted forecast questions via a processing queue, and support full-text search over the predictions table. The frontend can request country risk, submit questions, and search forecasts against production data.
@@ -350,10 +350,135 @@ Plans:
 - [x] 18-02-PLAN.md -- ForecastResponse DTO extension (polymarket_comparison field), forecast enrichment, comparison panel + snapshot API endpoints
 - [x] 18-03-PLAN.md -- Frontend: TypeScript types, forecast-client methods, badge + inline comparison on expandable cards, ComparisonPanel, dashboard wiring
 
+</details>
+
+### v3.0 Operational Command & Verification
+
+**Milestone Goal:** Full backend control via admin dashboard, source expansion with feed management, daemon consolidation, historical backtesting, global map seeding, Polymarket operational hardening, and frontend polish -- preparing the system for v4.0 production deployment.
+
+**Research:** `.planning/research/SUMMARY.md` (v3.0), `.planning/research/STACK_V3.md`, `FEATURES.md`, `ARCHITECTURE.md`, `PITFALLS.md`
+
+**Phase Numbering:** Starts at 19 (v2.1 ended at Phase 18).
+
+**Execution Model:** Phase 19 (admin) establishes the observation layer. Phase 20 (daemon consolidation) is the critical path -- everything after it registers APScheduler jobs. Phases 21 and 22 are independent parallel tracks after Phase 20. Phase 23 depends on Phase 22 (clean resolution data). Phase 24 depends on Phase 21 (UCDP data feeds baseline risk). Phase 25 depends on Phases 23 and 24 (all features exist to polish).
+
+```
+Phase 19 (Admin Dashboard) --- observability layer first
+    |
+    +---> Phase 20 (Daemon Consolidation) --- critical path
+              |
+              |---> Phase 21 (Source Expansion) ---> Phase 24 (Global Seeding + Globe Layers)
+              |                                                  |
+              +---> Phase 22 (Polymarket Hardening) ---> Phase 23 (Backtesting)
+                                                                 |
+                                                                 +---> Phase 25 (Frontend Polish)
+```
+
+Phases 21 and 22 are independent tracks after Phase 20 and can run in parallel.
+
+**Hard constraint:** `uvicorn --workers 1` -- APScheduler in-process is not safe with multiple workers (each worker creates its own scheduler, running every job N times).
+
+**Pre-phase blocker (Phase 21):** UCDP API token must be requested from the UCDP team before implementation begins. Email-gated, takes days to weeks.
+
+- [ ] **Phase 19: Admin Dashboard Foundation** -- `/admin` route with auth gating, process table, manual triggers, config editor, log viewer, source management panel
+- [ ] **Phase 20: Daemon Consolidation** -- APScheduler AsyncIOScheduler in FastAPI lifespan, all pollers registered as jobs, ProcessPoolExecutor for heavy jobs, admin API for job control, systemd retirement
+- [ ] **Phase 21: Source Expansion & Feed Management** -- UCDP poller, RSS feed management via admin, cross-source dedup layer, per-source health metrics, feed health auto-disable
+- [ ] **Phase 22: Polymarket Hardening** -- Fix created_at overwrite bug, cumulative Brier score tracking, head-to-head accuracy panel, resolution tracking, polling reliability
+- [ ] **Phase 23: Historical Backtesting** -- Walk-forward evaluation harness, model comparison (TiRGN vs RE-GCN), calibration audit (reliability diagrams over time), look-ahead bias prevention
+- [ ] **Phase 24: Global Seeding & Globe Layers** -- Baseline risk for all ~195 countries, heatmap/arcs/scenarios data wiring, advisory-level risk floors, active forecast override
+- [ ] **Phase 25: Frontend Finalization** -- Loading states, error boundaries, empty states, performance optimization, accessibility basics
+
+## Phase Details
+
+### Phase 19: Admin Dashboard Foundation
+**Goal**: Operators can monitor and control the entire system from a browser without SSH access. The `/admin` route provides real-time visibility into all running jobs, data source health, system configuration, and recent log output -- establishing the observation layer that every subsequent phase extends with new panels and controls.
+**Depends on**: Phase 18 (v2.1 complete)
+**Requirements**: ADMIN-01, ADMIN-02, ADMIN-03, ADMIN-04, ADMIN-05, ADMIN-06
+**Success Criteria** (what must be TRUE):
+  1. Navigating to `/admin` prompts for authentication; entering a valid admin key loads the admin dashboard; entering an invalid key shows an error and loads nothing -- admin TypeScript code is zero bytes in the public bundle (dynamic import code-split)
+  2. The process table displays all running daemons/jobs (GDELT poller, RSS poller, daily pipeline, Polymarket forecaster, TKG retrainer) with current status, last run time, next scheduled run, and success/failure counts -- data sourced from `ingest_runs` table and job metadata
+  3. Manual trigger buttons next to each job allow the operator to force-run any job immediately; clicking a trigger button initiates the job and the process table updates to reflect the running state
+  4. The configuration editor displays runtime-adjustable settings (polling intervals, daily caps, eval samples) with input validation; saving persists changes to the `system_config` PostgreSQL table and changes take effect on the next job execution without restart
+  5. The log viewer shows the most recent structured log entries (last 1000 from in-memory ring buffer) filterable by severity (ERROR/WARN/INFO) and subsystem -- not reading from the filesystem
+**Plans**: TBD
+
+### Phase 20: Daemon Consolidation
+**Goal**: All background jobs run under a single APScheduler instance inside the FastAPI process, replacing scattered systemd timers and standalone daemon processes. The admin dashboard's pause/resume/trigger controls become functional. Heavy jobs retain OS-level memory isolation via ProcessPoolExecutor.
+**Depends on**: Phase 19 (admin dashboard provides observability for the consolidated scheduler)
+**Requirements**: DAEMON-01, DAEMON-02, DAEMON-03, DAEMON-04, DAEMON-05
+**Success Criteria** (what must be TRUE):
+  1. Starting the FastAPI server also starts the APScheduler instance; `GET /api/v1/admin/jobs` returns a list of all registered jobs with their trigger type, next run time, and current state -- no separate systemd services need to be started for GDELT polling, RSS polling, or the daily forecast pipeline
+  2. The GDELT poller runs every 15 minutes, the RSS poller runs every 15 minutes (tiered), and the daily forecast pipeline runs at 06:00 -- all as APScheduler jobs with the same behavior as their predecessor implementations, verified by checking `ingest_runs` table entries
+  3. The daily forecast pipeline and TKG retraining execute in a `ProcessPoolExecutor` (not on the event loop) -- confirmed by the FastAPI server remaining responsive to HTTP requests during pipeline execution
+  4. `POST /api/v1/admin/jobs/{id}/pause` pauses a job (no future executions until resumed); `POST /api/v1/admin/jobs/{id}/resume` resumes it; `POST /api/v1/admin/jobs/{id}/trigger` fires it immediately -- all reflected in the admin dashboard process table within seconds
+  5. Stopping the FastAPI server gracefully shuts down APScheduler first, waits for in-flight jobs to complete (up to 30 seconds), then shuts down the API -- no orphaned processes or database connections remain
+**Plans**: TBD
+
+### Phase 21: Source Expansion & Feed Management
+**Goal**: The system ingests UCDP armed conflict events as a new data source, provides admin-level RSS feed management (enable/disable/tier per feed), prevents cross-source event duplication in the knowledge graph, and exposes per-source health metrics through the API and admin dashboard.
+**Depends on**: Phase 20 (new pollers register as APScheduler jobs)
+**Pre-phase blocker**: UCDP API token must be requested before implementation. Fallback: bulk CSV download from ucdp.uu.se/downloads/ if token is delayed.
+**Requirements**: SRC-01, SRC-02, SRC-03, SRC-04, SRC-05, SRC-06
+**Success Criteria** (what must be TRUE):
+  1. The UCDP poller fetches armed conflict events daily from the UCDP GED API, maps them to the unified Event schema with "UCDP-" prefixed IDs, and inserts them into the SQLite event store -- events include fatality counts, conflict type classification, and geographic coordinates
+  2. An admin can enable/disable individual RSS feeds and change their tier assignment from the admin dashboard; changes persist to the `rss_feeds` PostgreSQL table and take effect on the next polling cycle without server restart
+  3. The same real-world conflict event appearing in both GDELT and UCDP does not create duplicate triples in the knowledge graph -- the cross-source dedup layer filters by (date, country, event_type) fingerprint hash before graph insertion
+  4. `GET /api/v1/sources` returns per-source health metrics (last poll time, events ingested in 24h, error rate, staleness status) for all active data sources including UCDP -- auto-discovered from the `ingest_runs` table
+  5. A feed that fails N consecutive times is automatically disabled and flagged in the admin dashboard source management panel with an alert
+**Plans**: TBD
+
+### Phase 22: Polymarket Hardening
+**Goal**: Polymarket-driven forecasting operates reliably with correct budget tracking, and the system maintains rigorous cumulative accuracy metrics comparing Geopol predictions against Polymarket market prices on all resolved questions.
+**Depends on**: Phase 20 (Polymarket poller registered as APScheduler job)
+**Requirements**: POLY-01, POLY-02, POLY-03, POLY-04, POLY-05
+**Success Criteria** (what must be TRUE):
+  1. Re-forecasting an active Polymarket comparison preserves the original `created_at` timestamp on the Prediction row -- the `reforecasted_at` column tracks the re-forecast time separately, and daily cap tracking correctly distinguishes new forecasts from re-forecasts
+  2. The `polymarket_accuracy` table contains cumulative Brier scores computed from all resolved Polymarket comparisons, updated after each resolution -- both Geopol and Polymarket scores are tracked independently
+  3. The admin dashboard displays a head-to-head accuracy panel showing Geopol vs Polymarket Brier score curves over time, per-category breakdown, and a win/loss record on resolved questions
+  4. The system detects ambiguous or voided Polymarket question resolutions and excludes them from accuracy metrics -- these cases are logged and visible in the admin dashboard
+  5. Polymarket API failures trigger exponential backoff retries; extended Polymarket unavailability degrades gracefully (existing comparisons continue with stale market prices, no silent data loss) -- the poller status shows "degraded" in the admin process table
+**Plans**: TBD
+
+### Phase 23: Historical Backtesting
+**Goal**: The system can evaluate its own historical prediction accuracy through walk-forward evaluation, compare TiRGN vs RE-GCN model performance, and audit calibration quality over time -- all as an internal reporting system accessible from the admin dashboard, not public-facing.
+**Depends on**: Phase 22 (clean resolution data needed for meaningful Brier scoring)
+**Requirements**: BTEST-01, BTEST-02, BTEST-03, BTEST-04, BTEST-05
+**Success Criteria** (what must be TRUE):
+  1. The walk-forward evaluation harness trains on [t0, t1], predicts [t1, t2], slides the window forward, and produces MRR and Brier score curves over time -- using static model weights (no per-window TKG retraining in v3.0)
+  2. The model comparison framework runs identical evaluation windows against TiRGN and RE-GCN checkpoints, producing side-by-side accuracy tables showing MRR, Hits@1, Hits@10, and Brier scores with delta highlighting
+  3. Calibration audit generates reliability diagrams computed over sliding time windows, visible in the admin BacktestingPanel -- an operator can observe whether calibration quality is improving, stable, or degrading over time
+  4. Backtesting results persist in the `backtest_runs` and `backtest_results` PostgreSQL tables -- results are queryable from the admin dashboard, not ephemeral console output that disappears on restart
+  5. The backtesting harness uses calibration weight snapshots from each evaluation window (not current weights) and excludes ChromaDB articles published after the prediction date -- preventing look-ahead bias from corrupting accuracy metrics
+**Plans**: TBD
+
+### Phase 24: Global Seeding & Globe Layers
+**Goal**: The globe choropleth renders meaningful risk data for all ~195 countries (not just those with active forecasts), and the three currently-empty globe layers (heatmap, arcs, scenarios) display real data from the event store and knowledge graph.
+**Depends on**: Phase 21 (UCDP data feeds baseline risk computation; can start with GDELT+ACLED only but UCDP improves signal)
+**Requirements**: SEED-01, SEED-02, SEED-03, GLYR-01, GLYR-02, GLYR-03
+**Success Criteria** (what must be TRUE):
+  1. The `baseline_country_risk` table contains composite risk scores for all ~195 countries, computed from GDELT event density + ACLED conflict intensity + UCDP fatality signal + government travel advisory levels with configurable weights and exponential time decay -- updated every 6 hours via APScheduler job
+  2. `GET /api/v1/countries` returns merged risk scores: active forecast risk overrides baseline when available (`COALESCE(forecast_risk, baseline_risk)`), so countries with forecasts show prediction-derived risk while countries without forecasts still show meaningful baseline risk
+  3. The globe choropleth colors all ~195 countries with intensity proportional to their merged risk scores -- no more empty/neutral countries with zero data; high-risk conflict zones visually stand out
+  4. The heatmap layer displays real GDELT event locations on the globe -- events include `lat`/`lon` coordinates (added to SQLite schema), served via `/api/v1/events/geo` with server-side 0.5-degree grid aggregation for performance
+  5. The arcs layer renders bilateral country relationships from knowledge graph edges via `/api/v1/countries/relations` -- showing top-N country pairs by edge weight as great-circle arcs on the globe
+**Plans**: TBD
+
+### Phase 25: Frontend Finalization
+**Goal**: Every screen and panel handles loading, error, and empty states gracefully. Heavy components lazy-load. Interactive elements are keyboard-accessible. The frontend is ready for external users who encounter edge cases, slow connections, and assistive technology.
+**Depends on**: Phase 23 (backtesting), Phase 24 (global seeding + globe layers) -- all features exist to polish
+**Requirements**: POLISH-01, POLISH-02, POLISH-03, POLISH-04, POLISH-05
+**Success Criteria** (what must be TRUE):
+  1. Every panel displays a skeleton placeholder during API fetches -- no blank space, no frozen UI, no layout shift when data arrives
+  2. A failed API call in one panel shows an inline error message with a retry button in that panel only -- other panels on the same screen continue operating normally
+  3. Screens with no data (no forecasts, no events, no comparisons) display contextual empty-state messages explaining what the panel will show once data exists -- not blank white space
+  4. ScenarioExplorer and CalibrationPanel are lazy-loaded (not in the initial bundle); search and filter inputs are debounced; refresh cycles use diff-based DOM updates -- confirmed by Lighthouse performance score above 80 on the dashboard route
+  5. All interactive elements (map controls, layer toggles, modal open/close, forecast card expand/collapse) are reachable via keyboard navigation; map controls have ARIA labels; color contrast ratios meet WCAG AA on the dark theme
+**Plans**: TBD
+
 ## Progress
 
 **Execution Order:**
-Sequential: Phase 14 -> Phase 15 -> Phase 16. Then Phase 17 and Phase 18 can run in parallel.
+Phase 19 -> Phase 20. Then parallel: Phase 21 + Phase 22. Then Phase 23 (after 22), Phase 24 (after 21). Finally Phase 25 (after 23 and 24).
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -375,5 +500,12 @@ Sequential: Phase 14 -> Phase 15 -> Phase 16. Then Phase 17 and Phase 18 can run
 | 16. Globe & Forecasts Screens | v2.1 | 3/3 | Complete | 2026-03-03 |
 | 17. Live Data Feeds & Country Depth | v2.1 | 3/3 | Complete | 2026-03-04 |
 | 18. Polymarket-Driven Forecasting | v2.1 | 3/3 | Complete | 2026-03-04 |
+| 19. Admin Dashboard Foundation | v3.0 | 0/TBD | Not started | - |
+| 20. Daemon Consolidation | v3.0 | 0/TBD | Not started | - |
+| 21. Source Expansion & Feed Mgmt | v3.0 | 0/TBD | Not started | - |
+| 22. Polymarket Hardening | v3.0 | 0/TBD | Not started | - |
+| 23. Historical Backtesting | v3.0 | 0/TBD | Not started | - |
+| 24. Global Seeding & Globe Layers | v3.0 | 0/TBD | Not started | - |
+| 25. Frontend Finalization | v3.0 | 0/TBD | Not started | - |
 
-**Total:** 18 phases complete (v1.0 + v1.1 + v2.0 + v2.1), 65 plans delivered. v2.1: 5/5 phases complete. Milestone shipped.
+**Total:** 18 phases complete (v1.0 + v1.1 + v2.0 + v2.1), 65 plans delivered. v3.0: 0/7 phases complete.

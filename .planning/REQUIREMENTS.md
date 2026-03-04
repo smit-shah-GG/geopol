@@ -365,6 +365,45 @@ Which phases cover which requirements. Updated during roadmap creation.
 | GLOBE-02 | Phase 16 | Complete |
 | GLOBE-03 | Phase 16 | Complete |
 
+| ADMIN-01 | Phase 19 | Pending |
+| ADMIN-02 | Phase 19 | Pending |
+| ADMIN-03 | Phase 19 | Pending |
+| ADMIN-04 | Phase 19 | Pending |
+| ADMIN-05 | Phase 19 | Pending |
+| ADMIN-06 | Phase 19 | Pending |
+| DAEMON-01 | Phase 20 | Pending |
+| DAEMON-02 | Phase 20 | Pending |
+| DAEMON-03 | Phase 20 | Pending |
+| DAEMON-04 | Phase 20 | Pending |
+| DAEMON-05 | Phase 20 | Pending |
+| SRC-01 | Phase 21 | Pending |
+| SRC-02 | Phase 21 | Pending |
+| SRC-03 | Phase 21 | Pending |
+| SRC-04 | Phase 21 | Pending |
+| SRC-05 | Phase 21 | Pending |
+| SRC-06 | Phase 21 | Pending |
+| POLY-01 | Phase 22 | Pending |
+| POLY-02 | Phase 22 | Pending |
+| POLY-03 | Phase 22 | Pending |
+| POLY-04 | Phase 22 | Pending |
+| POLY-05 | Phase 22 | Pending |
+| BTEST-01 | Phase 23 | Pending |
+| BTEST-02 | Phase 23 | Pending |
+| BTEST-03 | Phase 23 | Pending |
+| BTEST-04 | Phase 23 | Pending |
+| BTEST-05 | Phase 23 | Pending |
+| SEED-01 | Phase 24 | Pending |
+| SEED-02 | Phase 24 | Pending |
+| SEED-03 | Phase 24 | Pending |
+| GLYR-01 | Phase 24 | Pending |
+| GLYR-02 | Phase 24 | Pending |
+| GLYR-03 | Phase 24 | Pending |
+| POLISH-01 | Phase 25 | Pending |
+| POLISH-02 | Phase 25 | Pending |
+| POLISH-03 | Phase 25 | Pending |
+| POLISH-04 | Phase 25 | Pending |
+| POLISH-05 | Phase 25 | Pending |
+
 **v2.0 Coverage:**
 - v2.0 requirements: 50 total (8 INFRA + 7 API + 8 FE + 6 INGEST + 5 AUTO + 6 CAL + 5 TKG + 5 MON)
 - Mapped to phases: 50/50
@@ -389,6 +428,20 @@ Which phases cover which requirements. Updated during roadmap creation.
 - Phase 17: TBD (Live Data Feeds & Country Depth) -- Scope identified, requirements pending
 - Phase 18: TBD (Polymarket-Driven Forecasting) -- Scope identified, requirements pending
 
+**v3.0 Coverage:**
+- v3.0 requirements: 38 total (6 ADMIN + 5 DAEMON + 6 SRC + 5 POLY + 5 BTEST + 3 SEED + 3 GLYR + 5 POLISH)
+- Mapped to phases: 38/38
+- Unmapped: 0
+
+**v3.0 Phase distribution:**
+- Phase 19: 6 requirements (ADMIN-01..06)
+- Phase 20: 5 requirements (DAEMON-01..05)
+- Phase 21: 6 requirements (SRC-01..06)
+- Phase 22: 5 requirements (POLY-01..05)
+- Phase 23: 5 requirements (BTEST-01..05)
+- Phase 24: 6 requirements (SEED-01..03, GLYR-01..03)
+- Phase 25: 5 requirements (POLISH-01..05)
+
 ---
 *Requirements defined: 2026-02-14*
 *Restructured: 2026-02-27 -- WM-derived frontend replaces Streamlit; API layer added; PostgreSQL replaces SQLite for forecast persistence; CAL-* moved to Phase 13; parallel execution model adopted*
@@ -396,4 +449,5 @@ Which phases cover which requirements. Updated during roadmap creation.
 *Updated: 2026-03-02 -- v2.0 shipped; v2.1 requirements defined (17 requirements across 4 categories)*
 *Updated: 2026-03-02 -- v2.1 roadmap created; 17 requirements mapped to Phases 14-16*
 *Updated: 2026-03-03 -- v2.1 extended with Phases 17-18 (Live Data Feeds + Polymarket-Driven Forecasting); milestone scope 14-18*
-*Updated: 2026-03-04 -- v2.1 shipped; v3.0 requirements defined (37 requirements across 7 categories). ICEWS marked dead, POLECAT deferred.*
+*Updated: 2026-03-04 -- v2.1 shipped; v3.0 requirements defined (38 requirements across 8 categories). ICEWS marked dead, POLECAT deferred.*
+*Updated: 2026-03-04 -- v3.0 roadmap created; 38 requirements mapped to Phases 19-25*

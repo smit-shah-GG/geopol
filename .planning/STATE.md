@@ -5,15 +5,15 @@
 See: .planning/PROJECT.md (updated 2026-03-04)
 
 **Core value:** Explainability -- every forecast must provide clear, traceable reasoning paths
-**Current focus:** v3.0 Operational Command & Verification
+**Current focus:** v3.0 Operational Command & Verification -- Phase 19 Admin Dashboard Foundation
 
 ## Current Position
 
 Milestone: v3.0 Operational Command & Verification
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-03-04 — Milestone v3.0 started
+Phase: 19 of 25 (Admin Dashboard Foundation)
+Plan: --
+Status: Ready to plan
+Last activity: 2026-03-04 -- v3.0 roadmap created (7 phases, 38 requirements)
 
 Progress: [########################################################] 100% (65/65 plans lifetime)
 v3.0:    [                    ] 0% (0/? plans)
@@ -56,29 +56,27 @@ Decisions are logged in PROJECT.md Key Decisions table.
 Key decisions affecting current work:
 
 - Admin dashboard at `/admin` route, same app, dynamic import code-split, route-level auth gating (2026-03-04)
-- APScheduler for daemon consolidation — single process, in-process with FastAPI, AsyncIOScheduler (2026-03-04)
-- Backtesting: isolated internal reporting only — walk-forward eval, model comparison, calibration audit (2026-03-04)
-- Polymarket: fix operational reliability + add rigorous Brier score tracking (2026-03-04)
-- Source expansion: WM RSS feed management, ICEWS + UCDP, per-source health/admin controls (2026-03-04)
-- Global seeding: all ~195 countries get baseline risk from event density + ACLED + ICEWS + advisories (2026-03-04)
-- Globe layer pills: Arcs/Heatmap/Scenarios are no-ops because data arrays never populated — data-wiring fix (2026-03-04)
-- Dockerization deferred to v4.0 (gates on daemon consolidation) (2026-03-04)
-- TiRGN training quality: weight_decay=0.001, warmup_epochs=3, label_smoothing=0.1 (2026-03-04)
+- APScheduler 3.11.2 for daemon consolidation -- single process, in-process with FastAPI, AsyncIOScheduler, MemoryJobStore (2026-03-04)
+- Backtesting: isolated internal reporting only -- walk-forward eval, model comparison, calibration audit (2026-03-04)
+- Polymarket: fix created_at overwrite + add rigorous Brier score tracking (2026-03-04)
+- Source expansion: UCDP (not ICEWS -- dead since April 2023), RSS feed management from admin, per-source health (2026-03-04)
+- Global seeding: all ~195 countries get baseline risk from GDELT + ACLED + UCDP + advisories (2026-03-04)
+- Globe layer pills: Arcs/Heatmap/Scenarios are no-ops -- data-wiring fix, not toggle fix (2026-03-04)
+- uvicorn --workers 1 is a hard constraint with APScheduler in-process (2026-03-04)
+- POLECAT/ICEWS deferred to v3.1+ (PLOVER-to-CAMEO mapping untested) (2026-03-04)
 
 ### Deferred Issues
 
 - Docker daemon requires sudo to start -- user must `sudo systemctl start docker` before running containers or Alembic migrations
 - PostgreSQL tests (8 tests in test_forecast_persistence.py and test_concurrent_db.py) skip until Docker is running
-- TKG entity resolution mismatch: GDELT actor codes (USA, GOV) vs LLM entity names (US Department of the Treasury) -- structural gap requiring normalization layer
-- Mobile/responsive layout deferred -- three screens + globe = poor mobile experience
-- Migration 004 must be applied before persistence tests pass: `uv run alembic upgrade head`
-- Migration 005 must be applied for Polymarket auto-forecasting: `uv run alembic upgrade head`
+- TKG entity resolution mismatch: GDELT actor codes (USA, GOV) vs LLM entity names -- structural gap requiring normalization layer
 - Pre-existing test failure: test_default_is_regcn expects "regcn" but default is "tirgn" since Phase 11
+- UCDP API token must be requested before Phase 21 implementation (email-gated, days to weeks)
 
 ### Blockers/Concerns
 
-- Polyglot tax: Python + TypeScript -- two ecosystems for single developer (Rust/Tauri dropped, web-only)
-- Docker daemon not auto-started -- verification of PostgreSQL/Redis containers and Alembic migration deferred
+- Polyglot tax: Python + TypeScript -- two ecosystems for single developer
+- UCDP token procurement -- calendar blocker for Phase 21; fallback is bulk CSV download
 
 ### Quick Tasks Completed
 
@@ -89,6 +87,6 @@ Key decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-03-04
-Stopped at: v3.0 milestone initialization — defining requirements
+Stopped at: v3.0 roadmap created -- 7 phases (19-25), 38 requirements mapped
 Resume file: None
-Next: Define v3.0 requirements and create roadmap
+Next: `/gsd:plan-phase 19`
