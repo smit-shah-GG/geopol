@@ -159,7 +159,7 @@ def test_training_config_defaults() -> None:
     assert config.logdir == "runs/tirgn"
 
     # Regularization / schedule (added for training quality)
-    assert config.weight_decay == 0.01
+    assert config.weight_decay == 0.001
     assert config.warmup_epochs == 3
     assert config.eval_samples == 2000
     assert config.label_smoothing == 0.1

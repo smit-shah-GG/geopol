@@ -132,8 +132,8 @@ def main() -> int:
     parser.add_argument(
         "--weight-decay",
         type=float,
-        default=0.01,
-        help="AdamW weight decay coefficient (default: 0.01)",
+        default=0.001,
+        help="AdamW weight decay coefficient (default: 0.001)",
     )
     parser.add_argument(
         "--warmup-epochs",

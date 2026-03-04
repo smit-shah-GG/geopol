@@ -74,7 +74,7 @@ class TiRGNTrainingConfig:
     logdir: str = "runs/tirgn"
 
     # Regularization / schedule
-    weight_decay: float = 0.01
+    weight_decay: float = 0.001
     warmup_epochs: int = 3
     eval_samples: int = 2000
     label_smoothing: float = 0.1
