@@ -11,19 +11,19 @@ See: .planning/PROJECT.md (updated 2026-03-04)
 
 Milestone: v3.0 Operational Command & Verification
 Phase: 19 of 25 (Admin Dashboard Foundation)
-Plan: 01 of 03
+Plan: 02 of 03
 Status: In progress
-Last activity: 2026-03-05 -- Completed 19-01-PLAN.md (admin backend API)
+Last activity: 2026-03-05 -- Completed 19-02-PLAN.md (admin frontend shell)
 
-Progress: [########################################################] 100% (66/66+ plans lifetime)
-v3.0:    [######              ] 33% (1/3 plans in phase 19)
+Progress: [########################################################] 100% (67/67+ plans lifetime)
+v3.0:    [#############       ] 67% (2/3 plans in phase 19)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 66
+- Total plans completed: 67
 - Average duration: 10 minutes
-- Total execution time: 11.2 hours
+- Total execution time: 11.3 hours
 
 **By Phase:**
 
@@ -47,7 +47,7 @@ v3.0:    [######              ] 33% (1/3 plans in phase 19)
 | 16-globe-forecasts-screens | 3 | 16min | 5min |
 | 17-live-data-feeds-country-depth | 3 | 26min | 9min |
 | 18-polymarket-driven-forecasting | 3 | 14min | 5min |
-| 19-admin-dashboard-foundation | 1 | 7min | 7min |
+| 19-admin-dashboard-foundation | 2 | 12min | 6min |
 
 ## Accumulated Context
 
@@ -68,6 +68,8 @@ Key decisions affecting current work:
 - Admin auth: X-Admin-Key header separate from X-API-Key, router-level dependency (2026-03-05)
 - trigger_job returns 501 for rss/polymarket/tkg until Phase 20 APScheduler (2026-03-05)
 - system_config values wrapped as {"v": value} for type-preserving JSON round-trip (2026-03-05)
+- AdminLayout exposes adminKey property for Plan 03 panel AdminClient construction (2026-03-05)
+- admin-screen.ts is the static/dynamic import boundary -- only import type at top level (2026-03-05)
 
 ### Deferred Issues
 
@@ -91,6 +93,6 @@ Key decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-03-05
-Stopped at: Completed 19-01-PLAN.md (admin backend API)
+Stopped at: Completed 19-02-PLAN.md (admin frontend shell)
 Resume file: None
-Next: `/gsd:execute-phase` 19-02
+Next: `/gsd:execute-phase` 19-03
