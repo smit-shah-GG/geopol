@@ -253,11 +253,14 @@ class RSSDaemon:
         because of a transient DB issue.
         """
         try:
-            from ..db.postgres import get_async_session
+            from ..db.postgres import async_session_factory, init_db
             from ..db.models import IngestRun
 
+            if async_session_factory is None:
+                init_db()
+
             started_at = datetime.now(timezone.utc)
-            async with get_async_session() as session:
+            async with async_session_factory() as session:
                 run = IngestRun(
                     started_at=started_at,
                     completed_at=datetime.now(timezone.utc),
