@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
+from src.api.routes.v1.admin import router as admin_router
 from src.api.routes.v1.advisories import router as advisories_router
 from src.api.routes.v1.articles import router as articles_router
 from src.api.routes.v1.calibration import router as calibration_router
@@ -48,3 +49,6 @@ v1_router.include_router(sources_router, prefix="/sources", tags=["sources"])
 
 # Government travel advisories (auth required)
 v1_router.include_router(advisories_router, prefix="/advisories", tags=["advisories"])
+
+# Admin dashboard (X-Admin-Key auth, separate from X-API-Key)
+v1_router.include_router(admin_router, prefix="/admin", tags=["admin"])
