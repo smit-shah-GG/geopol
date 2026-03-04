@@ -383,6 +383,28 @@ class PolymarketComparison(Base):
         )
 
 
+class SystemConfig(Base):
+    """Runtime configuration overrides persisted to PostgreSQL.
+
+    The admin dashboard reads/writes this table to adjust system behavior
+    without redeployment. Keys map to Settings field names; values are
+    JSON-encoded. When a key exists here it overrides the env-var default.
+    DELETE all rows to revert to Settings defaults.
+    """
+
+    __tablename__ = "system_config"
+
+    key: Mapped[str] = mapped_column(String(100), primary_key=True)
+    value: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, onupdate=_utcnow
+    )
+    updated_by: Mapped[str] = mapped_column(String(100), default="system")
+
+    def __repr__(self) -> str:
+        return f"<SystemConfig(key={self.key!r}, updated_by={self.updated_by!r})>"
+
+
 class PolymarketSnapshot(Base):
     """Point-in-time price/probability capture for a comparison pair.
 

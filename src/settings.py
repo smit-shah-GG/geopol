@@ -23,6 +23,9 @@ class Settings(BaseSettings):
         extra="ignore",  # .env contains legacy vars (GEMINI_API_KEY, etc.)
     )
 
+    # -- Admin --
+    admin_key: str = ""  # ADMIN_KEY env var for admin dashboard auth
+
     # -- Database --
     database_url: str = (
         "postgresql+asyncpg://geopol:geopol_dev@localhost:5432/geopol"
