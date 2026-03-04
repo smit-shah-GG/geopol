@@ -5,8 +5,8 @@ WORKDIR /app
 # Install uv for fast dependency resolution
 RUN pip install --no-cache-dir uv
 
-# Copy dependency manifests first for layer caching
-COPY pyproject.toml uv.lock* ./
+# Copy dependency manifests + readme (hatchling validates readme during build)
+COPY pyproject.toml uv.lock* README.md ./
 
 # Install production dependencies only
 RUN uv sync --no-dev

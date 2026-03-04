@@ -1,9 +1,9 @@
 """
-Polymarket Gamma API client with circuit breaker and tag-based geopolitical filtering.
+Polymarket Gamma API client with circuit breaker and geopolitical tag filtering.
 
-Fetches active prediction markets from gamma-api.polymarket.com, filtering
-for geopolitically relevant events via tag discovery. Circuit breaker pattern
-prevents cascade failures when the upstream API is degraded.
+Fetches active prediction markets from gamma-api.polymarket.com, sorted by
+volume, then filters client-side by event tag labels for geopolitical relevance.
+Circuit breaker pattern prevents cascade failures when the upstream API is degraded.
 """
 
 from __future__ import annotations
@@ -30,9 +30,9 @@ _REQUEST_TIMEOUT = aiohttp.ClientTimeout(total=15)
 class PolymarketClient:
     """HTTP client for Polymarket Gamma API with circuit breaker.
 
-    Discovers geopolitical markets by fetching tags, filtering against
-    GEO_KEYWORDS, then pulling active events per matching tag. Events
-    are deduplicated by ID before return.
+    Fetches active events sorted by volume via a single API call, then
+    filters client-side by event tag labels against GEO_INCLUDE keywords
+    (excluding sports false positives via GEO_EXCLUDE).
 
     Circuit breaker opens after 5 consecutive failures. While open,
     all calls return empty results until the recovery window elapses,
@@ -41,7 +41,8 @@ class PolymarketClient:
 
     GAMMA_API_BASE = "https://gamma-api.polymarket.com"
 
-    GEO_KEYWORDS: list[str] = [
+    # Inclusion keywords matched against lowercased tag labels
+    GEO_INCLUDE: list[str] = [
         "politic",
         "geopolitic",
         "world",
@@ -55,6 +56,39 @@ class PolymarketClient:
         "nuclear",
         "nato",
         "diplomacy",
+        "economy",
+        "fed",
+        "foreign",
+        "middle east",
+        "iran",
+        "israel",
+        "china",
+        "russia",
+        "ukraine",
+        "europe",
+        "tariff",
+        "trade",
+        "greenland",
+        "immigration",
+    ]
+
+    # Exclusion keywords to reject sports/entertainment false positives
+    GEO_EXCLUDE: list[str] = [
+        "sports",
+        "nba",
+        "nfl",
+        "soccer",
+        "hockey",
+        "nhl",
+        "mlb",
+        "tennis",
+        "mma",
+        "boxing",
+        "cricket",
+        "fifa",
+        "f1",
+        "formula",
+        "esports",
     ]
 
     _CIRCUIT_FAILURE_THRESHOLD = 5
@@ -136,141 +170,114 @@ class PolymarketClient:
                 )
             return await resp.json()
 
-    async def fetch_geopolitical_markets(self, limit: int = 100) -> list[dict]:
-        """Fetch active Polymarket events matching geopolitical keywords.
+    def _is_geo_event(self, event: dict) -> bool:
+        """Check if an event's tags match geopolitical keywords.
 
-        Returns deduplicated list of event dicts. On failure or circuit
-        breaker open, returns empty list (never raises).
+        An event is geopolitical if any tag label contains a GEO_INCLUDE
+        keyword AND no tag label contains a GEO_EXCLUDE keyword.
+        """
+        tags = event.get("tags")
+        if not isinstance(tags, list):
+            return False
+
+        labels_lower: list[str] = []
+        for tag in tags:
+            if isinstance(tag, dict):
+                label = tag.get("label", "")
+                if isinstance(label, str):
+                    labels_lower.append(label.lower())
+
+        if not labels_lower:
+            return False
+
+        # Reject if any exclusion keyword matches
+        for label in labels_lower:
+            if any(ex in label for ex in self.GEO_EXCLUDE):
+                return False
+
+        # Accept if any inclusion keyword matches
+        for label in labels_lower:
+            if any(kw in label for kw in self.GEO_INCLUDE):
+                return True
+
+        return False
+
+    async def fetch_top_geopolitical(
+        self, limit: int = 10, fetch_limit: int = 100,
+    ) -> tuple[list[dict], int]:
+        """Fetch top geopolitical events by volume in a single API call.
+
+        Makes one ``GET /events`` call sorted by volume descending, then
+        filters client-side by tag labels for geopolitical relevance.
 
         Args:
-            limit: Maximum events per tag query.
+            limit: Maximum geo events to return (top-N after filtering).
+            fetch_limit: How many events to pull from the API before filtering.
 
         Returns:
-            List of event dicts with at minimum 'id', 'title', 'markets' keys.
+            Tuple of (top geo events, total geo count from the fetched set).
+            Never raises — returns ([], 0) on failure or circuit breaker open.
         """
         if self._is_circuit_open():
             logger.debug("Circuit breaker open, returning empty market list")
-            return []
+            return [], 0
 
         try:
-            # Phase 1: Discover geopolitical tags
-            tags_url = f"{self.GAMMA_API_BASE}/tags"
-            all_tags = await self._get_json(tags_url)
+            url = f"{self.GAMMA_API_BASE}/events"
+            params = {
+                "active": "true",
+                "closed": "false",
+                "order": "volume",
+                "ascending": "false",
+                "limit": str(fetch_limit),
+            }
+            all_events = await self._get_json(url, params=params)
 
-            if not isinstance(all_tags, list):
+            if not isinstance(all_events, list):
                 logger.warning(
-                    "Unexpected tags response type: %s", type(all_tags).__name__
+                    "Unexpected events response type: %s",
+                    type(all_events).__name__,
                 )
-                self._record_failure(ValueError("tags response not a list"))
-                return []
+                self._record_failure(ValueError("events response not a list"))
+                return [], 0
 
-            geo_tags = []
-            for tag in all_tags:
-                label = tag.get("label", "") or tag.get("name", "")
-                if not isinstance(label, str):
+            # Filter to geopolitical events (already sorted by volume from API)
+            geo_events: list[dict] = []
+            for event in all_events:
+                if not isinstance(event, dict):
                     continue
-                label_lower = label.lower()
-                if any(kw in label_lower for kw in self.GEO_KEYWORDS):
-                    tag_id = tag.get("id")
-                    if tag_id is not None:
-                        geo_tags.append(tag)
-
-            logger.info(
-                "Discovered %d geopolitical tags from %d total",
-                len(geo_tags),
-                len(all_tags),
-            )
-
-            # Phase 2: Fetch events per matching tag
-            seen_ids: set[str] = set()
-            events: list[dict] = []
-
-            for tag in geo_tags:
-                tag_id = tag.get("id")
-                events_url = f"{self.GAMMA_API_BASE}/events"
-                params = {
-                    "tag_id": str(tag_id),
-                    "active": "true",
-                    "closed": "false",
-                    "limit": str(limit),
-                }
-
-                try:
-                    tag_events = await self._get_json(events_url, params=params)
-                except (aiohttp.ClientError, TimeoutError) as exc:
-                    # Individual tag fetch failure is non-fatal
-                    logger.warning(
-                        "Failed to fetch events for tag %s: %s",
-                        tag.get("label", tag_id),
-                        exc,
-                    )
+                if not event.get("id") or not event.get("title"):
                     continue
+                if self._is_geo_event(event):
+                    geo_events.append(event)
 
-                if not isinstance(tag_events, list):
-                    continue
-
-                for event in tag_events:
-                    if not isinstance(event, dict):
-                        continue
-                    event_id = event.get("id")
-                    if event_id is None:
-                        logger.debug("Skipping event missing 'id' field")
-                        continue
-                    event_id_str = str(event_id)
-                    if event_id_str in seen_ids:
-                        continue
-                    # Require at minimum title for downstream matching
-                    if not event.get("title"):
-                        logger.debug(
-                            "Skipping event %s: missing 'title'", event_id_str
-                        )
-                        continue
-                    seen_ids.add(event_id_str)
-                    events.append(event)
-
+            total_geo = len(geo_events)
             self._record_success()
             logger.info(
-                "Fetched %d unique geopolitical markets from %d tags",
-                len(events),
-                len(geo_tags),
+                "Fetched %d geo events from %d total (returning top %d)",
+                total_geo,
+                len(all_events),
+                min(limit, total_geo),
             )
-            return events
+            return geo_events[:limit], total_geo
 
         except Exception as exc:
             self._record_failure(exc)
-            return []
+            return [], 0
 
-    async def fetch_top_geopolitical(self, limit: int = 10) -> list[dict]:
-        """Return the top geopolitical events sorted by volume descending.
+    async def fetch_geopolitical_markets(self, limit: int = 200) -> list[dict]:
+        """Fetch all geopolitical events (convenience wrapper for matching cycle).
 
-        Fetches the full geo-filtered event set (up to 200), then sorts by
-        ``volume`` (string -> float, default 0.0) descending with ``liquidity``
-        as secondary sort key. Returns at most ``limit`` events.
+        Returns the full geo-filtered set without top-N slicing. Used by
+        PolymarketComparisonService.run_matching_cycle() which needs all
+        events for exhaustive prediction matching.
 
-        Never raises. Returns empty list on upstream failure or empty data.
+        Never raises. Returns empty list on failure.
         """
-        try:
-            events = await self.fetch_geopolitical_markets(limit=200)
-        except Exception:
-            # fetch_geopolitical_markets already swallows; belt-and-suspenders
-            return []
-
-        if not events:
-            return []
-
-        def _sort_key(e: dict) -> tuple[float, float]:
-            try:
-                vol = float(e.get("volume", "0") or "0")
-            except (ValueError, TypeError):
-                vol = 0.0
-            try:
-                liq = float(e.get("liquidity", "0") or "0")
-            except (ValueError, TypeError):
-                liq = 0.0
-            return (vol, liq)
-
-        events.sort(key=_sort_key, reverse=True)
-        return events[:limit]
+        events, _ = await self.fetch_top_geopolitical(
+            limit=limit, fetch_limit=max(limit, 200),
+        )
+        return events
 
     async def fetch_event_prices(self, event_id: str) -> list[dict]:
         """Fetch current market prices for a specific event.

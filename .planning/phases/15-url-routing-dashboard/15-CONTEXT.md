@@ -80,6 +80,7 @@ Replace the single-screen Phase 12 layout with three URL-routed screens (/dashbo
 - LLM-powered search suggestions (populate SearchResponse.suggestions from Gemini) — future phase
 - Mobile/responsive layout — three screens + 4 columns = poor mobile experience; explicitly deferred
 - Sort controls on forecast list (user-selectable sort beyond default recency) — future enhancement
+- **GeminiClient model-level circuit breaker:** Current retry strategy is stateless per-request — tries primary model 3x with exponential backoff (~28s waste) before falling back, then forgets and retries primary on the next request. With ~50% 503 rate on gemini-3-pro-preview, this burns ~15-20 min of pure retry waste during a 32-country seed. Fix options: (A) swap model defaults (quick), (B) add cross-request circuit breaker that auto-promotes fallback after N consecutive 503s, (C) reduce primary retries to 1 (immediate fallback, minimal waste). Recommended: C now, B later. Not blocking Phase 15.
 
 </deferred>
 

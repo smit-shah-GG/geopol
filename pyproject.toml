@@ -5,68 +5,66 @@ description = "AI-powered geopolitical forecasting system"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-    # GDELT Data Access
-    "gdeltdoc>=1.12.0",
-    "gdelt>=0.1.14",
-    # Data Processing
-    "pandas>=2.0.0",
-    "pyarrow>=14.0.0",
-    "dask[complete]>=2023.0.0",
-    # Environment & Scheduling
+    # Core: API runtime (FastAPI + DB + HTTP)
+    "pydantic>=2.0",
+    "pydantic-settings>=2.0",
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.34",
+    "sqlalchemy[asyncio]>=2.0.0",
+    "asyncpg>=0.30",
+    "alembic>=1.14",
+    "redis[hiredis]>=5.0",
+    "python-multipart>=0.0.9",
+    "aiohttp>=3.9",
+    "tenacity>=8.0",
     "python-dotenv>=1.0.0",
-    "schedule>=1.2.0",
-    # HTTP & Networking
-    "requests>=2.31.0",
-    # Knowledge Graphs
-    "networkx>=3.0",
-    # Deep Learning
-    "torch>=2.0.0",
     "typing_extensions>=4.0.0",
     "numpy>=1.24.0",
-    # Vector Database
-    "qdrant-client>=1.7.0",
-    # Visualization and ML
+    "cachetools>=5.3",
+    "psutil>=5.9",
+    "rapidfuzz>=3.14.3",
+    "requests>=2.31.0",
+    "networkx>=3.0",
+]
+
+[project.optional-dependencies]
+# Training: TKG model training (torch, JAX, CUDA)
+training = [
+    "torch>=2.0.0",
+    "jax[cuda12]>=0.6.2",
+    "flax>=0.10.7",
+    "optax>=0.2.6",
+    "tensorboardX>=2.6",
     "scikit-learn>=1.3.0",
     "matplotlib>=3.7.0",
     "scipy>=1.11.0",
-    # LLM Integration
+    "netcal>=1.3.5",
+]
+# LLM: forecast generation via Google Gemini + RAG
+llm = [
     "google-genai>=1.0",
-    "tenacity>=8.0",
-    # Schema & Data Validation
-    "pydantic>=2.0",
+    "google-generativeai>=0.8.6",
     "llama-index-core>=0.14.12",
     "chromadb>=1.4.0",
     "llama-index-vector-stores-chroma>=0.5.5",
     "llama-index-embeddings-huggingface>=0.6.1",
-    # Database ORM
-    "sqlalchemy[asyncio]>=2.0.0",
-    # Calibration metrics
-    "netcal>=1.3.5",
-    "jax[cuda12]>=0.6.2",
-    "flax>=0.10.7",
-    "optax>=0.2.6",
-    "rapidfuzz>=3.14.3",
-    "google-generativeai>=0.8.6",
-    # v2.0 API & Infrastructure
-    "fastapi>=0.115",
-    "uvicorn[standard]>=0.34",
-    "asyncpg>=0.30",
-    "alembic>=1.14",
-    "redis[hiredis]>=5.0",
-    "pydantic-settings>=2.0",
-    "python-multipart>=0.0.9",
-    # v2.0 Ingest & Forecast Pipeline
-    "aiohttp>=3.9",
-    "cachetools>=5.3",
+    "qdrant-client>=1.7.0",
+]
+# Ingest: GDELT data collection + RSS feeds
+ingest = [
+    "gdeltdoc>=1.12.0",
+    "gdelt>=0.1.14",
+    "pandas>=2.0.0",
+    "pyarrow>=14.0.0",
+    "dask[complete]>=2023.0.0",
+    "schedule>=1.2.0",
     "feedparser>=6.0",
     "trafilatura>=2.0",
-    # v2.0 TKG Training Observability
-    "tensorboardX>=2.6",
-    # v2.0 Monitoring
-    "psutil>=5.9",
 ]
-
-[project.optional-dependencies]
+# All: local dev gets everything
+all = [
+    "geopol[training,llm,ingest]",
+]
 dev = [
     "pytest>=7.4.0",
     "pytest-cov>=4.1.0",

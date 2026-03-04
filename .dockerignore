@@ -8,3 +8,10 @@ tests/
 .mypy_cache/
 .pytest_cache/
 .ruff_cache/
+frontend/
+node_modules/
+runs/
+.venv/
+*.egg-info/
+geopol.md
+CLAUDE.md
