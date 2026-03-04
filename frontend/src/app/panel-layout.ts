@@ -8,7 +8,7 @@
  *   Col 1 (15%):  Risk Index
  *   Col 2 (35%):  Forecasts
  *   Col 3 (30%):  Empty (Plan 03 adds MyForecasts + Sources)
- *   Col 4 (20%):  Events, Ensemble, Health, Calibration
+ *   Col 4 (20%):  Events, Health, Polymarket
  */
 
 import { h } from '@/utils/dom-utils';
