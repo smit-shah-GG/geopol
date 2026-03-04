@@ -21,7 +21,6 @@ Reference:
 from __future__ import annotations
 
 import logging
-from typing import List
 
 import jax
 import jax.numpy as jnp
@@ -38,6 +37,7 @@ from src.training.models.components.time_conv_transe import TimeConvTransEDecode
 from src.training.models.regcn_jax import (
     GRUCell,
     GraphSnapshot,
+    PaddedSnapshots,
     RelationalGraphConv,
 )
 
@@ -153,24 +153,28 @@ class TiRGN(nnx.Module):
         # Dropout RNGs for R-GCN layers
         self._dropout_rngs = rngs
 
-    def _encode_snapshot(
+    def _encode_snapshot_masked(
         self,
         x: Array,
-        snapshot: GraphSnapshot,
+        edge_index: Array,
+        edge_type: Array,
+        edge_mask: Array,
         training: bool = True,
     ) -> Array:
-        """Encode a single graph snapshot through R-GCN layers.
+        """Encode a single snapshot through R-GCN layers with edge masking.
 
         Args:
             x: Input entity embeddings (num_entities, embedding_dim).
-            snapshot: Graph snapshot with edges.
+            edge_index: (2, max_edges) padded edge indices.
+            edge_type: (max_edges,) padded edge types.
+            edge_mask: (max_edges,) float32, 1.0=real 0.0=pad.
             training: Whether to apply dropout.
 
         Returns:
             Updated entity embeddings (num_entities, embedding_dim).
         """
         for layer in self.rgcn_layers:
-            x = layer(x, snapshot.edge_index, snapshot.edge_type, self.num_entities)
+            x = layer(x, edge_index, edge_type, self.num_entities, edge_mask=edge_mask)
             x = jax.nn.relu(x)
             if training and self.dropout_rate > 0:
                 keep_rate = 1.0 - self.dropout_rate
@@ -182,60 +186,56 @@ class TiRGN(nnx.Module):
                 x = x * mask / keep_rate
         return x
 
-    def _aggregate_relation_context(
+    def _aggregate_relation_context_masked(
         self,
-        snapshot: GraphSnapshot,
+        edge_index: Array,
+        edge_type: Array,
+        edge_mask: Array,
         entity_emb: Array,
         num_rels: int,
     ) -> Array:
-        """Aggregate per-relation edge features from a snapshot.
-
-        For each relation type, computes the mean of source entity embeddings
-        for all edges of that type. This gives a (num_rels, embedding_dim)
-        context tensor that feeds into the relation GRU.
+        """Aggregate per-relation edge features with masking for padded edges.
 
         Args:
-            snapshot: Graph snapshot.
+            edge_index: (2, max_edges) padded edge indices.
+            edge_type: (max_edges,) padded edge types.
+            edge_mask: (max_edges,) float32, 1.0=real 0.0=pad.
             entity_emb: Current entity embeddings (num_entities, embedding_dim).
             num_rels: Number of relation types (including inverse).
 
         Returns:
             Aggregated relation context (num_rels, embedding_dim).
         """
-        source_idx = snapshot.edge_index[0]
-        edge_type = snapshot.edge_type
+        source_idx = edge_index[0]
 
-        # Gather source entity embeddings for all edges
-        src_feats = entity_emb[source_idx]  # (num_edges, embedding_dim)
+        # Gather source features, mask out padded edges
+        src_feats = entity_emb[source_idx]  # (max_edges, embedding_dim)
+        src_feats = src_feats * edge_mask[:, None]
 
-        # Aggregate by relation type using segment_sum
+        # Aggregate by relation type
         rel_sum = jnp.zeros((num_rels, self.embedding_dim))
         rel_sum = rel_sum.at[edge_type].add(src_feats)
 
-        # Count edges per relation for mean computation
+        # Count only real edges per relation
         rel_count = jnp.zeros(num_rels)
-        rel_count = rel_count.at[edge_type].add(1.0)
+        rel_count = rel_count.at[edge_type].add(edge_mask)
         rel_count = jnp.maximum(rel_count, 1.0)
 
         return rel_sum / rel_count[:, None]
 
     def evolve_embeddings(
         self,
-        snapshots: list,
+        snapshots: PaddedSnapshots,
         training: bool = False,
         **kwargs: object,
     ) -> Array:
-        """Evolve entity embeddings through temporal graph snapshots.
+        """Evolve entity embeddings through temporal graph snapshots via scan.
 
-        Processes snapshots sequentially through R-GCN encoding + entity GRU +
-        relation GRU. Uses jax.checkpoint on each snapshot for memory efficiency.
-
-        Also evolves relation embeddings through a separate relation GRU
-        (TiRGN-specific). The relation context is aggregated per-relation
-        from edge source features, projected, then fed through the GRU.
+        Uses jax.lax.scan to compile ONE R-GCN+GRU iteration template and
+        reuse it across all snapshots. Requires uniform-shape PaddedSnapshots.
 
         Args:
-            snapshots: List of GraphSnapshot instances.
+            snapshots: PaddedSnapshots with uniform edge count.
             training: Whether in training mode (dropout active).
             **kwargs: Ignored (protocol compatibility).
 
@@ -246,22 +246,32 @@ class TiRGN(nnx.Module):
         r = self.relation_emb[...]
         num_rels = self.num_relations * 2
 
-        for snapshot in snapshots:
-            # Evolve relation embeddings via relation GRU
-            rel_context = self._aggregate_relation_context(snapshot, h, num_rels)
+        # Guard: empty snapshots (inference without temporal context)
+        if snapshots.edge_index.shape[0] == 0:
+            return h
+
+        def scan_body(carry, snap_slice):
+            h, r = carry
+            edge_index = snap_slice[0]   # (2, max_edges)
+            edge_type = snap_slice[1]    # (max_edges,)
+            edge_mask = snap_slice[2]    # (max_edges,)
+
+            # Relation GRU: aggregate per-relation context, project, evolve
+            rel_context = self._aggregate_relation_context_masked(
+                edge_index, edge_type, edge_mask, h, num_rels
+            )
             rel_projected = self.rel_input_proj(rel_context)
-            r = self.relation_gru(r, rel_projected)
+            r_new = self.relation_gru(r, rel_projected)
 
-            # R-GCN message passing on current snapshot
-            @jax.checkpoint
-            def process_snapshot(h_in, snap):
-                x = self._encode_snapshot(h_in, snap, training)
-                h_out = self.entity_gru(h_in, x)
-                return h_out
+            # R-GCN + Entity GRU
+            x = self._encode_snapshot_masked(h, edge_index, edge_type, edge_mask, training)
+            h_new = self.entity_gru(h, x)
 
-            h = process_snapshot(h, snapshot)
+            return (h_new, r_new), None
 
-        return h
+        xs = (snapshots.edge_index, snapshots.edge_type, snapshots.edge_mask)
+        (h_final, _r_final), _ = jax.lax.scan(scan_body, (h, r), xs)
+        return h_final
 
     def compute_scores(
         self,
@@ -340,7 +350,7 @@ class TiRGN(nnx.Module):
 
     def compute_loss(
         self,
-        snapshots: list,
+        snapshots: PaddedSnapshots | list,
         pos_triples: Array,
         neg_triples: Array,
         margin: float = 1.0,
@@ -354,7 +364,7 @@ class TiRGN(nnx.Module):
         compatibility with RE-GCN but are NOT used.
 
         Args:
-            snapshots: List of GraphSnapshot instances.
+            snapshots: PaddedSnapshots for scan-based evolution.
             pos_triples: (batch, 3) positive triples.
             neg_triples: (batch * num_neg, 3) IGNORED -- protocol compatibility.
             margin: IGNORED -- protocol compatibility.
@@ -413,7 +423,7 @@ class TiRGN(nnx.Module):
 
     def predict(
         self,
-        snapshots: list,
+        snapshots: PaddedSnapshots | list,
         query_triples: Array,
         time_indices: Array | None = None,
         history_vocab: HistoryVocab | None = None,
@@ -424,7 +434,7 @@ class TiRGN(nnx.Module):
         computes fused scores, and returns the full distribution.
 
         Args:
-            snapshots: List of GraphSnapshot instances.
+            snapshots: PaddedSnapshots for scan-based evolution.
             query_triples: (batch, 3) query triples.
             time_indices: (batch,) time step indices. Defaults to zeros.
             history_vocab: Optional history vocabulary for copy-generation.

@@ -1,6 +1,6 @@
 """TiRGN training loop with early stopping, VRAM monitoring, and observability.
 
-Reuses data loading (``load_gdelt_data``, ``create_graph_snapshots``),
+Reuses data loading (``load_gdelt_data``, ``create_padded_snapshots``),
 negative sampling, and MRR evaluation from ``src.training.train_jax``.
 Does NOT duplicate any existing infrastructure.
 
@@ -36,7 +36,7 @@ from src.training.models.components.global_history import (
 )
 from src.training.models.tirgn_jax import TiRGN, create_tirgn_model
 from src.training.train_jax import (
-    create_graph_snapshots,
+    create_padded_snapshots,
     load_gdelt_data,
     negative_sampling,
 )
@@ -72,6 +72,9 @@ class TiRGNTrainingConfig:
     history_window: int = 50
     patience: int = 15
     logdir: str = "runs/tirgn"
+
+    # Batch-level logging interval (0 = epoch-level only)
+    log_every_n_batches: int = 50
 
 
 # ---------------------------------------------------------------------------
@@ -269,12 +272,13 @@ def train_tirgn(
     num_entities = len(entity_to_id)
     num_relations = len(relation_to_id)
 
-    snapshots = create_graph_snapshots(snapshots_np, num_relations)
+    snapshots = create_padded_snapshots(snapshots_np, num_relations)
 
     logger.info("Graph Statistics:")
     logger.info("  Entities:    %d", num_entities)
     logger.info("  Relations:   %d", num_relations)
-    logger.info("  Snapshots:   %d", len(snapshots))
+    logger.info("  Snapshots:   %d", snapshots.edge_index.shape[0])
+    logger.info("  Max edges:   %d", snapshots.edge_index.shape[2])
     logger.info("  Train:       %d", len(train_triples))
     logger.info("  Val:         %d", len(val_triples))
 
@@ -359,6 +363,9 @@ def train_tirgn(
     epochs_without_improvement = 0
     early_stopped = False
     start_time = time.time()
+    global_step = 0  # batch-level step counter for sub-epoch logging
+
+    total_batches_per_epoch = (len(train_triples) + config.batch_size - 1) // config.batch_size
 
     for epoch in range(1, config.epochs + 1):
         epoch_start = time.time()
@@ -386,8 +393,22 @@ def train_tirgn(
 
             loss = train_step(model, optimizer, pos_jax, history_mask)
 
-            epoch_loss += float(loss)
+            batch_loss = float(loss)
+            epoch_loss += batch_loss
             num_batches += 1
+            global_step += 1
+
+            # Sub-epoch batch-level logging for crash resilience
+            if config.log_every_n_batches > 0 and num_batches % config.log_every_n_batches == 0:
+                running_avg = epoch_loss / num_batches
+                training_logger.log_metrics(
+                    {
+                        "batch/loss": batch_loss,
+                        "batch/running_avg_loss": running_avg,
+                        "batch/progress": num_batches / total_batches_per_epoch,
+                    },
+                    step=global_step,
+                )
 
         avg_loss = epoch_loss / max(num_batches, 1)
         epoch_duration = time.time() - epoch_start
@@ -515,7 +536,7 @@ def train_tirgn(
 
 def _evaluate_tirgn(
     model: TiRGN,
-    snapshots: list,
+    snapshots: object,
     triples: np.ndarray,
     num_entities: int,
     history_vocab: HistoryVocab | None = None,
@@ -529,7 +550,7 @@ def _evaluate_tirgn(
 
     Args:
         model: Trained TiRGN model.
-        snapshots: JAX graph snapshots.
+        snapshots: PaddedSnapshots for scan-based evolution.
         triples: (N, 3) evaluation triples.
         num_entities: Total entity count.
         history_vocab: Optional history vocabulary for copy-generation.

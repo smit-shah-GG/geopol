@@ -33,11 +33,12 @@ from src.training.models.components.global_history import (
     HistoryVocab,
     get_history_mask,
 )
-from src.training.models.regcn_jax import GraphSnapshot
+from src.training.models.regcn_jax import GraphSnapshot, PaddedSnapshots
 from src.training.models.tirgn_jax import create_tirgn_model
 from src.training.train_jax import (
     compute_mrr,
     create_graph_snapshots,
+    create_padded_snapshots,
     load_gdelt_data,
 )
 from src.training.train_tirgn import (
@@ -82,7 +83,7 @@ class ComparisonResult:
 
 def _tirgn_compute_mrr(
     tirgn_checkpoint_path: Path,
-    snapshots: list[GraphSnapshot],
+    padded_snapshots: PaddedSnapshots,
     val_triples: np.ndarray,
     snapshots_np: list[np.ndarray],
     num_entities: int,
@@ -92,11 +93,11 @@ def _tirgn_compute_mrr(
     """Evaluate TiRGN on held-out triples using the fused copy-generation scorer.
 
     Loads the TiRGN checkpoint, reconstructs the model, evolves embeddings
-    through the snapshots, and computes MRR using the fused distribution.
+    through the padded snapshots, and computes MRR using the fused distribution.
 
     Args:
         tirgn_checkpoint_path: Path to TiRGN best .npz checkpoint.
-        snapshots: JAX GraphSnapshot objects.
+        padded_snapshots: PaddedSnapshots for scan-based evolution.
         val_triples: (N, 3) held-out evaluation triples.
         snapshots_np: Raw numpy snapshot arrays for history vocabulary.
         num_entities: Total entity count.
@@ -148,7 +149,7 @@ def _tirgn_compute_mrr(
     # Cap evaluation sample for speed (same as RE-GCN eval path)
     val_sample = val_triples[: min(500, len(val_triples))]
     metrics = _evaluate_tirgn(
-        model, snapshots, val_sample, num_entities, history_vocab, batch_size
+        model, padded_snapshots, val_sample, num_entities, history_vocab, batch_size
     )
 
     logger.info(
@@ -171,7 +172,7 @@ def evaluate_regcn_baseline(
     regcn_checkpoint: Path,
     max_events: int = 0,
     num_days: int = 30,
-) -> tuple[float, np.ndarray, list[np.ndarray], list[GraphSnapshot], int, int]:
+) -> tuple[float, np.ndarray, list[np.ndarray], list[GraphSnapshot], PaddedSnapshots, int, int]:
     """Evaluate RE-GCN on its held-out validation split.
 
     Returns the MRR plus the data artifacts needed for TiRGN evaluation
@@ -184,7 +185,8 @@ def evaluate_regcn_baseline(
         num_days: Days of data.
 
     Returns:
-        Tuple of (mrr, val_triples, snapshots_np, snapshots_jax, num_entities, num_relations).
+        Tuple of (mrr, val_triples, snapshots_np, snapshots_jax, padded_snapshots,
+        num_entities, num_relations).
     """
     # Load data ONCE -- the same data is used for both models
     snapshots_np, entity_to_id, relation_to_id, _, val_triples = load_gdelt_data(
@@ -193,6 +195,7 @@ def evaluate_regcn_baseline(
     num_entities = len(entity_to_id)
     num_relations = len(relation_to_id)
     snapshots_jax = create_graph_snapshots(snapshots_np, num_relations)
+    padded_snapshots = create_padded_snapshots(snapshots_np, num_relations)
 
     # Load RE-GCN metadata
     meta_path = regcn_checkpoint.with_suffix(".json")
@@ -233,6 +236,7 @@ def evaluate_regcn_baseline(
         val_triples,
         snapshots_np,
         snapshots_jax,
+        padded_snapshots,
         num_entities,
         num_relations,
     )
@@ -275,14 +279,14 @@ def compare_models(
     logger.info("=" * 70)
 
     # Evaluate RE-GCN (also loads shared data)
-    regcn_mrr, val_triples, snapshots_np, snapshots_jax, num_entities, num_relations = (
+    regcn_mrr, val_triples, snapshots_np, snapshots_jax, padded_snapshots, num_entities, num_relations = (
         evaluate_regcn_baseline(data_path, regcn_checkpoint, max_events, num_days)
     )
 
-    # Evaluate TiRGN on the SAME val_triples
+    # Evaluate TiRGN on the SAME val_triples (using padded snapshots for scan)
     tirgn_mrr = _tirgn_compute_mrr(
         tirgn_checkpoint,
-        snapshots_jax,
+        padded_snapshots,
         val_triples,
         snapshots_np,
         num_entities,

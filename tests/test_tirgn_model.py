@@ -18,7 +18,7 @@ from src.training.models.components.global_history import (
     get_history_mask,
 )
 from src.training.models.components.time_conv_transe import TimeConvTransEDecoder
-from src.training.models.regcn_jax import GraphSnapshot
+from src.training.models.regcn_jax import PaddedSnapshots
 from src.training.models.tirgn_jax import TiRGN, create_tirgn_model
 
 
@@ -52,24 +52,26 @@ def model() -> TiRGN:
 
 
 @pytest.fixture()
-def snapshots() -> list[GraphSnapshot]:
-    """Three random GraphSnapshots."""
+def snapshots() -> PaddedSnapshots:
+    """Three random PaddedSnapshots with uniform edge count."""
     key = jax.random.PRNGKey(42)
-    snaps = []
     num_rels_with_inv = NUM_RELATIONS * 2
+
+    edge_indices = []
+    edge_types = []
     for _ in range(NUM_SNAPSHOTS):
         key, sk = jax.random.split(key)
         edge_index = jax.random.randint(sk, (2, EDGES_PER_SNAPSHOT), 0, NUM_ENTITIES)
         key, sk = jax.random.split(key)
         edge_type = jax.random.randint(sk, (EDGES_PER_SNAPSHOT,), 0, num_rels_with_inv)
-        snaps.append(
-            GraphSnapshot(
-                edge_index=edge_index,
-                edge_type=edge_type,
-                num_edges=EDGES_PER_SNAPSHOT,
-            )
-        )
-    return snaps
+        edge_indices.append(edge_index)
+        edge_types.append(edge_type)
+
+    return PaddedSnapshots(
+        edge_index=jnp.stack(edge_indices),       # (3, 2, 8)
+        edge_type=jnp.stack(edge_types),           # (3, 8)
+        edge_mask=jnp.ones((NUM_SNAPSHOTS, EDGES_PER_SNAPSHOT)),  # all real
+    )
 
 
 @pytest.fixture()
@@ -83,13 +85,14 @@ def neg_triples() -> jnp.ndarray:
 
 
 @pytest.fixture()
-def history_vocab(snapshots: list[GraphSnapshot]) -> dict[tuple[int, int], set[int]]:
-    """Build a history vocabulary from the test snapshots."""
+def history_vocab(snapshots: PaddedSnapshots) -> dict[tuple[int, int], set[int]]:
+    """Build a history vocabulary from the test PaddedSnapshots."""
     snap_triples = []
-    for snap in snapshots:
-        src = np.asarray(snap.edge_index[0])
-        etype = np.asarray(snap.edge_type)
-        dst = np.asarray(snap.edge_index[1])
+    for i in range(snapshots.edge_index.shape[0]):
+        mask = np.asarray(snapshots.edge_mask[i]) > 0.5
+        src = np.asarray(snapshots.edge_index[i, 0])[mask]
+        etype = np.asarray(snapshots.edge_type[i])[mask]
+        dst = np.asarray(snapshots.edge_index[i, 1])[mask]
         snap_triples.append(np.stack([src, etype, dst], axis=1))
     return build_history_vocabulary(
         snap_triples, NUM_ENTITIES, NUM_RELATIONS * 2, window_size=50
@@ -102,7 +105,7 @@ def history_vocab(snapshots: list[GraphSnapshot]) -> dict[tuple[int, int], set[i
 
 
 def test_tirgn_forward_shapes(
-    model: TiRGN, snapshots: list[GraphSnapshot]
+    model: TiRGN, snapshots: PaddedSnapshots
 ) -> None:
     """evolve_embeddings returns (num_entities, embedding_dim)."""
     emb = model.evolve_embeddings(snapshots, training=False)
@@ -119,7 +122,7 @@ def test_tirgn_forward_shapes(
 
 def test_tirgn_compute_scores_shape(
     model: TiRGN,
-    snapshots: list[GraphSnapshot],
+    snapshots: PaddedSnapshots,
     pos_triples: jnp.ndarray,
 ) -> None:
     """compute_scores returns (batch,) for given triples."""
@@ -137,7 +140,7 @@ def test_tirgn_compute_scores_shape(
 
 def test_tirgn_compute_loss_scalar(
     model: TiRGN,
-    snapshots: list[GraphSnapshot],
+    snapshots: PaddedSnapshots,
     pos_triples: jnp.ndarray,
     neg_triples: jnp.ndarray,
 ) -> None:
@@ -230,7 +233,7 @@ def test_time_conv_transe_shape(rngs: nnx.Rngs) -> None:
 
 def test_global_history_mask(
     model: TiRGN,
-    snapshots: list[GraphSnapshot],
+    snapshots: PaddedSnapshots,
     history_vocab: dict[tuple[int, int], set[int]],
     rngs: nnx.Rngs,
 ) -> None:
@@ -274,7 +277,7 @@ def test_global_history_mask(
 
 def test_copy_generation_fusion(
     model: TiRGN,
-    snapshots: list[GraphSnapshot],
+    snapshots: PaddedSnapshots,
     pos_triples: jnp.ndarray,
     history_vocab: dict[tuple[int, int], set[int]],
 ) -> None:

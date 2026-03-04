@@ -13,7 +13,7 @@ Reference:
 """
 
 from functools import partial
-from typing import List, NamedTuple, Optional, Tuple
+from typing import List, NamedTuple, Optional
 
 import jax
 import jax.numpy as jnp
@@ -26,6 +26,18 @@ class GraphSnapshot(NamedTuple):
     edge_index: Array  # (2, num_edges) - source and target indices
     edge_type: Array   # (num_edges,) - relation type per edge
     num_edges: int
+
+
+class PaddedSnapshots(NamedTuple):
+    """Stacked temporal snapshots with uniform edge count for jax.lax.scan.
+
+    All snapshots are padded to the same max_edges count so that scan can
+    compile a single iteration template. Padded edges are zeroed out via
+    edge_mask during R-GCN message passing and relation aggregation.
+    """
+    edge_index: Array  # (num_snapshots, 2, max_edges)
+    edge_type: Array   # (num_snapshots, max_edges)
+    edge_mask: Array   # (num_snapshots, max_edges) float32, 1.0=real 0.0=pad
 
 
 class RelationalGraphConv(nnx.Module):
@@ -84,6 +96,7 @@ class RelationalGraphConv(nnx.Module):
         edge_index: Array,
         edge_type: Array,
         num_nodes: int,
+        edge_mask: Optional[Array] = None,
     ) -> Array:
         """
         Forward pass with message passing.
@@ -96,6 +109,9 @@ class RelationalGraphConv(nnx.Module):
             edge_index: Edge indices (2, num_edges)
             edge_type: Edge types (num_edges,)
             num_nodes: Total number of nodes
+            edge_mask: Optional (num_edges,) float32 mask. 1.0 for real edges,
+                0.0 for padding. When provided, padded edges contribute zero
+                to both message passing and degree computation.
 
         Returns:
             Updated node features (num_nodes, out_features)
@@ -114,6 +130,9 @@ class RelationalGraphConv(nnx.Module):
         def process_relation(r, out):
             # Mask for edges of this relation type
             mask = (edge_type == r).astype(jnp.float32)
+            # Zero out padded edges when edge_mask is provided
+            if edge_mask is not None:
+                mask = mask * edge_mask
 
             # Transform source features with this relation's weight
             # (num_edges, in) @ (in, out) -> (num_edges, out)
@@ -130,9 +149,10 @@ class RelationalGraphConv(nnx.Module):
         out = jnp.zeros((num_nodes, self.out_features))
         out = jax.lax.fori_loop(0, self.num_relations, process_relation, out)
 
-        # Normalize by in-degree
+        # Normalize by in-degree (only count real edges)
         in_degree = jnp.zeros(num_nodes)
-        in_degree = in_degree.at[target_idx].add(1.0)
+        degree_ones = edge_mask if edge_mask is not None else jnp.ones(edge_index.shape[1])
+        in_degree = in_degree.at[target_idx].add(degree_ones)
         in_degree = jnp.maximum(in_degree, 1.0)
         out = out / in_degree[:, None]
 

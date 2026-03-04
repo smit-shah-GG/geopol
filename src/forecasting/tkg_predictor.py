@@ -197,7 +197,7 @@ class TKGPredictor:
 
         # TiRGN-specific state (only populated when _backend == "tirgn")
         self._tirgn_model = None
-        self._tirgn_snapshots: list = []
+        self._tirgn_snapshots = None  # PaddedSnapshots or None
 
         if self._backend == "tirgn":
             # TiRGN mode: no REGCNWrapper
@@ -372,7 +372,67 @@ class TKGPredictor:
         logger.info("  Entities: %s", f"{num_entities:,}")
         logger.info("  Relations: %s", num_relations)
 
+        # Build temporal snapshots from recent GDELT events for inference
+        self._tirgn_snapshots = self._build_inference_snapshots(num_relations)
+
         return True
+
+    def _build_inference_snapshots(self, num_relations: int):
+        """Build PaddedSnapshots from recent GDELT data for inference.
+
+        Loads from the same parquet used for training. If the file does
+        not exist, returns an empty PaddedSnapshots (graceful degradation —
+        the model will use raw entity embeddings without temporal context).
+
+        Args:
+            num_relations: Number of original (non-inverse) relations.
+
+        Returns:
+            PaddedSnapshots instance.
+        """
+        import jax.numpy as jnp
+
+        from src.training.models.regcn_jax import PaddedSnapshots
+        from src.training.train_jax import create_padded_snapshots, load_gdelt_data
+
+        parquet_path = Path("data/gdelt/processed/events.parquet")
+        if not parquet_path.exists():
+            logger.warning(
+                "GDELT parquet not found at %s — inference will use "
+                "raw entity embeddings without temporal evolution",
+                parquet_path,
+            )
+            return PaddedSnapshots(
+                edge_index=jnp.zeros((0, 2, 1), dtype=jnp.int32),
+                edge_type=jnp.zeros((0, 1), dtype=jnp.int32),
+                edge_mask=jnp.zeros((0, 1), dtype=jnp.float32),
+            )
+
+        try:
+            snapshots_np, _e2id, _r2id, _train, _val = load_gdelt_data(
+                parquet_path,
+                max_events=0,
+                num_days=self.history_length,
+            )
+            padded = create_padded_snapshots(snapshots_np, num_relations)
+            logger.info(
+                "Inference snapshots built: %d snapshots, max_edges=%d, "
+                "entity coverage from %d days",
+                padded.edge_index.shape[0],
+                padded.edge_index.shape[2],
+                self.history_length,
+            )
+            return padded
+        except Exception:
+            logger.exception(
+                "Failed to build inference snapshots — falling back to "
+                "raw entity embeddings"
+            )
+            return PaddedSnapshots(
+                edge_index=jnp.zeros((0, 2, 1), dtype=jnp.int32),
+                edge_type=jnp.zeros((0, 1), dtype=jnp.int32),
+                edge_mask=jnp.zeros((0, 1), dtype=jnp.float32),
+            )
 
     # ------------------------------------------------------------------
     # RE-GCN checkpoint loading (existing behavior)

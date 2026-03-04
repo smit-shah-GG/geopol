@@ -18,7 +18,7 @@ import numpy as np
 import optax
 from flax import nnx
 
-from src.training.models.regcn_jax import REGCN, GraphSnapshot, create_model
+from src.training.models.regcn_jax import REGCN, GraphSnapshot, PaddedSnapshots, create_model
 
 logger = logging.getLogger(__name__)
 
@@ -164,6 +164,74 @@ def create_graph_snapshots(
         ))
 
     return jax_snapshots
+
+
+def create_padded_snapshots(
+    snapshots_np: List[np.ndarray],
+    num_relations: int,
+) -> PaddedSnapshots:
+    """Convert numpy snapshots to uniform-shape PaddedSnapshots for jax.lax.scan.
+
+    Adds inverse relations (r + num_relations) and pads all snapshots to the
+    same max_edges count. Padded positions are marked with edge_mask=0.0.
+
+    Args:
+        snapshots_np: List of (N, 3) numpy arrays [subject, relation, object].
+        num_relations: Number of original (non-inverse) relations.
+
+    Returns:
+        PaddedSnapshots with arrays of shape (num_snapshots, ..., max_edges).
+    """
+    edge_indices = []
+    edge_types = []
+    edge_counts = []
+
+    for triples in snapshots_np:
+        if len(triples) == 0:
+            edge_indices.append(np.zeros((2, 0), dtype=np.int32))
+            edge_types.append(np.zeros((0,), dtype=np.int32))
+            edge_counts.append(0)
+            continue
+
+        subjects = triples[:, 0]
+        relations = triples[:, 1]
+        objects = triples[:, 2]
+
+        # Forward + inverse edges
+        all_src = np.concatenate([subjects, objects])
+        all_dst = np.concatenate([objects, subjects])
+        all_rel = np.concatenate([relations, relations + num_relations])
+
+        edge_indices.append(np.stack([all_src, all_dst]))
+        edge_types.append(all_rel)
+        edge_counts.append(len(all_src))
+
+    # Find max edges across all snapshots (at least 1 to avoid zero-dim arrays)
+    max_edges = max(max(edge_counts), 1)
+
+    num_snapshots = len(snapshots_np)
+    padded_ei = np.zeros((num_snapshots, 2, max_edges), dtype=np.int32)
+    padded_et = np.zeros((num_snapshots, max_edges), dtype=np.int32)
+    padded_mask = np.zeros((num_snapshots, max_edges), dtype=np.float32)
+
+    for i, (ei, et, count) in enumerate(zip(edge_indices, edge_types, edge_counts)):
+        if count > 0:
+            padded_ei[i, :, :count] = ei
+            padded_et[i, :count] = et
+            padded_mask[i, :count] = 1.0
+
+    logger.info(
+        "Padded snapshots: %d snapshots, max_edges=%d (%.1f%% padding)",
+        num_snapshots,
+        max_edges,
+        100.0 * (1.0 - np.mean(padded_mask)),
+    )
+
+    return PaddedSnapshots(
+        edge_index=jnp.array(padded_ei),
+        edge_type=jnp.array(padded_et),
+        edge_mask=jnp.array(padded_mask),
+    )
 
 
 def negative_sampling(
