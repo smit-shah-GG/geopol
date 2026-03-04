@@ -19,6 +19,7 @@ import { h } from '@/utils/dom-utils';
 import { mountDashboard, unmountDashboard } from '@/screens/dashboard-screen';
 import { mountGlobe, unmountGlobe } from '@/screens/globe-screen';
 import { mountForecasts, unmountForecasts } from '@/screens/forecasts-screen';
+import { mountAdmin, unmountAdmin } from '@/screens/admin-screen';
 
 // Styles (no maplibre CSS here -- loaded dynamically in globe-screen)
 import '@/styles/main.css';
@@ -64,6 +65,12 @@ async function boot(): Promise<void> {
     path: '/forecasts',
     mount: (container) => mountForecasts(container, ctx),
     unmount: () => unmountForecasts(ctx),
+  });
+
+  router.addRoute({
+    path: '/admin',
+    mount: (container) => mountAdmin(container),
+    unmount: () => unmountAdmin(),
   });
 
   // -- Resolve initial screen based on current URL --
