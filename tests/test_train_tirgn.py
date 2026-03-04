@@ -158,6 +158,12 @@ def test_training_config_defaults() -> None:
     assert config.patience == 15
     assert config.logdir == "runs/tirgn"
 
+    # Regularization / schedule (added for training quality)
+    assert config.weight_decay == 0.01
+    assert config.warmup_epochs == 3
+    assert config.eval_samples == 2000
+    assert config.label_smoothing == 0.1
+
 
 # ---------------------------------------------------------------------------
 # Test 4: Checkpoint metadata includes model_type

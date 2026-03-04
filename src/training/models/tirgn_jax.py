@@ -70,6 +70,7 @@ class TiRGN(nnx.Module):
         dropout_rate: float = 0.2,
         history_rate: float = 0.3,
         history_window: int = 50,
+        label_smoothing: float = 0.1,
         *,
         rngs: nnx.Rngs,
     ):
@@ -83,6 +84,7 @@ class TiRGN(nnx.Module):
         self.dropout_rate = dropout_rate
         self.history_rate: float = history_rate
         self.history_window: int = history_window
+        self.label_smoothing: float = label_smoothing
 
         # Initial entity embeddings -- xavier uniform initialization
         limit = (6.0 / (num_entities + embedding_dim)) ** 0.5
@@ -160,6 +162,7 @@ class TiRGN(nnx.Module):
         edge_type: Array,
         edge_mask: Array,
         training: bool = True,
+        dropout_keys: Array | None = None,
     ) -> Array:
         """Encode a single snapshot through R-GCN layers with edge masking.
 
@@ -169,20 +172,20 @@ class TiRGN(nnx.Module):
             edge_type: (max_edges,) padded edge types.
             edge_mask: (max_edges,) float32, 1.0=real 0.0=pad.
             training: Whether to apply dropout.
+            dropout_keys: Per-layer PRNG keys for stochastic dropout.
+                If None during training, falls back to a fixed key (no
+                stochastic regularization — only for backward compat).
 
         Returns:
             Updated entity embeddings (num_entities, embedding_dim).
         """
-        for layer in self.rgcn_layers:
+        for i, layer in enumerate(self.rgcn_layers):
             x = layer(x, edge_index, edge_type, self.num_entities, edge_mask=edge_mask)
             x = jax.nn.relu(x)
             if training and self.dropout_rate > 0:
+                key = dropout_keys[i] if dropout_keys is not None else jax.random.PRNGKey(0)
                 keep_rate = 1.0 - self.dropout_rate
-                mask = jax.random.bernoulli(
-                    jax.random.PRNGKey(hash(id(layer)) % 2**31),
-                    keep_rate,
-                    x.shape,
-                )
+                mask = jax.random.bernoulli(key, keep_rate, x.shape)
                 x = x * mask / keep_rate
         return x
 
@@ -227,6 +230,7 @@ class TiRGN(nnx.Module):
         self,
         snapshots: PaddedSnapshots,
         training: bool = False,
+        rng_key: Array | None = None,
         **kwargs: object,
     ) -> Array:
         """Evolve entity embeddings through temporal graph snapshots via scan.
@@ -237,6 +241,9 @@ class TiRGN(nnx.Module):
         Args:
             snapshots: PaddedSnapshots with uniform edge count.
             training: Whether in training mode (dropout active).
+            rng_key: PRNG key for stochastic dropout. Split per snapshot
+                inside scan so each step gets a unique dropout mask. If None,
+                defaults to PRNGKey(0) (deterministic — no regularisation).
             **kwargs: Ignored (protocol compatibility).
 
         Returns:
@@ -246,12 +253,15 @@ class TiRGN(nnx.Module):
         r = self.relation_emb[...]
         num_rels = self.num_relations * 2
 
+        if rng_key is None:
+            rng_key = jax.random.PRNGKey(0)
+
         # Guard: empty snapshots (inference without temporal context)
         if snapshots.edge_index.shape[0] == 0:
             return h
 
         def scan_body(carry, snap_slice):
-            h, r = carry
+            h, r, rng_key = carry
             edge_index = snap_slice[0]   # (2, max_edges)
             edge_type = snap_slice[1]    # (max_edges,)
             edge_mask = snap_slice[2]    # (max_edges,)
@@ -261,7 +271,11 @@ class TiRGN(nnx.Module):
             # Without this, scan stores ~400 MB of basis_msgs per R-GCN layer
             # per snapshot → 2 layers × 31 snapshots × 400 MB ≈ 25 GB OOM.
             @jax.checkpoint
-            def _step(h, r, edge_index, edge_type, edge_mask):
+            def _step(h, r, edge_index, edge_type, edge_mask, rng_key):
+                # Split key: one sub-key per R-GCN layer + one for next step
+                keys = jax.random.split(rng_key, len(self.rgcn_layers) + 1)
+                dropout_keys = keys[1:]  # one per layer
+
                 # Relation GRU: aggregate per-relation context, project, evolve
                 rel_context = self._aggregate_relation_context_masked(
                     edge_index, edge_type, edge_mask, h, num_rels
@@ -269,19 +283,21 @@ class TiRGN(nnx.Module):
                 rel_projected = self.rel_input_proj(rel_context)
                 r_new = self.relation_gru(r, rel_projected)
 
-                # R-GCN + Entity GRU
+                # R-GCN + Entity GRU (with per-layer dropout keys)
                 x = self._encode_snapshot_masked(
-                    h, edge_index, edge_type, edge_mask, training
+                    h, edge_index, edge_type, edge_mask, training,
+                    dropout_keys=dropout_keys if training else None,
                 )
                 h_new = self.entity_gru(h, x)
                 return h_new, r_new
 
-            h_new, r_new = _step(h, r, edge_index, edge_type, edge_mask)
+            h_new, r_new = _step(h, r, edge_index, edge_type, edge_mask, rng_key)
+            _, next_key = jax.random.split(rng_key)
 
-            return (h_new, r_new), None
+            return (h_new, r_new, next_key), None
 
         xs = (snapshots.edge_index, snapshots.edge_type, snapshots.edge_mask)
-        (h_final, _r_final), _ = jax.lax.scan(scan_body, (h, r), xs)
+        (h_final, _r_final, _), _ = jax.lax.scan(scan_body, (h, r, rng_key), xs)
         return h_final
 
     def compute_scores(
@@ -386,17 +402,9 @@ class TiRGN(nnx.Module):
         Returns:
             Scalar NLL loss.
         """
-        if neg_triples is not None and neg_triples.shape[0] > 0:
-            logger.debug(
-                "TiRGN.compute_loss: neg_triples (%d rows) and margin (%.1f) "
-                "are accepted for protocol compatibility but not used. "
-                "TiRGN uses NLL loss over the full entity distribution.",
-                neg_triples.shape[0],
-                margin,
-            )
-
         # Evolve embeddings through temporal snapshots
-        entity_emb = self.evolve_embeddings(snapshots, training=True)
+        rng_key = kwargs.get("rng_key", None)
+        entity_emb = self.evolve_embeddings(snapshots, training=True, rng_key=rng_key)
 
         # Extract time indices (default to zeros if not provided)
         time_indices = kwargs.get("time_indices", None)
@@ -420,17 +428,18 @@ class TiRGN(nnx.Module):
             entity_emb, pos_triples, time_indices, history_mask, training=True
         )
 
-        # NLL loss: -log(P[target_entity]) for each triple
+        # Label-smoothed NLL: (1-ε)*NLL_hard + ε*NLL_uniform
+        # Prevents softmax saturation and acts as implicit KL regularization
         target_entities = pos_triples[:, 2]
-        target_probs = fused_probs[
-            jnp.arange(pos_triples.shape[0]), target_entities
-        ]
+        log_probs = jnp.log(jnp.maximum(fused_probs, 1e-10))
 
-        # Clamp for numerical stability in log
-        target_probs = jnp.maximum(target_probs, 1e-10)
-        nll_loss = -jnp.mean(jnp.log(target_probs))
+        nll_hard = -log_probs[jnp.arange(pos_triples.shape[0]), target_entities]
+        nll_uniform = -jnp.mean(log_probs, axis=-1)
 
-        return nll_loss
+        eps = self.label_smoothing
+        loss = jnp.mean((1.0 - eps) * nll_hard + eps * nll_uniform)
+
+        return loss
 
     def predict(
         self,
@@ -481,6 +490,7 @@ def create_tirgn_model(
     dropout_rate: float = 0.2,
     history_rate: float = 0.3,
     history_window: int = 50,
+    label_smoothing: float = 0.1,
     seed: int = 0,
 ) -> TiRGN:
     """Factory function to create a TiRGN model.
@@ -494,6 +504,7 @@ def create_tirgn_model(
         dropout_rate: Dropout rate for R-GCN layers.
         history_rate: Alpha for copy-generation fusion (0.0 = raw only, 1.0 = history only).
         history_window: Number of past timestamps for history vocabulary.
+        label_smoothing: Epsilon for label smoothing (0.0 = hard targets).
         seed: Random seed.
 
     Returns:
@@ -509,5 +520,6 @@ def create_tirgn_model(
         dropout_rate=dropout_rate,
         history_rate=history_rate,
         history_window=history_window,
+        label_smoothing=label_smoothing,
         rngs=rngs,
     )

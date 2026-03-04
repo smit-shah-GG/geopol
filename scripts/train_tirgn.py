@@ -129,6 +129,30 @@ def main() -> int:
         default=50,
         help="Log batch-level metrics every N batches for crash resilience (default: 50, 0=off)",
     )
+    parser.add_argument(
+        "--weight-decay",
+        type=float,
+        default=0.01,
+        help="AdamW weight decay coefficient (default: 0.01)",
+    )
+    parser.add_argument(
+        "--warmup-epochs",
+        type=int,
+        default=3,
+        help="Number of LR warmup epochs (default: 3)",
+    )
+    parser.add_argument(
+        "--eval-samples",
+        type=int,
+        default=2000,
+        help="Number of validation triples to evaluate per epoch (default: 2000)",
+    )
+    parser.add_argument(
+        "--label-smoothing",
+        type=float,
+        default=0.1,
+        help="Label smoothing epsilon for NLL loss (default: 0.1)",
+    )
 
     args = parser.parse_args()
 
@@ -149,6 +173,10 @@ def main() -> int:
     logger.info("  History Rate:    %.2f", args.history_rate)
     logger.info("  History Window:  %d", args.history_window)
     logger.info("  Patience:        %d", args.patience)
+    logger.info("  Weight Decay:    %f", args.weight_decay)
+    logger.info("  Warmup Epochs:   %d", args.warmup_epochs)
+    logger.info("  Eval Samples:    %d", args.eval_samples)
+    logger.info("  Label Smoothing: %.2f", args.label_smoothing)
     logger.info("  Log Dir:         %s", args.logdir)
     logger.info(
         "  Max Events:      %s",
@@ -173,6 +201,10 @@ def main() -> int:
         patience=args.patience,
         logdir=args.logdir,
         log_every_n_batches=args.log_every_n_batches,
+        weight_decay=args.weight_decay,
+        warmup_epochs=args.warmup_epochs,
+        eval_samples=args.eval_samples,
+        label_smoothing=args.label_smoothing,
     )
 
     try:

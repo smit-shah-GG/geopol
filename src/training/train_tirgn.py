@@ -73,6 +73,12 @@ class TiRGNTrainingConfig:
     patience: int = 15
     logdir: str = "runs/tirgn"
 
+    # Regularization / schedule
+    weight_decay: float = 0.01
+    warmup_epochs: int = 3
+    eval_samples: int = 2000
+    label_smoothing: float = 0.1
+
     # Batch-level logging interval (0 = epoch-level only)
     log_every_n_batches: int = 50
 
@@ -293,6 +299,7 @@ def train_tirgn(
         num_layers=num_layers,
         history_rate=config.history_rate,
         history_window=config.history_window,
+        label_smoothing=config.label_smoothing,
         seed=0,
     )
 
@@ -308,11 +315,23 @@ def train_tirgn(
     )
 
     # ------------------------------------------------------------------
-    # 4. Optimizer
+    # 4. Optimizer — AdamW with warmup + cosine decay
     # ------------------------------------------------------------------
+    steps_per_epoch = (len(train_triples) + config.batch_size - 1) // config.batch_size
+    total_steps = config.epochs * steps_per_epoch
+    warmup_steps = config.warmup_epochs * steps_per_epoch
+
+    schedule = optax.warmup_cosine_decay_schedule(
+        init_value=config.learning_rate * 0.1,
+        peak_value=config.learning_rate,
+        warmup_steps=warmup_steps,
+        decay_steps=total_steps,
+        end_value=config.learning_rate * 0.01,
+    )
+
     tx = optax.chain(
         optax.clip_by_global_norm(config.grad_clip),
-        optax.adam(config.learning_rate),
+        optax.adamw(schedule, weight_decay=config.weight_decay),
     )
     optimizer = nnx.Optimizer(model, tx, wrt=nnx.Param)
 
@@ -343,10 +362,12 @@ def train_tirgn(
         optimizer: nnx.Optimizer,
         pos_jax: jax.Array,
         history_mask: jax.Array | None,
+        rng_key: jax.Array,
     ) -> jax.Array:
         def loss_fn(model: TiRGN) -> jax.Array:
             return model.compute_loss(
-                snapshots, pos_jax, None, history_mask=history_mask
+                snapshots, pos_jax, None,
+                history_mask=history_mask, rng_key=rng_key,
             )
 
         loss, grads = nnx.value_and_grad(loss_fn)(model)
@@ -391,7 +412,8 @@ def train_tirgn(
                 num_entities,
             )
 
-            loss = train_step(model, optimizer, pos_jax, history_mask)
+            step_key = jax.random.PRNGKey(global_step)
+            loss = train_step(model, optimizer, pos_jax, history_mask, step_key)
 
             batch_loss = float(loss)
             epoch_loss += batch_loss
@@ -417,10 +439,11 @@ def train_tirgn(
         vram_mb = _get_vram_used_mb()
 
         # Log per-epoch metrics (use global_step for wandb monotonicity)
+        current_lr = float(schedule(global_step))
         epoch_metrics: dict[str, float] = {
             "train/epoch": float(epoch),
             "train/loss": avg_loss,
-            "train/lr": config.learning_rate,
+            "train/lr": current_lr,
             "system/epoch_duration_s": epoch_duration,
         }
         if vram_mb is not None:
@@ -428,7 +451,7 @@ def train_tirgn(
 
         # Evaluate periodically
         if epoch % config.eval_interval == 0 or epoch == 1:
-            val_sample = val_triples[: min(500, len(val_triples))]
+            val_sample = val_triples[: min(config.eval_samples, len(val_triples))]
             eval_metrics = _evaluate_tirgn(
                 model, snapshots, val_sample, num_entities, history_vocab
             )
