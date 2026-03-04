@@ -178,6 +178,72 @@ Scope areas:
 - Dashboard Col 2 panel showing Polymarket questions with Geopol's competing forecasts
 - Calibration comparison: head-to-head accuracy tracking
 
+## v3.0 Requirements
+
+**Defined:** 2026-03-04
+**Core Value:** Explainability -- every forecast must provide clear, traceable reasoning paths
+**Milestone Goal:** Full backend control via admin dashboard, source expansion with feed management, daemon consolidation, historical backtesting, global map seeding, Polymarket operational hardening, and frontend polish -- preparing the system for v4.0 production deployment.
+**Research:** `.planning/research/SUMMARY.md` (v3.0), `.planning/research/STACK_V3.md`, `FEATURES.md`, `ARCHITECTURE.md`, `PITFALLS.md`
+
+### Admin Dashboard
+
+- [ ] **ADMIN-01**: Admin screen at `/admin` route with route-level auth gating (API key or password) -- dynamic import code-split so admin code is zero bytes in public bundle
+- [ ] **ADMIN-02**: Process table showing all running daemons/jobs (GDELT poller, RSS poller, daily pipeline, Polymarket forecaster, TKG retrainer) with status, last run time, next scheduled run, and success/failure counts
+- [ ] **ADMIN-03**: Manual trigger buttons for each daemon job -- operator can force-run any job immediately outside its schedule
+- [ ] **ADMIN-04**: Configuration editor for runtime-adjustable settings (polling intervals, daily caps, eval samples, history rate) with validation and persistence to PostgreSQL `system_config` table
+- [ ] **ADMIN-05**: Log viewer showing recent structured log entries filterable by severity (ERROR/WARN/INFO) and subsystem -- last 1000 entries from in-memory ring buffer, not filesystem reads
+- [ ] **ADMIN-06**: Source management panel showing all data sources (GDELT, RSS feeds, ACLED, UCDP, Polymarket, advisories) with per-source health, enable/disable toggles, and feed-level controls for RSS
+
+### Daemon Consolidation
+
+- [ ] **DAEMON-01**: Single APScheduler 3.x AsyncIOScheduler instance mounted in FastAPI lifespan, replacing all separate systemd timers and daemon processes -- in-memory jobstore with `coalesce=True` for missed runs
+- [ ] **DAEMON-02**: All existing pollers (GDELT 15-min, RSS 15-min, daily forecast pipeline, Polymarket auto-forecaster, ACLED daily) registered as APScheduler jobs with configurable schedules
+- [ ] **DAEMON-03**: Heavy jobs (daily forecast pipeline, TKG retraining) execute in `ProcessPoolExecutor` to retain OS-level memory isolation -- event loop never blocks
+- [ ] **DAEMON-04**: Admin API endpoints for job control: `POST /api/v1/admin/jobs/{id}/pause`, `/resume`, `/trigger` -- exposed to admin dashboard
+- [ ] **DAEMON-05**: Graceful shutdown: APScheduler shuts down before FastAPI, in-flight jobs complete or timeout within 30 seconds, no orphaned processes
+
+### Source Expansion & Feed Management
+
+- [ ] **SRC-01**: UCDP event poller fetching armed conflict events from UCDP GED API (token-authenticated), mapping to unified Event schema with "UCDP-" prefixed IDs, inserting into SQLite event store
+- [ ] **SRC-02**: UCDP events include fatality counts, conflict type classification, and geographic coordinates (lat/lon) -- enriching the knowledge graph with casualty severity signal
+- [ ] **SRC-03**: WM-style RSS feed management: admin can add/remove/categorize RSS feeds, assign tier (1=flagship, 2=regional, 3=niche), set polling frequency per tier, view per-feed health/article counts
+- [ ] **SRC-04**: RSS feed configuration stored in PostgreSQL `rss_feeds` table (replacing hardcoded feed list in code) -- admin changes take effect on next polling cycle without restart
+- [ ] **SRC-05**: Cross-source deduplication layer preventing the same real-world event from being counted multiple times across GDELT + ACLED + UCDP -- dedup by (date, country, event_type) with configurable similarity threshold
+- [ ] **SRC-06**: Per-source health metrics exposed via `/api/v1/sources` endpoint: last poll time, events ingested (24h), error rate, staleness status -- auto-discovered from `ingest_runs` table
+
+### Polymarket Hardening
+
+- [ ] **POLY-01**: Fix `reforecast_active()` bug where `Prediction.created_at` overwrite corrupts daily cap tracking -- reforecast must preserve original creation timestamp
+- [ ] **POLY-02**: Cumulative Brier score tracking: system computes rolling Brier score for Geopol predictions vs Polymarket market prices on all resolved matched questions, stored in `polymarket_accuracy` table
+- [ ] **POLY-03**: Head-to-head accuracy dashboard panel showing Geopol vs Polymarket Brier score curves over time, per-category breakdown, and win/loss record
+- [ ] **POLY-04**: Resolution tracking: system monitors Polymarket question resolution status, detects ambiguous/voided resolutions, and handles them gracefully (exclude from accuracy metrics)
+- [ ] **POLY-05**: Polymarket polling reliability: retry logic with exponential backoff, API rate limit compliance, graceful degradation when Polymarket API is unavailable -- no silent failures
+
+### Historical Backtesting
+
+- [ ] **BTEST-01**: Walk-forward evaluation harness: train on [t₀,t₁], predict [t₁,t₂], slide window forward, producing MRR/Brier curves over time -- uses static model weights for v3.0 (full TKG retraining per window deferred)
+- [ ] **BTEST-02**: Model comparison framework: run identical evaluation windows against TiRGN and RE-GCN checkpoints, producing side-by-side accuracy tables and delta charts
+- [ ] **BTEST-03**: Calibration audit: reliability diagrams computed over sliding time windows showing how calibration quality evolves -- detects calibration drift before it degrades live predictions
+- [ ] **BTEST-04**: Backtesting results stored in PostgreSQL `backtest_runs` and `backtest_results` tables -- queryable from admin dashboard, not ephemeral console output
+- [ ] **BTEST-05**: Look-ahead bias prevention: backtesting harness uses calibration weight snapshots from each evaluation window (not current weights) and excludes ChromaDB articles published after the prediction date
+
+### Global Seeding & Globe Layers
+
+- [ ] **SEED-01**: Baseline risk computation for all ~195 countries using composite score: GDELT event density + ACLED conflict intensity + UCDP fatality signal + government travel advisory levels, with configurable weights and exponential time decay
+- [ ] **SEED-02**: `baseline_country_risk` table in PostgreSQL storing per-country composite scores, updated daily -- API merges with active forecast risk via `COALESCE` (forecast risk overrides baseline when available)
+- [ ] **SEED-03**: Globe choropleth renders all ~195 countries with color intensity from merged risk scores -- no more empty/neutral countries with zero data
+- [ ] **GLYR-01**: Heatmap layer populated with real GDELT event locations -- requires adding `lat`/`lon` columns to SQLite events schema (currently discarded during ingestion) and a new `/api/v1/events/geo` endpoint returning geocoded events
+- [ ] **GLYR-02**: Arcs layer showing bilateral country relationships from knowledge graph edges -- new `/api/v1/countries/relations` endpoint returning top-N country pairs by edge weight
+- [ ] **GLYR-03**: Scenarios layer showing geographic zones for active scenario branches -- polygon generation from country ISO codes of scenario-relevant entities
+
+### Frontend Finalization
+
+- [ ] **POLISH-01**: Loading states for all panels and screens -- skeleton placeholders during API fetches, not blank space or frozen UI
+- [ ] **POLISH-02**: Error boundaries per panel -- a failed API call in one panel does not crash the entire screen; shows inline error with retry button
+- [ ] **POLISH-03**: Empty states for all data-dependent panels -- meaningful messages when no forecasts, no events, no comparisons exist (not blank panels)
+- [ ] **POLISH-04**: Performance optimization: lazy-load heavy panels (ScenarioExplorer, CalibrationPanel), debounce search/filter inputs, minimize DOM operations on refresh cycles
+- [ ] **POLISH-05**: Accessibility basics: keyboard navigation for all interactive elements, ARIA labels on map controls, sufficient color contrast ratios, focus management on modal open/close
+
 ## Future Requirements (Backlog)
 
 Tracked ideas not yet assigned to a milestone. Includes WM-derived features for future cherry-picking.
@@ -199,7 +265,7 @@ Tracked ideas not yet assigned to a milestone. Includes WM-derived features for 
 
 - **ADV-03**: Multi-language support (non-English GDELT sources)
 - **ADV-05**: ACLED -> knowledge graph (structured conflict events with actor dyads map naturally to CAMEO-like triples; needs CAMEO code mapping layer) -- deferred until Phase 10 proves micro-batch ingest architecture
-- **ADV-08**: ICEWS data expansion -- deferred from v2.0 until micro-batch architecture is proven
+- **ADV-08**: ~~ICEWS data expansion~~ ICEWS discontinued April 2023. Replaced by POLECAT (PLOVER ontology, incompatible with CAMEO). PLOVER-to-CAMEO mapping feasibility unverified -- defer to v3.1+ after UCDP integration proves multi-source value
 - **ADV-06**: Knowledge graph visualization in dashboard -- high complexity, deferred from v2.0
 - **ADV-07**: Real-time prediction (sub-daily forecast cycle) -- requires incremental TKG inference
 
@@ -219,6 +285,11 @@ Explicitly excluded. Documented to prevent scope creep.
 | Forecast comparison view (v2.1) | Side-by-side two forecasts; out of scope for this milestone |
 | Historical forecast replay (v2.1) | Time travel through past forecasts; see WM-FEAT-04 backlog |
 | SSE/WebSocket streaming (v2.1) | Partial results as pipeline progresses; defer unless UX testing shows wait is intolerable |
+| Docker/containerization (v3.0) | Deferred to v4.0; gates on daemon consolidation completing first |
+| POLECAT/ICEWS replacement (v3.0) | ICEWS dead since April 2023; POLECAT uses incompatible PLOVER ontology; mapping feasibility unverified; defer to v3.1+ |
+| Walk-forward TKG retraining per window (v3.0) | Compute-prohibitive for v3.0; backtesting uses static model weights; full walk-forward with per-window retraining is v4.0+ |
+| APScheduler 4.x (v3.0) | v4.0.0a6 is alpha with incompatible API rewrite; author warns against production use; pin to 3.x |
+| Multi-user admin (v3.0) | Single operator; no RBAC or audit trail beyond structured logs |
 
 ## Traceability
 
@@ -325,3 +396,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 *Updated: 2026-03-02 -- v2.0 shipped; v2.1 requirements defined (17 requirements across 4 categories)*
 *Updated: 2026-03-02 -- v2.1 roadmap created; 17 requirements mapped to Phases 14-16*
 *Updated: 2026-03-03 -- v2.1 extended with Phases 17-18 (Live Data Feeds + Polymarket-Driven Forecasting); milestone scope 14-18*
+*Updated: 2026-03-04 -- v2.1 shipped; v3.0 requirements defined (37 requirements across 7 categories). ICEWS marked dead, POLECAT deferred.*
