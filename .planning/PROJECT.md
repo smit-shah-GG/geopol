@@ -35,23 +35,21 @@ Explainability — every forecast must provide clear, traceable reasoning paths 
 - Kill mock fixture fallback in forecasts.py — empty results when no real data
 - Dashboard panels: My Forecasts (submission status), Event Feed (GDELT + RSS), Sources (data source health)
 
-## Current Milestone: v2.1 Production UX & Live Data Integration
+## Current Milestone: v3.0 Operational Command & Verification
 
-**Goal:** Restructure the single-screen dashboard into a three-screen URL-routed application with progressive disclosure, real data-driven country risk, user-submitted forecast questions, and full-text search — transforming the v2.0 demo into a usable analytical tool.
+**Goal:** Full backend control via admin dashboard, source expansion with feed management, daemon consolidation, historical backtesting, global map seeding, Polymarket operational hardening, and frontend polish — preparing the system for v4.0 production deployment.
 
-**Architecture:** Same headless API + TypeScript frontend stack from v2.0. No new infrastructure — extends existing FastAPI endpoints and TypeScript Panel system. New backend: question submission queue (PostgreSQL `forecast_requests` table), real country risk aggregation from `predictions` table, full-text search endpoint. Frontend: three URL-routed screens replacing the single-screen layout.
-
-**Design document:** `.planning/research/FRONTEND_REDESIGN.md`
+**Architecture:** Same headless API + TypeScript frontend stack. Admin dashboard at `/admin` route (same app, dynamic import code-split, route-level auth gating). Daemon consolidation via APScheduler (single process, in-process with FastAPI, AsyncIOScheduler). Backtesting as isolated internal reporting system.
 
 **Target features:**
-- Three-screen URL-routed architecture: `/dashboard` (information-dense, no globe), `/globe` (geospatial exploration with contextual drill-down), `/forecasts` (question submission queue + history)
-- Progressive disclosure on forecast cards: click-expand reveals ensemble weights, evidence summary, calibration metadata → "View Full Analysis" opens ScenarioExplorer
-- Kill mock fixture fallback — return empty results when no data exists; fix Myanmar-under-Syria bleed-through
-- Real country risk aggregation from PostgreSQL predictions table (not hardcoded mock list)
-- Question submission queue: natural language → LLM-parsed structured form → async processing → results
-- Full-text search over active forecasts (question text, country, category)
-- Scenario tree node text rendering fix (tooltip on hover for full text)
-- Globe contextual drill-down: country click → slide-in panel with forecasts, risk timeline, event sparkline
+- Admin dashboard at `/admin`: process table, manual trigger buttons, config editor, log viewer, source management
+- Source expansion: WM RSS feed management (add/remove/categorize from admin), ICEWS + UCDP as new data sources, per-source health/admin controls
+- Daemon consolidation: APScheduler single process replacing scattered systemd timers, admin API for pause/resume/trigger jobs
+- Polymarket operational hardening: fix reliability issues, add rigorous cumulative Brier score tracking (Geopol vs market accuracy curve)
+- Historical backtesting: walk-forward evaluation, model comparison (TiRGN vs RE-GCN), calibration audit (reliability diagrams over time) — internal reporting only
+- Global seeding: baseline risk for all ~195 countries from GDELT event density + ACLED + ICEWS + advisories; active forecasts override base score
+- Globe layer completion: wire real data to Arcs, Heatmap, and Scenarios layers (currently no-ops due to empty data arrays)
+- Frontend finalization: loading states, error boundaries, responsive polish, performance optimization
 
 ### Out of Scope
 
@@ -114,7 +112,7 @@ Key technical inspirations:
 
 ## Current State
 
-**Version:** v2.0 (shipped 2026-03-02) — v2.1 in progress
+**Version:** v2.1 (shipped 2026-03-04) — v3.0 in progress
 
 **Tech Stack:**
 - **Backend**: Python 3.11+ with uv package management
@@ -134,8 +132,8 @@ Key technical inspirations:
 
 **Codebase:**
 - ~100 Python source files, 40,257 lines
-- 13 phases, 49 plans delivered across 3 milestones (v1.0 + v1.1 + v2.0)
-- v2.1: defining requirements and roadmap
+- 18 phases, 65 plans delivered across 4 milestones (v1.0 + v1.1 + v2.0 + v2.1)
+- v3.0: defining requirements and roadmap
 
 **Known Issues:**
 - datetime.utcnow() deprecated in Python 3.12+ (minor, in bootstrap code)
@@ -144,4 +142,4 @@ Key technical inspirations:
 - World Monitor (`/home/kondraki/personal/worldmonitor/`) — TypeScript OSINT dashboard used as frontend reference architecture. See `.planning/research/WM_AS_REPOSITORY.md`.
 
 ---
-*Last updated: 2026-03-02 — v2.0 shipped; v2.1 started: three-screen frontend redesign, real country risk, question submission queue*
+*Last updated: 2026-03-04 — v2.1 shipped; v3.0 started: admin dashboard, source expansion, daemon consolidation, backtesting, global seeding, Polymarket hardening*
