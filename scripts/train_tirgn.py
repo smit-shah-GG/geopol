@@ -123,6 +123,12 @@ def main() -> int:
         default=2,
         help="Number of R-GCN layers (default: 2)",
     )
+    parser.add_argument(
+        "--log-every-n-batches",
+        type=int,
+        default=50,
+        help="Log batch-level metrics every N batches for crash resilience (default: 50, 0=off)",
+    )
 
     args = parser.parse_args()
 
@@ -166,6 +172,7 @@ def main() -> int:
         history_window=args.history_window,
         patience=args.patience,
         logdir=args.logdir,
+        log_every_n_batches=args.log_every_n_batches,
     )
 
     try:

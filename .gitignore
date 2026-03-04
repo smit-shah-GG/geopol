@@ -79,6 +79,7 @@ models/
 
 # Runtime output
 runs/
+wandb/
 
 # Node.js (frontend)
 node_modules/

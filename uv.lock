@@ -1541,6 +1541,7 @@ dependencies = [
     { name = "tenacity" },
     { name = "typing-extensions" },
     { name = "uvicorn", extra = ["standard"] },
+    { name = "wandb" },
 ]
 
 [package.optional-dependencies]
@@ -1679,6 +1680,7 @@ requires-dist = [
     { name = "trafilatura", marker = "extra == 'ingest'", specifier = ">=2.0" },
     { name = "typing-extensions", specifier = ">=4.0.0" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.34" },
+    { name = "wandb", specifier = ">=0.25.0" },
     { name = "wandb", marker = "extra == 'observability'", specifier = ">=0.16" },
 ]
 provides-extras = ["training", "llm", "ingest", "all", "dev", "observability"]
