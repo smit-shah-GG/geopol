@@ -99,10 +99,20 @@ class RelationalGraphConv(nnx.Module):
         edge_mask: Optional[Array] = None,
     ) -> Array:
         """
-        Forward pass with message passing.
+        Forward pass with vectorized message passing via basis decomposition.
 
-        Memory-efficient: uses jax.lax.fori_loop to process edges by relation,
-        avoiding the massive (num_edges, in, out) tensor.
+        Instead of iterating over R relations (fori_loop), we exploit the basis
+        decomposition directly:  W_r = sum_b coeff[r,b] * basis[b].
+
+        For each edge e with relation r(e) and source s(e):
+          msg[e] = x[s(e)] @ W_{r(e)}
+                 = sum_b coeff[r(e),b] * (x[s(e)] @ basis[b])
+
+        This decomposes into two einsums over B bases (typically 30) rather
+        than a loop over R relations (often 400+), producing a flat HLO graph
+        that XLA compiles in seconds rather than minutes.
+
+        Peak intermediate: (num_edges, num_bases, out_features) float32.
 
         Args:
             x: Node features (num_nodes, in_features)
@@ -116,38 +126,29 @@ class RelationalGraphConv(nnx.Module):
         Returns:
             Updated node features (num_nodes, out_features)
         """
-        # Compute relation weights from basis decomposition
-        # (num_relations, in_features, out_features)
-        rel_weight = jnp.einsum('rb,bio->rio', self.coeff.value, self.basis.value)
-
         source_idx = edge_index[0]
         target_idx = edge_index[1]
 
-        # Gather source features once
-        src_feats = x[source_idx]  # (num_edges, in_features)
+        # Gather source features: (num_edges, in_features)
+        src_feats = x[source_idx]
 
-        # Process edges by relation type using fori_loop (JIT-compatible)
-        def process_relation(r, out):
-            # Mask for edges of this relation type
-            mask = (edge_type == r).astype(jnp.float32)
-            # Zero out padded edges when edge_mask is provided
-            if edge_mask is not None:
-                mask = mask * edge_mask
+        # Step 1: transform source features through ALL bases at once
+        # src_feats: (E, D_in), basis: (B, D_in, D_out) -> (E, B, D_out)
+        basis_msgs = jnp.einsum('ei,bio->ebo', src_feats, self.basis.value)
 
-            # Transform source features with this relation's weight
-            # (num_edges, in) @ (in, out) -> (num_edges, out)
-            r_messages = src_feats @ rel_weight[r]
+        # Step 2: weight by per-edge relation coefficients
+        # coeff: (R, B), edge_type: (E,) -> edge_coeff: (E, B)
+        edge_coeff = self.coeff.value[edge_type]
+        # messages: (E, B, D_out), (E, B) -> (E, D_out)
+        messages = jnp.einsum('eb,ebo->eo', edge_coeff, basis_msgs)
 
-            # Zero out messages for edges not of this type
-            r_messages = r_messages * mask[:, None]
+        # Step 3: mask padded edges
+        if edge_mask is not None:
+            messages = messages * edge_mask[:, None]
 
-            # Scatter-add to output
-            out = out.at[target_idx].add(r_messages)
-            return out
-
-        # Initialize output and loop over relations
+        # Step 4: scatter-add messages to target nodes
         out = jnp.zeros((num_nodes, self.out_features))
-        out = jax.lax.fori_loop(0, self.num_relations, process_relation, out)
+        out = out.at[target_idx].add(messages)
 
         # Normalize by in-degree (only count real edges)
         in_degree = jnp.zeros(num_nodes)
@@ -156,11 +157,8 @@ class RelationalGraphConv(nnx.Module):
         in_degree = jnp.maximum(in_degree, 1.0)
         out = out / in_degree[:, None]
 
-        # Self-loop
-        out = out + x @ self.self_weight.value
-
-        # Bias
-        out = out + self.bias.value
+        # Self-loop + bias
+        out = out + x @ self.self_weight.value + self.bias.value
 
         return out
 
