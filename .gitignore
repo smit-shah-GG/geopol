@@ -77,6 +77,9 @@ chroma_db/
 # Trained models
 models/
 
+# Runtime output
+runs/
+
 # Node.js (frontend)
 node_modules/
 frontend/dist/
