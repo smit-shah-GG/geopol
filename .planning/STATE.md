@@ -10,20 +10,20 @@ See: .planning/PROJECT.md (updated 2026-03-04)
 ## Current Position
 
 Milestone: v3.0 Operational Command & Verification
-Phase: 19 of 25 (Admin Dashboard Foundation)
-Plan: 03 of 03
-Status: Phase complete
-Last activity: 2026-03-05 -- Completed 19-03-PLAN.md (admin panels)
+Phase: 20 of 25 (Daemon Consolidation)
+Plan: 01 of 03
+Status: In progress
+Last activity: 2026-03-05 -- Completed 20-01-PLAN.md (scheduler foundation)
 
-Progress: [########################################################] 100% (68/68+ plans lifetime)
-v3.0:    [####################] 100% (3/3 plans in phase 19)
+Progress: [########################################################] 100% (69/69+ plans lifetime)
+v3.0:    [######              ] 25% (1/3 plans in phase 20)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 68
+- Total plans completed: 69
 - Average duration: 10 minutes
-- Total execution time: 11.4 hours
+- Total execution time: 11.5 hours
 
 **By Phase:**
 
@@ -48,6 +48,7 @@ v3.0:    [####################] 100% (3/3 plans in phase 19)
 | 17-live-data-feeds-country-depth | 3 | 26min | 9min |
 | 18-polymarket-driven-forecasting | 3 | 14min | 5min |
 | 19-admin-dashboard-foundation | 3 | 20min | 7min |
+| 20-daemon-consolidation | 1 | 4min | 4min |
 
 ## Accumulated Context
 
@@ -70,6 +71,9 @@ Key decisions affecting current work:
 - system_config values wrapped as {"v": value} for type-preserving JSON round-trip (2026-03-05)
 - AdminLayout exposes adminKey property for Plan 03 panel AdminClient construction (2026-03-05)
 - admin-screen.ts is the static/dynamic import boundary -- only import type at top level (2026-03-05)
+- asyncio.Lock for heavy job mutual exclusion -- FIFO queue prevents concurrent subprocess work (2026-03-05)
+- subprocess.run for scripts/ (not importable), in-process for src.polymarket.* (2026-03-05)
+- Singleton GDELTPoller in SharedDeps -- _last_url persists across poll cycles (2026-03-05)
 
 ### Deferred Issues
 
@@ -93,6 +97,6 @@ Key decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-03-05
-Stopped at: Completed 19-03-PLAN.md (admin panels) -- Phase 19 complete
+Stopped at: Completed 20-01-PLAN.md (scheduler foundation)
 Resume file: None
-Next: `/gsd:plan-phase 20`
+Next: Execute 20-02-PLAN.md (FastAPI lifespan wiring)
