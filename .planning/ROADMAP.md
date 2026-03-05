@@ -381,7 +381,7 @@ Phases 21 and 22 are independent tracks after Phase 20 and can run in parallel.
 **Pre-phase blocker (Phase 21):** UCDP API token must be requested from the UCDP team before implementation begins. Email-gated, takes days to weeks.
 
 - [x] **Phase 19: Admin Dashboard Foundation** -- `/admin` route with auth gating, process table, manual triggers, config editor, log viewer, source management panel
-- [ ] **Phase 20: Daemon Consolidation** -- APScheduler AsyncIOScheduler in FastAPI lifespan, all pollers registered as jobs, ProcessPoolExecutor for heavy jobs, admin API for job control, systemd retirement
+- [x] **Phase 20: Daemon Consolidation** -- APScheduler AsyncIOScheduler in FastAPI lifespan, all pollers registered as jobs, ProcessPoolExecutor for heavy jobs, admin API for job control, systemd retirement
 - [ ] **Phase 21: Source Expansion & Feed Management** -- UCDP poller, RSS feed management via admin, cross-source dedup layer, per-source health metrics, feed health auto-disable
 - [ ] **Phase 22: Polymarket Hardening** -- Fix created_at overwrite bug, cumulative Brier score tracking, head-to-head accuracy panel, resolution tracking, polling reliability
 - [ ] **Phase 23: Historical Backtesting** -- Walk-forward evaluation harness, model comparison (TiRGN vs RE-GCN), calibration audit (reliability diagrams over time), look-ahead bias prevention
@@ -420,9 +420,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 20-01-PLAN.md -- Scheduler package: APScheduler core, dependency container, 9 job wrappers, failure tracking
-- [ ] 20-02-PLAN.md -- FastAPI integration: lifespan mount, admin API rewire, graceful shutdown
-- [ ] 20-03-PLAN.md -- Frontend ProcessTable update with pause/resume controls + verification
+- [x] 20-01-PLAN.md -- Scheduler package: APScheduler core, dependency container, 9 job wrappers, failure tracking
+- [x] 20-02-PLAN.md -- FastAPI integration: lifespan mount, admin API rewire, graceful shutdown
+- [x] 20-03-PLAN.md -- Frontend ProcessTable update with pause/resume controls + verification
 
 ### Phase 21: Source Expansion & Feed Management
 **Goal**: The system ingests UCDP armed conflict events as a new data source, provides admin-level RSS feed management (enable/disable/tier per feed), prevents cross-source event duplication in the knowledge graph, and exposes per-source health metrics through the API and admin dashboard.
@@ -536,11 +536,11 @@ Phase 19 -> Phase 20. Then parallel: Phase 21 + Phase 22. Then Phase 23 (after 2
 | 17. Live Data Feeds & Country Depth | v2.1 | 3/3 | Complete | 2026-03-04 |
 | 18. Polymarket-Driven Forecasting | v2.1 | 3/3 | Complete | 2026-03-04 |
 | 19. Admin Dashboard Foundation | v3.0 | 3/3 | Complete | 2026-03-05 |
-| 20. Daemon Consolidation | v3.0 | 0/TBD | Not started | - |
+| 20. Daemon Consolidation | v3.0 | 3/3 | Complete | 2026-03-05 |
 | 21. Source Expansion & Feed Mgmt | v3.0 | 0/TBD | Not started | - |
 | 22. Polymarket Hardening | v3.0 | 0/TBD | Not started | - |
 | 23. Historical Backtesting | v3.0 | 0/TBD | Not started | - |
 | 24. Global Seeding & Globe Layers | v3.0 | 0/TBD | Not started | - |
 | 25. Frontend Finalization | v3.0 | 0/TBD | Not started | - |
 
-**Total:** 19 phases complete (v1.0 + v1.1 + v2.0 + v2.1 + v3.0 partial), 68 plans delivered. v3.0: 1/7 phases complete.
+**Total:** 20 phases complete (v1.0 + v1.1 + v2.0 + v2.1 + v3.0 partial), 71 plans delivered. v3.0: 2/7 phases complete.

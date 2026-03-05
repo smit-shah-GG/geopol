@@ -196,11 +196,11 @@ Scope areas:
 
 ### Daemon Consolidation
 
-- [ ] **DAEMON-01**: Single APScheduler 3.x AsyncIOScheduler instance mounted in FastAPI lifespan, replacing all separate systemd timers and daemon processes -- in-memory jobstore with `coalesce=True` for missed runs
-- [ ] **DAEMON-02**: All existing pollers (GDELT 15-min, RSS 15-min, daily forecast pipeline, Polymarket auto-forecaster, ACLED daily) registered as APScheduler jobs with configurable schedules
-- [ ] **DAEMON-03**: Heavy jobs (daily forecast pipeline, TKG retraining) execute in `ProcessPoolExecutor` to retain OS-level memory isolation -- event loop never blocks
-- [ ] **DAEMON-04**: Admin API endpoints for job control: `POST /api/v1/admin/jobs/{id}/pause`, `/resume`, `/trigger` -- exposed to admin dashboard
-- [ ] **DAEMON-05**: Graceful shutdown: APScheduler shuts down before FastAPI, in-flight jobs complete or timeout within 30 seconds, no orphaned processes
+- [x] **DAEMON-01**: Single APScheduler 3.x AsyncIOScheduler instance mounted in FastAPI lifespan, replacing all separate systemd timers and daemon processes -- in-memory jobstore with `coalesce=True` for missed runs
+- [x] **DAEMON-02**: All existing pollers (GDELT 15-min, RSS 15-min, daily forecast pipeline, Polymarket auto-forecaster, ACLED daily) registered as APScheduler jobs with configurable schedules
+- [x] **DAEMON-03**: Heavy jobs (daily forecast pipeline, TKG retraining) execute in `ProcessPoolExecutor` to retain OS-level memory isolation -- event loop never blocks
+- [x] **DAEMON-04**: Admin API endpoints for job control: `POST /api/v1/admin/processes/{daemon_type}/pause`, `/resume`, `/trigger` -- exposed to admin dashboard
+- [x] **DAEMON-05**: Graceful shutdown: APScheduler shuts down before FastAPI, in-flight jobs complete or timeout within 30 seconds, no orphaned processes
 
 ### Source Expansion & Feed Management
 
@@ -371,11 +371,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ADMIN-04 | Phase 19 | Complete |
 | ADMIN-05 | Phase 19 | Complete |
 | ADMIN-06 | Phase 19 | Complete |
-| DAEMON-01 | Phase 20 | Pending |
-| DAEMON-02 | Phase 20 | Pending |
-| DAEMON-03 | Phase 20 | Pending |
-| DAEMON-04 | Phase 20 | Pending |
-| DAEMON-05 | Phase 20 | Pending |
+| DAEMON-01 | Phase 20 | Complete |
+| DAEMON-02 | Phase 20 | Complete |
+| DAEMON-03 | Phase 20 | Complete |
+| DAEMON-04 | Phase 20 | Complete |
+| DAEMON-05 | Phase 20 | Complete |
 | SRC-01 | Phase 21 | Pending |
 | SRC-02 | Phase 21 | Pending |
 | SRC-03 | Phase 21 | Pending |
