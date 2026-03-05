@@ -5,7 +5,7 @@
 See: .planning/PROJECT.md (updated 2026-03-04)
 
 **Core value:** Explainability -- every forecast must provide clear, traceable reasoning paths
-**Current focus:** v3.0 Operational Command & Verification -- Phase 19 Admin Dashboard Foundation
+**Current focus:** v3.0 Operational Command & Verification -- Phase 20 Daemon Consolidation
 
 ## Current Position
 
@@ -66,7 +66,7 @@ Key decisions affecting current work:
 - uvicorn --workers 1 is a hard constraint with APScheduler in-process (2026-03-04)
 - POLECAT/ICEWS deferred to v3.1+ (PLOVER-to-CAMEO mapping untested) (2026-03-04)
 - Admin auth: X-Admin-Key header separate from X-API-Key, router-level dependency (2026-03-05)
-- trigger_job returns 501 for rss/polymarket/tkg until Phase 20 APScheduler (2026-03-05)
+- trigger_job returns 501 for ALL daemon types until Phase 20 APScheduler wires proper dependency injection (2026-03-05)
 - system_config values wrapped as {"v": value} for type-preserving JSON round-trip (2026-03-05)
 - AdminLayout exposes adminKey property for Plan 03 panel AdminClient construction (2026-03-05)
 - admin-screen.ts is the static/dynamic import boundary -- only import type at top level (2026-03-05)

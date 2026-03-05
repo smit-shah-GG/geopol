@@ -380,7 +380,7 @@ Phases 21 and 22 are independent tracks after Phase 20 and can run in parallel.
 
 **Pre-phase blocker (Phase 21):** UCDP API token must be requested from the UCDP team before implementation begins. Email-gated, takes days to weeks.
 
-- [ ] **Phase 19: Admin Dashboard Foundation** -- `/admin` route with auth gating, process table, manual triggers, config editor, log viewer, source management panel
+- [x] **Phase 19: Admin Dashboard Foundation** -- `/admin` route with auth gating, process table, manual triggers, config editor, log viewer, source management panel
 - [ ] **Phase 20: Daemon Consolidation** -- APScheduler AsyncIOScheduler in FastAPI lifespan, all pollers registered as jobs, ProcessPoolExecutor for heavy jobs, admin API for job control, systemd retirement
 - [ ] **Phase 21: Source Expansion & Feed Management** -- UCDP poller, RSS feed management via admin, cross-source dedup layer, per-source health metrics, feed health auto-disable
 - [ ] **Phase 22: Polymarket Hardening** -- Fix created_at overwrite bug, cumulative Brier score tracking, head-to-head accuracy panel, resolution tracking, polling reliability
@@ -403,9 +403,9 @@ Phases 21 and 22 are independent tracks after Phase 20 and can run in parallel.
 **Plans**: 3 plans
 
 Plans:
-- [ ] 19-01-PLAN.md -- Admin backend: ring buffer, SystemConfig model, admin API endpoints
-- [ ] 19-02-PLAN.md -- Admin frontend shell: route, auth modal, layout, admin client, styles
-- [ ] 19-03-PLAN.md -- Admin panels: ProcessTable, ConfigEditor, LogViewer, SourceManager
+- [x] 19-01-PLAN.md -- Admin backend: ring buffer, SystemConfig model, admin API endpoints
+- [x] 19-02-PLAN.md -- Admin frontend shell: route, auth modal, layout, admin client, styles
+- [x] 19-03-PLAN.md -- Admin panels: ProcessTable, ConfigEditor, LogViewer, SourceManager
 
 ### Phase 20: Daemon Consolidation
 **Goal**: All background jobs run under a single APScheduler instance inside the FastAPI process, replacing scattered systemd timers and standalone daemon processes. The admin dashboard's pause/resume/trigger controls become functional. Heavy jobs retain OS-level memory isolation via ProcessPoolExecutor.
@@ -505,7 +505,7 @@ Phase 19 -> Phase 20. Then parallel: Phase 21 + Phase 22. Then Phase 23 (after 2
 | 16. Globe & Forecasts Screens | v2.1 | 3/3 | Complete | 2026-03-03 |
 | 17. Live Data Feeds & Country Depth | v2.1 | 3/3 | Complete | 2026-03-04 |
 | 18. Polymarket-Driven Forecasting | v2.1 | 3/3 | Complete | 2026-03-04 |
-| 19. Admin Dashboard Foundation | v3.0 | 0/TBD | Not started | - |
+| 19. Admin Dashboard Foundation | v3.0 | 3/3 | Complete | 2026-03-05 |
 | 20. Daemon Consolidation | v3.0 | 0/TBD | Not started | - |
 | 21. Source Expansion & Feed Mgmt | v3.0 | 0/TBD | Not started | - |
 | 22. Polymarket Hardening | v3.0 | 0/TBD | Not started | - |
@@ -513,4 +513,4 @@ Phase 19 -> Phase 20. Then parallel: Phase 21 + Phase 22. Then Phase 23 (after 2
 | 24. Global Seeding & Globe Layers | v3.0 | 0/TBD | Not started | - |
 | 25. Frontend Finalization | v3.0 | 0/TBD | Not started | - |
 
-**Total:** 18 phases complete (v1.0 + v1.1 + v2.0 + v2.1), 65 plans delivered. v3.0: 0/7 phases complete.
+**Total:** 19 phases complete (v1.0 + v1.1 + v2.0 + v2.1 + v3.0 partial), 68 plans delivered. v3.0: 1/7 phases complete.

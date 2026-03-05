@@ -187,12 +187,12 @@ Scope areas:
 
 ### Admin Dashboard
 
-- [ ] **ADMIN-01**: Admin screen at `/admin` route with route-level auth gating (API key or password) -- dynamic import code-split so admin code is zero bytes in public bundle
-- [ ] **ADMIN-02**: Process table showing all running daemons/jobs (GDELT poller, RSS poller, daily pipeline, Polymarket forecaster, TKG retrainer) with status, last run time, next scheduled run, and success/failure counts
-- [ ] **ADMIN-03**: Manual trigger buttons for each daemon job -- operator can force-run any job immediately outside its schedule
-- [ ] **ADMIN-04**: Configuration editor for runtime-adjustable settings (polling intervals, daily caps, eval samples, history rate) with validation and persistence to PostgreSQL `system_config` table
-- [ ] **ADMIN-05**: Log viewer showing recent structured log entries filterable by severity (ERROR/WARN/INFO) and subsystem -- last 1000 entries from in-memory ring buffer, not filesystem reads
-- [ ] **ADMIN-06**: Source management panel showing all data sources (GDELT, RSS feeds, ACLED, UCDP, Polymarket, advisories) with per-source health, enable/disable toggles, and feed-level controls for RSS
+- [x] **ADMIN-01**: Admin screen at `/admin` route with route-level auth gating (API key or password) -- dynamic import code-split so admin code is zero bytes in public bundle
+- [x] **ADMIN-02**: Process table showing all running daemons/jobs (GDELT poller, RSS poller, daily pipeline, Polymarket forecaster, TKG retrainer) with status, last run time, next scheduled run, and success/failure counts
+- [x] **ADMIN-03**: Manual trigger buttons for each daemon job -- operator can force-run any job immediately outside its schedule
+- [x] **ADMIN-04**: Configuration editor for runtime-adjustable settings (polling intervals, daily caps, eval samples, history rate) with validation and persistence to PostgreSQL `system_config` table
+- [x] **ADMIN-05**: Log viewer showing recent structured log entries filterable by severity (ERROR/WARN/INFO) and subsystem -- last 1000 entries from in-memory ring buffer, not filesystem reads
+- [x] **ADMIN-06**: Source management panel showing all data sources (GDELT, RSS feeds, ACLED, UCDP, Polymarket, advisories) with per-source health, enable/disable toggles, and feed-level controls for RSS
 
 ### Daemon Consolidation
 
@@ -365,12 +365,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | GLOBE-02 | Phase 16 | Complete |
 | GLOBE-03 | Phase 16 | Complete |
 
-| ADMIN-01 | Phase 19 | Pending |
-| ADMIN-02 | Phase 19 | Pending |
-| ADMIN-03 | Phase 19 | Pending |
-| ADMIN-04 | Phase 19 | Pending |
-| ADMIN-05 | Phase 19 | Pending |
-| ADMIN-06 | Phase 19 | Pending |
+| ADMIN-01 | Phase 19 | Complete |
+| ADMIN-02 | Phase 19 | Complete |
+| ADMIN-03 | Phase 19 | Complete |
+| ADMIN-04 | Phase 19 | Complete |
+| ADMIN-05 | Phase 19 | Complete |
+| ADMIN-06 | Phase 19 | Complete |
 | DAEMON-01 | Phase 20 | Pending |
 | DAEMON-02 | Phase 20 | Pending |
 | DAEMON-03 | Phase 20 | Pending |
