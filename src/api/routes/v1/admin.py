@@ -7,7 +7,10 @@ API key system (``X-API-Key`` + ``api_keys`` table).
 Endpoints:
     POST /verify                         -- auth check
     GET  /processes                      -- daemon status table
-    POST /processes/{daemon_type}/trigger -- spawn one-shot job
+    POST /processes/{daemon_type}/trigger -- fire job immediately
+    POST /processes/{daemon_type}/pause  -- pause job (sets next_run=None)
+    POST /processes/{daemon_type}/resume -- resume paused job
+    GET  /jobs                           -- raw APScheduler job list
     GET  /config                         -- runtime settings
     PUT  /config                         -- batch update settings
     DELETE /config                       -- reset all overrides
@@ -20,7 +23,7 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.deps import get_db
@@ -68,9 +71,17 @@ async def verify_admin(
 router = APIRouter(dependencies=[Depends(verify_admin)])
 
 
-def _get_service(db: AsyncSession = Depends(get_db)) -> AdminService:
-    """FastAPI dependency: scoped AdminService per request."""
-    return AdminService(db)
+def _get_service(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+) -> AdminService:
+    """FastAPI dependency: scoped AdminService per request.
+
+    Injects the failure tracker from app.state if available (set during
+    lifespan startup when APScheduler is initialized).
+    """
+    failure_tracker = getattr(request.app.state, "failure_tracker", None)
+    return AdminService(db, failure_tracker=failure_tracker)
 
 
 # -----------------------------------------------------------------------
@@ -97,9 +108,41 @@ async def trigger_process(
     daemon_type: str,
     svc: AdminService = Depends(_get_service),
 ) -> dict[str, str]:
-    """Spawn a one-shot asyncio.Task for the specified daemon."""
+    """Fire a daemon's job(s) immediately via APScheduler."""
     await svc.trigger_job(daemon_type)
     return {"status": "triggered", "daemon_type": daemon_type}
+
+
+@router.post("/processes/{daemon_type}/pause")
+async def pause_process(
+    daemon_type: str,
+    svc: AdminService = Depends(_get_service),
+) -> dict[str, str]:
+    """Pause all APScheduler jobs for the specified daemon type."""
+    await svc.pause_job(daemon_type)
+    return {"status": "paused", "daemon_type": daemon_type}
+
+
+@router.post("/processes/{daemon_type}/resume")
+async def resume_process(
+    daemon_type: str,
+    svc: AdminService = Depends(_get_service),
+) -> dict[str, str]:
+    """Resume all paused APScheduler jobs for the specified daemon type."""
+    await svc.resume_job(daemon_type)
+    return {"status": "resumed", "daemon_type": daemon_type}
+
+
+@router.get("/jobs")
+async def list_jobs(
+    svc: AdminService = Depends(_get_service),
+) -> list[dict]:
+    """Return all APScheduler jobs with their live state.
+
+    Complement to /processes which groups by daemon_type -- this endpoint
+    returns per-APScheduler-job info for debugging and monitoring.
+    """
+    return await svc.get_jobs()
 
 
 @router.get("/config", response_model=list[ConfigEntry])
