@@ -425,22 +425,24 @@ Plans:
 - [x] 20-03-PLAN.md -- Frontend ProcessTable update with pause/resume controls + verification
 
 ### Phase 21: Source Expansion & Feed Management
-**Goal**: The system ingests UCDP armed conflict events as a new data source, provides admin-level RSS feed management (enable/disable/tier per feed), prevents cross-source event duplication in the knowledge graph, and exposes per-source health metrics through the API and admin dashboard.
-**Depends on**: Phase 20 (new pollers register as APScheduler jobs)
-**Pre-phase blocker**: UCDP API token must be requested before implementation. Fallback: bulk CSV download from ucdp.uu.se/downloads/ if token is delayed.
-**Requirements**: SRC-01, SRC-02, SRC-03, SRC-04, SRC-05, SRC-06
+**Goal**: Dashboard transforms from sparse event listing to a WM-style news ecosystem with clustered NewsFeedPanel, live streams, breaking news alerts, user source controls, and admin feed management. RSS feeds move from hardcoded config to DB-backed CRUD. Cross-source dedup prevents duplicate graph triples. UCDP deferred until API token procured.
+**Depends on**: Phase 20 (RSS pollers registered as APScheduler jobs)
+**Requirements**: SRC-03, SRC-04, SRC-05, SRC-06 (SRC-01, SRC-02 deferred -- UCDP)
 **Success Criteria** (what must be TRUE):
-  1. The UCDP poller fetches armed conflict events daily from the UCDP GED API, maps them to the unified Event schema with "UCDP-" prefixed IDs, and inserts them into the SQLite event store -- events include fatality counts, conflict type classification, and geographic coordinates
-  2. An admin can enable/disable individual RSS feeds and change their tier assignment from the admin dashboard; changes persist to the `rss_feeds` PostgreSQL table and take effect on the next polling cycle without server restart
-  3. The same real-world conflict event appearing in both GDELT and UCDP does not create duplicate triples in the knowledge graph -- the cross-source dedup layer filters by (date, country, event_type) fingerprint hash before graph insertion
-  4. `GET /api/v1/sources` returns per-source health metrics (last poll time, events ingested in 24h, error rate, staleness status) for all active data sources including UCDP -- auto-discovered from the `ingest_runs` table
-  5. A feed that fails N consecutive times is automatically disabled and flagged in the admin dashboard source management panel with an alert
-**Plans**: 3 plans
+  1. Dashboard layout is 25-30-30-15 with NewsFeedPanel (clustered articles, virtual scrolling, source tiers) in Col 1, LiveStreamsPanel below it, and RiskIndexPanel moved to Col 4
+  2. An admin can add/edit/delete RSS feeds from the admin dashboard; changes persist to the `rss_feeds` PostgreSQL table and take effect on the next polling cycle without server restart
+  3. Cross-source dedup layer filters by (date, country, event_type) fingerprint hash before graph insertion, preferring ACLED over GDELT on collision
+  4. Users can toggle source categories and individual feeds via SettingsModal, preferences persist in localStorage
+  5. A feed that fails 5 consecutive times is automatically disabled and flagged in the admin dashboard
+  6. BreakingNewsBanner fires on high-severity GDELT events and forecast probability spikes
+**Plans**: 5 plans
 
 Plans:
-- [ ] 20-01-PLAN.md -- Scheduler package: APScheduler core, dependency container, 9 job wrappers, failure tracking
-- [ ] 20-02-PLAN.md -- FastAPI integration: lifespan mount, admin API rewire, graceful shutdown
-- [ ] 20-03-PLAN.md -- Frontend ProcessTable update with pause/resume controls + verification
+- [ ] 21-01-PLAN.md -- rss_feeds DB table, Alembic migration with seed, admin feed CRUD API, RSS daemon DB-backed reads
+- [ ] 21-02-PLAN.md -- Cross-source dedup module + articles API recent-sort extension
+- [ ] 21-03-PLAN.md -- Dashboard layout reorg, NewsFeedPanel (clustering, virtual scrolling), BreakingNewsBanner
+- [ ] 21-04-PLAN.md -- LiveStreamsPanel (YouTube IFrame API, idle detection), SettingsModal Sources tab
+- [ ] 21-05-PLAN.md -- Admin SourceManager upgrade, NewsFeedPanel source filtering, end-to-end verification
 
 ### Phase 22: Polymarket Hardening
 **Goal**: Polymarket-driven forecasting operates reliably with correct budget tracking, and the system maintains rigorous cumulative accuracy metrics comparing Geopol predictions against Polymarket market prices on all resolved questions.
