@@ -11,19 +11,19 @@ See: .planning/PROJECT.md (updated 2026-03-04)
 
 Milestone: v3.0 Operational Command & Verification
 Phase: 20 of 25 (Daemon Consolidation)
-Plan: 01 of 03
+Plan: 02 of 03
 Status: In progress
-Last activity: 2026-03-05 -- Completed 20-01-PLAN.md (scheduler foundation)
+Last activity: 2026-03-05 -- Completed 20-02-PLAN.md (APScheduler-FastAPI integration)
 
-Progress: [########################################################] 100% (69/69+ plans lifetime)
-v3.0:    [######              ] 25% (1/3 plans in phase 20)
+Progress: [########################################################] 100% (70/70+ plans lifetime)
+v3.0:    [############        ] 50% (2/3 plans in phase 20)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 69
+- Total plans completed: 70
 - Average duration: 10 minutes
-- Total execution time: 11.5 hours
+- Total execution time: 11.6 hours
 
 **By Phase:**
 
@@ -48,7 +48,7 @@ v3.0:    [######              ] 25% (1/3 plans in phase 20)
 | 17-live-data-feeds-country-depth | 3 | 26min | 9min |
 | 18-polymarket-driven-forecasting | 3 | 14min | 5min |
 | 19-admin-dashboard-foundation | 3 | 20min | 7min |
-| 20-daemon-consolidation | 1 | 4min | 4min |
+| 20-daemon-consolidation | 2 | 10min | 5min |
 
 ## Accumulated Context
 
@@ -67,7 +67,9 @@ Key decisions affecting current work:
 - uvicorn --workers 1 is a hard constraint with APScheduler in-process (2026-03-04)
 - POLECAT/ICEWS deferred to v3.1+ (PLOVER-to-CAMEO mapping untested) (2026-03-04)
 - Admin auth: X-Admin-Key header separate from X-API-Key, router-level dependency (2026-03-05)
-- trigger_job returns 501 for ALL daemon types until Phase 20 APScheduler wires proper dependency injection (2026-03-05)
+- trigger_job now fires via APScheduler modify_job(next_run_time=now) -- 501 stub deleted (2026-03-05)
+- Scheduler shutdown order: scheduler (30s) -> Redis -> DB (in-flight jobs may use DB) (2026-03-05)
+- RSS daemon aggregates 3 APScheduler sub-jobs; paused only when ALL paused (2026-03-05)
 - system_config values wrapped as {"v": value} for type-preserving JSON round-trip (2026-03-05)
 - AdminLayout exposes adminKey property for Plan 03 panel AdminClient construction (2026-03-05)
 - admin-screen.ts is the static/dynamic import boundary -- only import type at top level (2026-03-05)
@@ -97,6 +99,6 @@ Key decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-03-05
-Stopped at: Completed 20-01-PLAN.md (scheduler foundation)
+Stopped at: Completed 20-02-PLAN.md (APScheduler-FastAPI integration)
 Resume file: None
-Next: Execute 20-02-PLAN.md (FastAPI lifespan wiring)
+Next: Execute 20-03-PLAN.md (frontend admin panel wiring)
