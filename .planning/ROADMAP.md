@@ -417,7 +417,12 @@ Plans:
   3. The daily forecast pipeline and TKG retraining execute in a `ProcessPoolExecutor` (not on the event loop) -- confirmed by the FastAPI server remaining responsive to HTTP requests during pipeline execution
   4. `POST /api/v1/admin/jobs/{id}/pause` pauses a job (no future executions until resumed); `POST /api/v1/admin/jobs/{id}/resume` resumes it; `POST /api/v1/admin/jobs/{id}/trigger` fires it immediately -- all reflected in the admin dashboard process table within seconds
   5. Stopping the FastAPI server gracefully shuts down APScheduler first, waits for in-flight jobs to complete (up to 30 seconds), then shuts down the API -- no orphaned processes or database connections remain
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 20-01-PLAN.md -- Scheduler package: APScheduler core, dependency container, 9 job wrappers, failure tracking
+- [ ] 20-02-PLAN.md -- FastAPI integration: lifespan mount, admin API rewire, graceful shutdown
+- [ ] 20-03-PLAN.md -- Frontend ProcessTable update with pause/resume controls + verification
 
 ### Phase 21: Source Expansion & Feed Management
 **Goal**: The system ingests UCDP armed conflict events as a new data source, provides admin-level RSS feed management (enable/disable/tier per feed), prevents cross-source event duplication in the knowledge graph, and exposes per-source health metrics through the API and admin dashboard.
@@ -430,7 +435,12 @@ Plans:
   3. The same real-world conflict event appearing in both GDELT and UCDP does not create duplicate triples in the knowledge graph -- the cross-source dedup layer filters by (date, country, event_type) fingerprint hash before graph insertion
   4. `GET /api/v1/sources` returns per-source health metrics (last poll time, events ingested in 24h, error rate, staleness status) for all active data sources including UCDP -- auto-discovered from the `ingest_runs` table
   5. A feed that fails N consecutive times is automatically disabled and flagged in the admin dashboard source management panel with an alert
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 20-01-PLAN.md -- Scheduler package: APScheduler core, dependency container, 9 job wrappers, failure tracking
+- [ ] 20-02-PLAN.md -- FastAPI integration: lifespan mount, admin API rewire, graceful shutdown
+- [ ] 20-03-PLAN.md -- Frontend ProcessTable update with pause/resume controls + verification
 
 ### Phase 22: Polymarket Hardening
 **Goal**: Polymarket-driven forecasting operates reliably with correct budget tracking, and the system maintains rigorous cumulative accuracy metrics comparing Geopol predictions against Polymarket market prices on all resolved questions.
@@ -442,7 +452,12 @@ Plans:
   3. The admin dashboard displays a head-to-head accuracy panel showing Geopol vs Polymarket Brier score curves over time, per-category breakdown, and a win/loss record on resolved questions
   4. The system detects ambiguous or voided Polymarket question resolutions and excludes them from accuracy metrics -- these cases are logged and visible in the admin dashboard
   5. Polymarket API failures trigger exponential backoff retries; extended Polymarket unavailability degrades gracefully (existing comparisons continue with stale market prices, no silent data loss) -- the poller status shows "degraded" in the admin process table
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 20-01-PLAN.md -- Scheduler package: APScheduler core, dependency container, 9 job wrappers, failure tracking
+- [ ] 20-02-PLAN.md -- FastAPI integration: lifespan mount, admin API rewire, graceful shutdown
+- [ ] 20-03-PLAN.md -- Frontend ProcessTable update with pause/resume controls + verification
 
 ### Phase 23: Historical Backtesting
 **Goal**: The system can evaluate its own historical prediction accuracy through walk-forward evaluation, compare TiRGN vs RE-GCN model performance, and audit calibration quality over time -- all as an internal reporting system accessible from the admin dashboard, not public-facing.
@@ -454,7 +469,12 @@ Plans:
   3. Calibration audit generates reliability diagrams computed over sliding time windows, visible in the admin BacktestingPanel -- an operator can observe whether calibration quality is improving, stable, or degrading over time
   4. Backtesting results persist in the `backtest_runs` and `backtest_results` PostgreSQL tables -- results are queryable from the admin dashboard, not ephemeral console output that disappears on restart
   5. The backtesting harness uses calibration weight snapshots from each evaluation window (not current weights) and excludes ChromaDB articles published after the prediction date -- preventing look-ahead bias from corrupting accuracy metrics
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 20-01-PLAN.md -- Scheduler package: APScheduler core, dependency container, 9 job wrappers, failure tracking
+- [ ] 20-02-PLAN.md -- FastAPI integration: lifespan mount, admin API rewire, graceful shutdown
+- [ ] 20-03-PLAN.md -- Frontend ProcessTable update with pause/resume controls + verification
 
 ### Phase 24: Global Seeding & Globe Layers
 **Goal**: The globe choropleth renders meaningful risk data for all ~195 countries (not just those with active forecasts), and the three currently-empty globe layers (heatmap, arcs, scenarios) display real data from the event store and knowledge graph.
@@ -466,7 +486,12 @@ Plans:
   3. The globe choropleth colors all ~195 countries with intensity proportional to their merged risk scores -- no more empty/neutral countries with zero data; high-risk conflict zones visually stand out
   4. The heatmap layer displays real GDELT event locations on the globe -- events include `lat`/`lon` coordinates (added to SQLite schema), served via `/api/v1/events/geo` with server-side 0.5-degree grid aggregation for performance
   5. The arcs layer renders bilateral country relationships from knowledge graph edges via `/api/v1/countries/relations` -- showing top-N country pairs by edge weight as great-circle arcs on the globe
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 20-01-PLAN.md -- Scheduler package: APScheduler core, dependency container, 9 job wrappers, failure tracking
+- [ ] 20-02-PLAN.md -- FastAPI integration: lifespan mount, admin API rewire, graceful shutdown
+- [ ] 20-03-PLAN.md -- Frontend ProcessTable update with pause/resume controls + verification
 
 ### Phase 25: Frontend Finalization
 **Goal**: Every screen and panel handles loading, error, and empty states gracefully. Heavy components lazy-load. Interactive elements are keyboard-accessible. The frontend is ready for external users who encounter edge cases, slow connections, and assistive technology.
@@ -478,7 +503,12 @@ Plans:
   3. Screens with no data (no forecasts, no events, no comparisons) display contextual empty-state messages explaining what the panel will show once data exists -- not blank white space
   4. ScenarioExplorer and CalibrationPanel are lazy-loaded (not in the initial bundle); search and filter inputs are debounced; refresh cycles use diff-based DOM updates -- confirmed by Lighthouse performance score above 80 on the dashboard route
   5. All interactive elements (map controls, layer toggles, modal open/close, forecast card expand/collapse) are reachable via keyboard navigation; map controls have ARIA labels; color contrast ratios meet WCAG AA on the dark theme
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 20-01-PLAN.md -- Scheduler package: APScheduler core, dependency container, 9 job wrappers, failure tracking
+- [ ] 20-02-PLAN.md -- FastAPI integration: lifespan mount, admin API rewire, graceful shutdown
+- [ ] 20-03-PLAN.md -- Frontend ProcessTable update with pause/resume controls + verification
 
 ## Progress
 
