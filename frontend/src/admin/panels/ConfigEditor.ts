@@ -8,6 +8,7 @@
  */
 
 import { h, clearChildren } from '@/utils/dom-utils';
+import { showToast } from '@/admin/admin-toast';
 import type { AdminClient } from '@/admin/admin-client';
 import type { ConfigEntry } from '@/admin/admin-types';
 import type { AdminPanel } from '@/admin/panels/ProcessTable';
@@ -365,19 +366,3 @@ export class ConfigEditor implements AdminPanel {
   }
 }
 
-/** Shared toast notification. */
-function showToast(message: string, isError = false): void {
-  const existing = document.querySelector('.admin-toast');
-  if (existing) existing.remove();
-
-  const toast = h('div', {
-    className: `admin-toast ${isError ? 'toast-error' : ''}`,
-  }, message);
-  document.body.appendChild(toast);
-
-  setTimeout(() => { toast.classList.add('toast-visible'); }, 10);
-  setTimeout(() => {
-    toast.classList.remove('toast-visible');
-    setTimeout(() => toast.remove(), 300);
-  }, 3_000);
-}

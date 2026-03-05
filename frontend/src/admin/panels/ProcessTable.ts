@@ -7,6 +7,7 @@
  */
 
 import { h, clearChildren } from '@/utils/dom-utils';
+import { showToast } from '@/admin/admin-toast';
 import type { AdminClient } from '@/admin/admin-client';
 import type { ProcessInfo } from '@/admin/admin-types';
 
@@ -128,8 +129,12 @@ export class ProcessTable implements AdminPanel {
 
     try {
       await this.client.triggerJob(daemonType);
-    } catch {
-      // Trigger failed -- will show actual state on next refresh
+    } catch (err) {
+      this.triggering.delete(daemonType);
+      void this.refresh();
+      const msg = err instanceof Error ? err.message : 'Trigger failed';
+      showToast(msg, true);
+      return;
     }
 
     // Re-fetch after a short delay to pick up the running state
