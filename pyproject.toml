@@ -26,6 +26,7 @@ dependencies = [
     "requests>=2.31.0",
     "networkx>=3.0",
     "wandb>=0.25.0",
+    "apscheduler==3.11.2",
 ]
 
 [project.optional-dependencies]
