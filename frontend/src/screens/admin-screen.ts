@@ -38,18 +38,19 @@ export async function mountAdmin(container: HTMLElement): Promise<void> {
     }
   }
 
-  // 2. If no valid key, show auth modal
+  // 2. If no valid key, show auth modal (load styles FIRST so modal is styled)
   if (!adminKey) {
+    await import('@/admin/admin-styles.css');
     const { AuthModal } = await import('@/admin/components/AuthModal');
     const modal = new AuthModal();
     adminKey = await modal.waitForAuth();
+  } else {
+    // Key was valid from sessionStorage — still need styles for the layout
+    await import('@/admin/admin-styles.css');
   }
 
-  // 3. Dynamically import admin layout + styles (code splitting boundary)
-  const [{ createAdminLayout }] = await Promise.all([
-    import('@/admin/admin-layout'),
-    import('@/admin/admin-styles.css'),
-  ]);
+  // 3. Dynamically import admin layout (code splitting boundary)
+  const { createAdminLayout } = await import('@/admin/admin-layout');
 
   // 4. Create the admin layout
   layout = createAdminLayout(container, adminKey);

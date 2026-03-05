@@ -8,7 +8,6 @@ thin and testable.
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -209,93 +208,22 @@ class AdminService:
         if daemon_type not in _DAEMON_NAMES:
             raise HTTPException(404, f"Unknown daemon type: {daemon_type}")
 
-        if daemon_type == "gdelt":
-            asyncio.create_task(self._run_gdelt())
-        elif daemon_type == "acled":
-            asyncio.create_task(self._run_acled())
-        elif daemon_type == "advisory":
-            asyncio.create_task(self._run_advisory())
-        elif daemon_type == "pipeline":
-            asyncio.create_task(self._run_pipeline())
-        else:
-            # rss, polymarket, tkg -- not yet wired as one-shot triggers
-            logger.warning(
-                "Trigger not yet implemented for %s -- Phase 20 will add APScheduler triggers",
-                daemon_type,
-            )
-            raise HTTPException(
-                501,
-                f"Trigger not yet implemented for {daemon_type}. "
-                "Phase 20 (APScheduler) will consolidate all triggers.",
-            )
-
-    @staticmethod
-    async def _run_gdelt() -> None:
-        """One-shot GDELT ingest cycle."""
-        try:
-            from src.db.postgres import async_session_factory
-            from src.ingest.gdelt_poller import GDELTPoller
-
-            settings = get_settings()
-            poller = GDELTPoller(
-                async_session_factory=async_session_factory,
-                settings=settings,
-            )
-            await poller.run()
-            logger.info("Admin-triggered GDELT cycle complete")
-        except Exception:
-            logger.exception("Admin-triggered GDELT cycle failed")
-
-    @staticmethod
-    async def _run_acled() -> None:
-        """One-shot ACLED ingest cycle."""
-        try:
-            from src.db.postgres import async_session_factory
-            from src.ingest.acled_poller import ACLEDPoller
-
-            settings = get_settings()
-            poller = ACLEDPoller(
-                async_session_factory=async_session_factory,
-                settings=settings,
-            )
-            await poller.run()
-            logger.info("Admin-triggered ACLED cycle complete")
-        except Exception:
-            logger.exception("Admin-triggered ACLED cycle failed")
-
-    @staticmethod
-    async def _run_advisory() -> None:
-        """One-shot advisory ingest cycle."""
-        try:
-            from src.db.postgres import async_session_factory
-            from src.ingest.advisory_poller import AdvisoryPoller
-
-            settings = get_settings()
-            poller = AdvisoryPoller(
-                async_session_factory=async_session_factory,
-                settings=settings,
-            )
-            await poller.run()
-            logger.info("Admin-triggered advisory cycle complete")
-        except Exception:
-            logger.exception("Admin-triggered advisory cycle failed")
-
-    @staticmethod
-    async def _run_pipeline() -> None:
-        """One-shot daily forecast pipeline."""
-        try:
-            from src.db.postgres import async_session_factory
-            from src.pipeline.daily_forecast import DailyForecastPipeline
-
-            settings = get_settings()
-            pipeline = DailyForecastPipeline(
-                async_session_factory=async_session_factory,
-                settings=settings,
-            )
-            await pipeline.run_daily()
-            logger.info("Admin-triggered daily pipeline complete")
-        except Exception:
-            logger.exception("Admin-triggered daily pipeline failed")
+        # Pre-APScheduler: pollers have complex constructors requiring
+        # EventStorage, TemporalKnowledgeGraph, GeminiClient, etc.
+        # Phase 20 consolidates all jobs under APScheduler with proper
+        # dependency wiring. For now, only Polymarket matching has a
+        # self-contained trigger (it wires its own deps in _polymarket_loop).
+        logger.warning(
+            "Manual trigger for %s requested -- Phase 20 (APScheduler) "
+            "will add proper one-shot triggers with dependency wiring",
+            daemon_type,
+        )
+        raise HTTPException(
+            501,
+            f"Manual trigger for '{_DAEMON_NAMES[daemon_type]}' requires "
+            f"APScheduler job wiring (Phase 20). Process table shows "
+            f"status from automatic daemon runs.",
+        )
 
     # ------------------------------------------------------------------
     # Config CRUD
