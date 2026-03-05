@@ -54,6 +54,22 @@ export class AdminClient {
     );
   }
 
+  /** POST /processes/{daemon_type}/pause -- pause a scheduled job. */
+  async pauseJob(daemonType: string): Promise<{ status: string; daemon_type: string }> {
+    return this.request<{ status: string; daemon_type: string }>(
+      `/processes/${encodeURIComponent(daemonType)}/pause`,
+      { method: 'POST' },
+    );
+  }
+
+  /** POST /processes/{daemon_type}/resume -- resume a paused job. */
+  async resumeJob(daemonType: string): Promise<{ status: string; daemon_type: string }> {
+    return this.request<{ status: string; daemon_type: string }>(
+      `/processes/${encodeURIComponent(daemonType)}/resume`,
+      { method: 'POST' },
+    );
+  }
+
   /** GET /config -- all runtime settings. */
   async getConfig(): Promise<ConfigEntry[]> {
     return this.request<ConfigEntry[]>('/config');

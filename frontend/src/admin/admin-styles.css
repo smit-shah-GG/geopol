@@ -123,6 +123,8 @@
 .admin-layout .status-dot.status-success { background: #22c55e; }
 .admin-layout .status-dot.status-failed  { background: #ef4444; }
 .admin-layout .status-dot.status-unknown { background: #666; }
+.admin-layout .status-dot.status-paused  { background: #f59e0b; }
+.admin-layout .status-dot.status-scheduled { background: #22c55e; }
 
 /* =========================================================================
  * Auth modal overlay -- shown before admin layout loads
@@ -199,6 +201,129 @@
 }
 
 .admin-layout .trigger-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* -- Paused row highlight ------------------------------------------------ */
+
+.admin-layout .process-table tr.process-paused {
+  background: rgba(245, 158, 11, 0.06);
+}
+
+.admin-layout .process-table tr.process-paused:hover {
+  background: rgba(245, 158, 11, 0.12);
+}
+
+/* -- Paused badge -------------------------------------------------------- */
+
+.admin-layout .badge-paused {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  background: rgba(245, 158, 11, 0.2);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  border-radius: 3px;
+  font-family: 'Courier New', monospace;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  vertical-align: middle;
+}
+
+/* -- Failure count badge ------------------------------------------------- */
+
+.admin-layout .badge-failures {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-family: 'Courier New', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  vertical-align: middle;
+}
+
+.admin-layout .badge-failures.warning {
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.admin-layout .badge-failures.critical {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+/* -- Duration text ------------------------------------------------------- */
+
+.admin-layout .process-duration {
+  color: var(--admin-text-dim);
+  font-size: 12px;
+}
+
+/* -- Error text (truncated with hover tooltip) --------------------------- */
+
+.admin-layout .process-error {
+  color: #ef4444;
+  font-size: 10px;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: inline-block;
+  vertical-align: middle;
+  cursor: help;
+}
+
+/* -- Pause / Resume buttons ---------------------------------------------- */
+
+.admin-layout .btn-pause {
+  padding: 3px 10px;
+  background: transparent;
+  border: 1px solid #666;
+  color: #888;
+  border-radius: 4px;
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.admin-layout .btn-pause:hover:not(:disabled) {
+  border-color: #f59e0b;
+  color: #f59e0b;
+}
+
+.admin-layout .btn-pause:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.admin-layout .btn-resume {
+  padding: 3px 10px;
+  background: transparent;
+  border: 1px solid #22c55e;
+  color: #22c55e;
+  border-radius: 4px;
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.admin-layout .btn-resume:hover:not(:disabled) {
+  background: rgba(34, 197, 94, 0.15);
+  color: #4ade80;
+}
+
+.admin-layout .btn-resume:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }

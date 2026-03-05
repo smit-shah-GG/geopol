@@ -1,9 +1,11 @@
 /**
- * ProcessTable -- htop-style daemon status table with trigger buttons.
+ * ProcessTable -- htop-style daemon status table with trigger, pause/resume
+ * buttons and extended APScheduler job state (failures, duration, errors).
  *
  * Displays all background daemons (GDELT ingest, RSS, TKG training, etc.)
- * with status dots, relative timestamps, success/fail counts, and manual
- * trigger buttons. Auto-refreshes every 15s, only re-renders tbody.
+ * with status dots, relative timestamps, success/fail counts, failure badges,
+ * last duration, and manual trigger + pause/resume buttons.
+ * Auto-refreshes every 15s, only re-renders tbody.
  */
 
 import { h, clearChildren } from '@/utils/dom-utils';
@@ -44,11 +46,27 @@ function relativeNext(iso: string | null): string {
   return `${hr}h`;
 }
 
+/** Format seconds to human-readable duration (e.g., "2.3s", "1m 45s"). */
+function formatDuration(seconds: number | null): string {
+  if (seconds === null || seconds === undefined) return '--';
+  if (seconds < 60) return `${seconds.toFixed(1)}s`;
+  const m = Math.floor(seconds / 60);
+  const s = Math.round(seconds % 60);
+  if (m < 60) return `${m}m ${s}s`;
+  const hr = Math.floor(m / 60);
+  const rm = m % 60;
+  return `${hr}h ${rm}m`;
+}
+
+/** Auto-pause threshold -- 5 consecutive failures triggers auto-pause. */
+const AUTO_PAUSE_THRESHOLD = 5;
+
 export class ProcessTable implements AdminPanel {
   private el: HTMLElement | null = null;
   private tbody: HTMLTableSectionElement | null = null;
   private intervalId: ReturnType<typeof setInterval> | null = null;
   private triggering: Set<string> = new Set();
+  private toggling: Set<string> = new Set();
 
   constructor(private readonly client: AdminClient) {}
 
@@ -58,7 +76,7 @@ export class ProcessTable implements AdminPanel {
     const table = h('table', { className: 'process-table' });
     const thead = document.createElement('thead');
     thead.innerHTML = `<tr>
-      <th></th><th>Name</th><th>Last Run</th><th>Next Run</th><th>OK/Fail</th><th></th>
+      <th></th><th>Name</th><th>Last Run</th><th>Next Run</th><th>Duration</th><th>OK/Fail</th><th></th><th></th>
     </tr>`;
     this.tbody = document.createElement('tbody');
     table.appendChild(thead);
@@ -96,13 +114,56 @@ export class ProcessTable implements AdminPanel {
 
     for (const p of procs) {
       const isTriggering = this.triggering.has(p.daemon_type);
-      const statusClass = isTriggering ? 'status-running' : `status-${p.status}`;
-      const row = h('tr', null,
-        h('td', null, h('span', { className: `status-dot ${statusClass}` })),
-        h('td', { className: 'proc-name' }, p.name),
-        h('td', { className: 'proc-time' }, relativeTime(p.last_run)),
-        h('td', { className: 'proc-time' }, relativeNext(p.next_run)),
+      const isToggling = this.toggling.has(p.daemon_type);
+
+      // Status dot: paused overrides, then triggering, then actual status
+      let statusClass: string;
+      if (p.paused) {
+        statusClass = 'status-paused';
+      } else if (isTriggering) {
+        statusClass = 'status-running';
+      } else {
+        statusClass = `status-${p.status}`;
+      }
+
+      // Row class: highlight paused rows
+      const rowClass = p.paused ? 'process-paused' : '';
+
+      // Build status cell with optional paused badge
+      const statusCell = h('td', null,
+        h('span', { className: `status-dot ${statusClass}` }),
+      );
+      if (p.paused) {
+        const badge = h('span', { className: 'badge-paused' }, 'PAUSED');
+        statusCell.appendChild(badge);
+      }
+
+      // Build name cell with failure badge
+      const nameCell = h('td', { className: 'proc-name' }, p.name);
+      if (p.consecutive_failures > 0) {
+        const failClass = p.consecutive_failures >= AUTO_PAUSE_THRESHOLD
+          ? 'badge-failures critical'
+          : 'badge-failures warning';
+        const badge = h('span', { className: failClass }, `${p.consecutive_failures}`);
+        nameCell.appendChild(badge);
+      }
+
+      // Build error tooltip on last run cell if last_error exists
+      const lastRunCell = h('td', { className: 'proc-time' }, relativeTime(p.last_run));
+      if (p.last_error) {
+        const errorSpan = h('span', { className: 'process-error', title: p.last_error },
+          ` ${p.last_error.length > 40 ? p.last_error.slice(0, 40) + '...' : p.last_error}`);
+        lastRunCell.appendChild(errorSpan);
+      }
+
+      const row = h('tr', { className: rowClass },
+        statusCell,
+        nameCell,
+        lastRunCell,
+        h('td', { className: 'proc-time' }, p.paused ? '--' : relativeNext(p.next_run)),
+        h('td', { className: 'process-duration' }, formatDuration(p.last_duration)),
         h('td', { className: 'proc-counts' }, `${p.success_count}/${p.fail_count}`),
+        h('td', null, this.makePauseResumeBtn(p.daemon_type, p.paused, isToggling)),
         h('td', null, this.makeTriggerBtn(p.daemon_type, isTriggering)),
       );
       this.tbody.appendChild(row);
@@ -122,6 +183,24 @@ export class ProcessTable implements AdminPanel {
     return btn;
   }
 
+  private makePauseResumeBtn(daemonType: string, isPaused: boolean, isToggling: boolean): HTMLElement {
+    if (isPaused) {
+      const btn = h('button', {
+        className: 'btn-resume',
+        disabled: isToggling,
+      }, isToggling ? '...' : 'RESUME') as HTMLButtonElement;
+      btn.addEventListener('click', () => { void this.handleResume(daemonType); });
+      return btn;
+    }
+
+    const btn = h('button', {
+      className: 'btn-pause',
+      disabled: isToggling,
+    }, isToggling ? '...' : 'PAUSE') as HTMLButtonElement;
+    btn.addEventListener('click', () => { void this.handlePause(daemonType); });
+    return btn;
+  }
+
   private async handleTrigger(daemonType: string): Promise<void> {
     this.triggering.add(daemonType);
     // Optimistic UI: re-render immediately to show running state
@@ -129,6 +208,7 @@ export class ProcessTable implements AdminPanel {
 
     try {
       await this.client.triggerJob(daemonType);
+      showToast(`Job triggered: ${daemonType}`);
     } catch (err) {
       this.triggering.delete(daemonType);
       void this.refresh();
@@ -142,5 +222,37 @@ export class ProcessTable implements AdminPanel {
       this.triggering.delete(daemonType);
       void this.refresh();
     }, 2_000);
+  }
+
+  private async handlePause(daemonType: string): Promise<void> {
+    this.toggling.add(daemonType);
+    void this.refresh();
+
+    try {
+      await this.client.pauseJob(daemonType);
+      showToast(`Job paused: ${daemonType}`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Pause failed';
+      showToast(msg, true);
+    } finally {
+      this.toggling.delete(daemonType);
+      void this.refresh();
+    }
+  }
+
+  private async handleResume(daemonType: string): Promise<void> {
+    this.toggling.add(daemonType);
+    void this.refresh();
+
+    try {
+      await this.client.resumeJob(daemonType);
+      showToast(`Job resumed: ${daemonType}`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Resume failed';
+      showToast(msg, true);
+    } finally {
+      this.toggling.delete(daemonType);
+      void this.refresh();
+    }
   }
 }

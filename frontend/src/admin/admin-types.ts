@@ -10,11 +10,15 @@
 export interface ProcessInfo {
   name: string;
   daemon_type: string;
-  status: string; // running | success | failed | unknown
+  status: string; // running | scheduled | paused | success | failed | unknown
   last_run: string | null;
   next_run: string | null;
   success_count: number;
   fail_count: number;
+  last_duration: number | null; // seconds
+  last_error: string | null;
+  consecutive_failures: number;
+  paused: boolean;
 }
 
 /** Single runtime-adjustable configuration value. */
