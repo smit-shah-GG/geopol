@@ -19,11 +19,15 @@ class ProcessInfo(BaseModel):
 
     name: str
     daemon_type: str
-    status: str  # running | success | failed | unknown
+    status: str  # running | scheduled | paused | success | failed | unknown
     last_run: datetime | None = None
     next_run: datetime | None = None
     success_count: int = 0
     fail_count: int = 0
+    last_duration: float | None = None  # seconds, from failure tracker
+    last_error: str | None = None  # last exception message
+    consecutive_failures: int = 0  # from failure tracker
+    paused: bool = False  # True when next_run_time is None (APScheduler paused)
 
 
 class ConfigEntry(BaseModel):

@@ -1,9 +1,9 @@
 """Admin service layer -- business logic for the admin API endpoints.
 
 Encapsulates all admin operations: process status, job triggering,
-runtime config CRUD, source health, and source toggling. The service
-takes an AsyncSession and delegates DB queries, keeping the router
-thin and testable.
+pause/resume, runtime config CRUD, source health, and source toggling.
+Delegates job control to APScheduler via ``get_scheduler()``, merging
+live scheduler state with DB aggregates for the process table.
 """
 
 from __future__ import annotations
@@ -12,6 +12,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
+from apscheduler.triggers.interval import IntervalTrigger
 from fastapi import HTTPException
 from sqlalchemy import delete, func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -19,6 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.schemas.admin import ConfigEntry, ProcessInfo, SourceInfo
 from src.db.models import IngestRun, SystemConfig
+from src.scheduler.retry import JobFailureTracker
 from src.settings import Settings, get_settings
 
 logger = logging.getLogger(__name__)
@@ -32,6 +34,30 @@ _DAEMON_NAMES: dict[str, str] = {
     "acled": "ACLED Poller",
     "advisory": "Advisory Poller",
     "tkg": "TKG Retrainer",
+}
+
+# APScheduler job_id -> daemon_type mapping
+_JOB_ID_TO_DAEMON: dict[str, str] = {
+    "gdelt_poller": "gdelt",
+    "rss_tier1": "rss",
+    "rss_tier2": "rss",
+    "rss_prune": "rss",
+    "acled_poller": "acled",
+    "advisory_poller": "advisory",
+    "daily_pipeline": "pipeline",
+    "polymarket": "polymarket",
+    "tkg_retrain": "tkg",
+}
+
+# daemon_type -> list of APScheduler job IDs (RSS has 3 sub-jobs)
+_DAEMON_TO_JOB_IDS: dict[str, list[str]] = {
+    "gdelt": ["gdelt_poller"],
+    "rss": ["rss_tier1", "rss_tier2", "rss_prune"],
+    "pipeline": ["daily_pipeline"],
+    "polymarket": ["polymarket"],
+    "acled": ["acled_poller"],
+    "advisory": ["advisory_poller"],
+    "tkg": ["tkg_retrain"],
 }
 
 # Settings fields that must never be editable via the admin API
@@ -128,18 +154,47 @@ def _is_dangerous(key: str, value: Any) -> bool:
     return False
 
 
-class AdminService:
-    """Admin business logic operating on a scoped async session."""
+def _get_scheduler_or_none():
+    """Try to get the APScheduler singleton, return None if not initialized."""
+    try:
+        from src.scheduler.core import get_scheduler
+        return get_scheduler()
+    except RuntimeError:
+        return None
 
-    def __init__(self, db: AsyncSession) -> None:
+
+class AdminService:
+    """Admin business logic operating on a scoped async session.
+
+    Optionally receives a ``failure_tracker`` for APScheduler job stats.
+    When the scheduler is not initialized (e.g. in tests), the service
+    falls back to DB-only process information.
+    """
+
+    def __init__(
+        self,
+        db: AsyncSession,
+        failure_tracker: JobFailureTracker | None = None,
+    ) -> None:
         self._db = db
+        self._failure_tracker = failure_tracker
 
     # ------------------------------------------------------------------
     # Processes
     # ------------------------------------------------------------------
 
     async def get_processes(self) -> list[ProcessInfo]:
-        """Query ingest_runs aggregated by daemon_type for all daemon types."""
+        """Return process status for all daemon types.
+
+        When APScheduler is running, merges live scheduler state (next_run,
+        paused status) with DB aggregates (success/fail counts, last_run)
+        and failure tracker stats (duration, errors, consecutive failures).
+
+        Falls back to DB-only logic when scheduler is not initialized.
+        """
+        scheduler = _get_scheduler_or_none()
+
+        # Always query DB aggregates (success/fail counts, last_run)
         settings = get_settings()
         result = await self._db.execute(
             select(
@@ -151,7 +206,7 @@ class AdminService:
         )
         rows = {r.daemon_type: r for r in result.all()}
 
-        # Fetch latest status per daemon_type via a subquery
+        # Fetch latest status per daemon_type
         latest_status: dict[str, str] = {}
         for dtype in _DAEMON_NAMES:
             sub = await self._db.execute(
@@ -163,67 +218,279 @@ class AdminService:
             row = sub.scalar_one_or_none()
             latest_status[dtype] = row if row else "unknown"
 
+        # Build APScheduler job state map if scheduler is available
+        job_state: dict[str, dict] = {}  # job_id -> {next_run, paused}
+        if scheduler is not None:
+            for job in scheduler.get_jobs():
+                job_state[job.id] = {
+                    "next_run_time": job.next_run_time,
+                    "paused": job.next_run_time is None,
+                    "name": job.name,
+                }
+
         processes: list[ProcessInfo] = []
         for dtype, name in _DAEMON_NAMES.items():
-            row = rows.get(dtype)
-            last_run = row.last_started if row else None
+            db_row = rows.get(dtype)
+            last_run = db_row.last_started if db_row else None
+            success_count = db_row.ok if db_row else 0
+            fail_count = db_row.fail if db_row else 0
 
-            # Compute next_run from last_run + poll_interval
-            interval_field = _DAEMON_INTERVALS.get(dtype)
-            interval_seconds: int | None = None
-            if interval_field:
-                interval_seconds = getattr(settings, interval_field, None)
-            # Default TKG / pipeline to 24h if not in Settings
-            if interval_seconds is None and dtype in ("tkg", "pipeline"):
-                interval_seconds = 86400
+            # Merge APScheduler state for this daemon's jobs
+            job_ids = _DAEMON_TO_JOB_IDS.get(dtype, [])
+            next_run: datetime | None = None
+            is_paused = False
+            last_duration: float | None = None
+            last_error: str | None = None
+            consecutive_failures = 0
 
-            next_run = None
-            if last_run and interval_seconds:
-                next_run = last_run + timedelta(seconds=interval_seconds)
+            if scheduler is not None and job_ids:
+                # Determine next_run as the earliest next_run_time across sub-jobs
+                next_runs = []
+                all_paused = True
+                for jid in job_ids:
+                    js = job_state.get(jid)
+                    if js is None:
+                        continue  # Job not registered (e.g. polymarket disabled)
+                    if js["next_run_time"] is not None:
+                        next_runs.append(js["next_run_time"])
+                        all_paused = False
+                    # else: this sub-job is paused
+
+                next_run = min(next_runs) if next_runs else None
+                # Daemon is paused only if ALL its sub-jobs are paused
+                is_paused = all_paused and any(
+                    jid in job_state for jid in job_ids
+                )
+
+                # Aggregate failure tracker stats across sub-jobs
+                if self._failure_tracker is not None:
+                    max_failures = 0
+                    for jid in job_ids:
+                        stats = self._failure_tracker.get_job_stats(jid)
+                        if stats["consecutive_failures"] > max_failures:
+                            max_failures = stats["consecutive_failures"]
+                            last_error = stats["last_error"]
+                        if stats["last_duration"] is not None:
+                            if last_duration is None or stats["last_duration"] > last_duration:
+                                last_duration = stats["last_duration"]
+                    consecutive_failures = max_failures
+            else:
+                # Fallback: compute next_run from last_run + interval
+                interval_field = _DAEMON_INTERVALS.get(dtype)
+                interval_seconds: int | None = None
+                if interval_field:
+                    interval_seconds = getattr(settings, interval_field, None)
+                if interval_seconds is None and dtype in ("tkg", "pipeline"):
+                    interval_seconds = 86400
+                if last_run and interval_seconds:
+                    next_run = last_run + timedelta(seconds=interval_seconds)
+
+            # Determine display status
+            status = latest_status.get(dtype, "unknown")
+            if is_paused:
+                status = "paused"
+            elif scheduler is not None and next_run is not None:
+                status = "scheduled"
 
             processes.append(
                 ProcessInfo(
                     name=name,
                     daemon_type=dtype,
-                    status=latest_status.get(dtype, "unknown"),
+                    status=status,
                     last_run=last_run,
                     next_run=next_run,
-                    success_count=row.ok if row else 0,
-                    fail_count=row.fail if row else 0,
+                    success_count=success_count,
+                    fail_count=fail_count,
+                    last_duration=last_duration,
+                    last_error=last_error,
+                    consecutive_failures=consecutive_failures,
+                    paused=is_paused,
                 )
             )
         return processes
 
     # ------------------------------------------------------------------
-    # Trigger
+    # Trigger / Pause / Resume / Reschedule
     # ------------------------------------------------------------------
 
     async def trigger_job(self, daemon_type: str) -> None:
-        """Spawn a one-shot asyncio.Task for the given daemon.
+        """Trigger immediate execution of a daemon's job(s) via APScheduler.
 
-        Phase 20 (APScheduler consolidation) will replace this with
-        proper job-store triggers. For now, we import and fire the
-        existing run functions as background tasks.
+        Sets next_run_time to now, causing APScheduler to fire the job
+        on the next scheduler tick (~1 second).
+
+        Raises:
+            HTTPException 404: Unknown daemon_type or job not registered.
+            HTTPException 503: Scheduler not initialized.
         """
         if daemon_type not in _DAEMON_NAMES:
             raise HTTPException(404, f"Unknown daemon type: {daemon_type}")
 
-        # Pre-APScheduler: pollers have complex constructors requiring
-        # EventStorage, TemporalKnowledgeGraph, GeminiClient, etc.
-        # Phase 20 consolidates all jobs under APScheduler with proper
-        # dependency wiring. For now, only Polymarket matching has a
-        # self-contained trigger (it wires its own deps in _polymarket_loop).
-        logger.warning(
-            "Manual trigger for %s requested -- Phase 20 (APScheduler) "
-            "will add proper one-shot triggers with dependency wiring",
-            daemon_type,
+        scheduler = _get_scheduler_or_none()
+        if scheduler is None:
+            raise HTTPException(503, "Scheduler not initialized")
+
+        job_ids = _DAEMON_TO_JOB_IDS.get(daemon_type, [])
+        if not job_ids:
+            raise HTTPException(404, f"No jobs registered for daemon: {daemon_type}")
+
+        now = datetime.now(timezone.utc)
+        triggered = []
+        for jid in job_ids:
+            job = scheduler.get_job(jid)
+            if job is None:
+                logger.warning("Job %s not found in scheduler (skipped trigger)", jid)
+                continue
+            scheduler.modify_job(jid, next_run_time=now)
+            triggered.append(jid)
+
+        if not triggered:
+            raise HTTPException(404, f"No active jobs found for daemon: {daemon_type}")
+
+        logger.info("Triggered %s job(s): %s", daemon_type, triggered)
+
+    async def pause_job(self, daemon_type: str) -> None:
+        """Pause all APScheduler jobs for a daemon type.
+
+        Sets next_run_time to None via scheduler.pause_job(), preventing
+        future executions until resumed. Resets failure counters.
+
+        Raises:
+            HTTPException 404: Unknown daemon_type.
+            HTTPException 503: Scheduler not initialized.
+        """
+        if daemon_type not in _DAEMON_NAMES:
+            raise HTTPException(404, f"Unknown daemon type: {daemon_type}")
+
+        scheduler = _get_scheduler_or_none()
+        if scheduler is None:
+            raise HTTPException(503, "Scheduler not initialized")
+
+        job_ids = _DAEMON_TO_JOB_IDS.get(daemon_type, [])
+        paused = []
+        for jid in job_ids:
+            job = scheduler.get_job(jid)
+            if job is None:
+                continue
+            scheduler.pause_job(jid)
+            if self._failure_tracker is not None:
+                self._failure_tracker.reset_failures(jid)
+            paused.append(jid)
+
+        logger.info("Paused %s job(s): %s", daemon_type, paused)
+
+    async def resume_job(self, daemon_type: str) -> None:
+        """Resume all paused APScheduler jobs for a daemon type.
+
+        Re-enables jobs via scheduler.resume_job() and resets failure
+        counters so the auto-pause threshold starts fresh.
+
+        Raises:
+            HTTPException 404: Unknown daemon_type.
+            HTTPException 503: Scheduler not initialized.
+        """
+        if daemon_type not in _DAEMON_NAMES:
+            raise HTTPException(404, f"Unknown daemon type: {daemon_type}")
+
+        scheduler = _get_scheduler_or_none()
+        if scheduler is None:
+            raise HTTPException(503, "Scheduler not initialized")
+
+        job_ids = _DAEMON_TO_JOB_IDS.get(daemon_type, [])
+        resumed = []
+        for jid in job_ids:
+            job = scheduler.get_job(jid)
+            if job is None:
+                continue
+            scheduler.resume_job(jid)
+            if self._failure_tracker is not None:
+                self._failure_tracker.reset_failures(jid)
+            resumed.append(jid)
+
+        logger.info("Resumed %s job(s): %s", daemon_type, resumed)
+
+    async def reschedule_job(
+        self, daemon_type: str, new_interval_seconds: int,
+    ) -> None:
+        """Change the interval trigger for a daemon's jobs.
+
+        Persists the new interval to system_config for restart survivability.
+
+        Raises:
+            HTTPException 404: Unknown daemon_type.
+            HTTPException 503: Scheduler not initialized.
+        """
+        if daemon_type not in _DAEMON_NAMES:
+            raise HTTPException(404, f"Unknown daemon type: {daemon_type}")
+
+        scheduler = _get_scheduler_or_none()
+        if scheduler is None:
+            raise HTTPException(503, "Scheduler not initialized")
+
+        job_ids = _DAEMON_TO_JOB_IDS.get(daemon_type, [])
+        for jid in job_ids:
+            job = scheduler.get_job(jid)
+            if job is None:
+                continue
+            scheduler.reschedule_job(
+                jid, trigger=IntervalTrigger(seconds=new_interval_seconds),
+            )
+
+        # Persist to system_config for restart survivability
+        key = f"{daemon_type}_schedule_override"
+        stmt = pg_insert(SystemConfig).values(
+            key=key,
+            value={"v": new_interval_seconds},
+            updated_by="admin",
+        ).on_conflict_do_update(
+            index_elements=["key"],
+            set_={
+                "value": {"v": new_interval_seconds},
+                "updated_by": "admin",
+                "updated_at": func.now(),
+            },
         )
-        raise HTTPException(
-            501,
-            f"Manual trigger for '{_DAEMON_NAMES[daemon_type]}' requires "
-            f"APScheduler job wiring (Phase 20). Process table shows "
-            f"status from automatic daemon runs.",
+        await self._db.execute(stmt)
+        await self._db.commit()
+        logger.info(
+            "Rescheduled %s to %ds interval (persisted to system_config)",
+            daemon_type, new_interval_seconds,
         )
+
+    async def get_jobs(self) -> list[dict]:
+        """Return raw APScheduler job list (complement to get_processes).
+
+        Returns per-job info without daemon-type grouping, useful for
+        debugging and the admin /jobs endpoint.
+        """
+        scheduler = _get_scheduler_or_none()
+        if scheduler is None:
+            return []
+
+        jobs = []
+        for job in scheduler.get_jobs():
+            paused = job.next_run_time is None
+            trigger_str = str(job.trigger) if job.trigger else "unknown"
+
+            job_info: dict[str, Any] = {
+                "job_id": job.id,
+                "name": job.name,
+                "trigger": trigger_str,
+                "next_run_time": job.next_run_time.isoformat() if job.next_run_time else None,
+                "paused": paused,
+                "daemon_type": _JOB_ID_TO_DAEMON.get(job.id, "unknown"),
+            }
+
+            # Enrich with failure tracker stats
+            if self._failure_tracker is not None:
+                stats = self._failure_tracker.get_job_stats(job.id)
+                job_info["consecutive_failures"] = stats["consecutive_failures"]
+                job_info["last_error"] = stats["last_error"]
+                job_info["last_duration"] = stats["last_duration"]
+
+            jobs.append(job_info)
+
+        return jobs
 
     # ------------------------------------------------------------------
     # Config CRUD
