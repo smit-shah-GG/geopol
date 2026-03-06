@@ -10,20 +10,20 @@ See: .planning/PROJECT.md (updated 2026-03-04)
 ## Current Position
 
 Milestone: v3.0 Operational Command & Verification
-Phase: 22 of 25 (Polymarket Hardening) -- In progress
-Plan: 03 of 03 (plan 02 pending)
-Status: In progress
-Last activity: 2026-03-06 -- Completed 22-03-PLAN.md (Admin Accuracy Panel)
+Phase: 22 of 25 (Polymarket Hardening) -- Complete
+Plan: 03 of 03
+Status: Phase complete
+Last activity: 2026-03-06 -- Completed 22-02-PLAN.md (Brier scoring engine + resolution pipeline)
 
-Progress: [########################################################] 100% (82/80+ plans lifetime)
-v3.0:    [################    ] 68% (17/25 plans in v3.0 -- 3.4/7 phases)
+Progress: [########################################################] 100% (83/80+ plans lifetime)
+v3.0:    [#################   ] 72% (18/25 plans in v3.0 -- 3.6/7 phases)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 77
+- Total plans completed: 78
 - Average duration: 10 minutes
-- Total execution time: 12.2 hours
+- Total execution time: 12.4 hours
 
 **By Phase:**
 
@@ -50,7 +50,7 @@ v3.0:    [################    ] 68% (17/25 plans in v3.0 -- 3.4/7 phases)
 | 19-admin-dashboard-foundation | 3 | 20min | 7min |
 | 20-daemon-consolidation | 3 | 25min | 8min |
 | 21-source-expansion-feed-mgmt | 5 | 34min | 7min |
-| 22-polymarket-hardening | 2 | 11min | 6min |
+| 22-polymarket-hardening | 3 | 23min | 8min |
 
 ## Accumulated Context
 
@@ -92,6 +92,12 @@ Key decisions affecting current work:
 - geopol:sources-changed CustomEvent dispatches on toggle; consumer wired in Plan 05 (2026-03-06)
 - Accuracy panel: live-computed from polymarket_comparisons, not from polymarket_accuracy ledger (2026-03-06)
 - Winner = lower Brier score; client-side sorting with state preservation across 30s refresh (2026-03-06)
+- Resolution uses Gamma API closed/resolutionSource/umaResolutionStatus, not price convergence (2026-03-06)
+- Voided markets: three-heuristic detection (ambiguous prices, source keywords, UMA status) (2026-03-06)
+- Cycle order: match -> snapshot -> resolve -> forecast -> reforecast (race-safe) (2026-03-06)
+- Top-10 active set: volume threshold filter removed from auto_forecaster.run(), caller provides pre-filtered set (2026-03-06)
+- reforecast_active() scoped to top-10 event IDs; None parameter maintains backward compat (2026-03-06)
+- 429 handling: sleep(min(Retry-After, 60)) before raising for tenacity retry (2026-03-06)
 
 ### Deferred Issues
 
@@ -115,6 +121,6 @@ Key decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-03-06
-Stopped at: Completed 22-03-PLAN.md
+Stopped at: Completed 22-02-PLAN.md (Phase 22 complete)
 Resume file: None
-Next: 22-02-PLAN.md (Brier scoring engine + resolution pipeline)
+Next: /gsd:discuss-phase 23
