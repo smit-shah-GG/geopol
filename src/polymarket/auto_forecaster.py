@@ -310,7 +310,9 @@ class PolymarketAutoForecaster:
                     self._settings.polymarket_daily_new_forecast_cap,
                 )
 
-            # Filter candidates
+            # Filter candidates -- the caller (heavy_runner) now passes the
+            # top-10 set from fetch_top_geopolitical(), so volume filtering
+            # is no longer needed here. We still dedup and validate horizon.
             candidates: list[dict] = []
             for event in geo_events:
                 event_id = str(event.get("id", ""))
@@ -325,11 +327,6 @@ class PolymarketAutoForecaster:
                 if event_id in existing_event_ids:
                     continue
 
-                # Volume threshold
-                volume = _get_event_volume(event)
-                if volume < self._settings.polymarket_volume_threshold:
-                    continue
-
                 # Valid horizon
                 end_date = event.get("endDate")
                 horizon = compute_horizon_days(end_date)
@@ -337,9 +334,6 @@ class PolymarketAutoForecaster:
                     continue
 
                 candidates.append(event)
-
-            # Sort by volume DESC, take up to remaining cap
-            candidates.sort(key=_get_event_volume, reverse=True)
             result["candidates"] = len(candidates)
 
             if not candidates:
@@ -471,11 +465,18 @@ class PolymarketAutoForecaster:
 
         return result
 
-    async def reforecast_active(self) -> dict[str, int]:
+    async def reforecast_active(
+        self, active_event_ids: set[str] | None = None
+    ) -> dict[str, int]:
         """Re-forecast active comparisons with Polymarket provenance.
 
         Overwrites existing Prediction rows with fresh EnsemblePredictor
         output. Historical values are preserved in polymarket_snapshots.
+
+        Args:
+            active_event_ids: If provided, only reforecast comparisons whose
+                polymarket_event_id is in this set (top-10 model). If None,
+                reforecasts all active comparisons (backward-compatible).
 
         Returns:
             Dict with keys: active_comparisons, reforecasted, skipped_budget.
@@ -514,8 +515,15 @@ class PolymarketAutoForecaster:
                         ["polymarket_driven", "polymarket_tracked"]
                     )
                 )
-                .limit(remaining_cap)
             )
+
+            # Filter to top-10 set if provided
+            if active_event_ids is not None:
+                stmt = stmt.where(
+                    PolymarketComparison.polymarket_event_id.in_(active_event_ids)
+                )
+
+            stmt = stmt.limit(remaining_cap)
             comp_result = await session.execute(stmt)
             comparisons = list(comp_result.scalars().all())
             result["active_comparisons"] = len(comparisons)

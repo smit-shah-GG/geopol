@@ -69,11 +69,12 @@ def run_polymarket_cycle() -> int:
     Creates its own asyncio event loop via asyncio.run() because this
     function runs inside a ProcessPoolExecutor worker (no existing loop).
 
-    Replicates app.py's _polymarket_loop logic for a single iteration:
+    Cycle order (critical -- resolve BEFORE reforecast to prevent race):
       1. PolymarketComparisonService.run_matching_cycle()
       2. capture_snapshots()
-      3. PolymarketAutoForecaster.run() for unmatched high-volume questions
-      4. reforecast_active() at most once per UTC day
+      3. resolve_completed() -- detect resolutions + voided markets
+      4. PolymarketAutoForecaster.run() with top-10 geo events
+      5. reforecast_active() at most once per UTC day (top-10 only)
 
     Returns:
         0 on success, 1 on failure.
@@ -117,29 +118,44 @@ def run_polymarket_cycle() -> int:
                 settings=settings,
             )
 
+            # Step 1: Match predictions to Polymarket events
             result = await service.run_matching_cycle()
             _logger.info("Polymarket matching: %s", result)
 
+            # Step 2: Capture price/probability snapshots
             await service.capture_snapshots()
 
-            # Auto-forecast unmatched high-volume questions
+            # Step 3: Resolve completed markets (detect resolutions + voided)
+            # Must run BEFORE reforecast to prevent scoring post-reforecast probs
+            resolve_result = await service.resolve_completed()
+            _logger.info("Polymarket resolution: %s", resolve_result)
+
+            # Step 4: Auto-forecast top-10 geopolitical markets by volume
             auto_forecaster = PolymarketAutoForecaster(
                 async_session_factory=async_session_factory,
                 gemini_client=gemini_client,
                 settings=settings,
             )
-            geo_events = await pm_client.fetch_geopolitical_markets()
+            top_10_events, _ = await pm_client.fetch_top_geopolitical(limit=10)
             auto_result = await auto_forecaster.run(
-                geo_events, tracked_ids=set(),
+                top_10_events, tracked_ids=set(),
             )
             _logger.info("Polymarket auto-forecast: %s", auto_result)
 
-            # Re-forecast active comparisons (at most once per UTC day)
+            # Step 5: Re-forecast active comparisons (at most once per UTC day)
+            # Only reforecast comparisons in the current top-10 set
             from datetime import date
 
             today_str = date.today().isoformat()
             if _last_reforecast_date != today_str:
-                reforecast_result = await auto_forecaster.reforecast_active()
+                top_10_ids = {
+                    str(e.get("id", ""))
+                    for e in top_10_events
+                    if e.get("id")
+                }
+                reforecast_result = await auto_forecaster.reforecast_active(
+                    active_event_ids=top_10_ids
+                )
                 _logger.info("Polymarket re-forecast: %s", reforecast_result)
                 _last_reforecast_date = today_str
 
