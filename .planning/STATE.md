@@ -11,19 +11,19 @@ See: .planning/PROJECT.md (updated 2026-03-04)
 
 Milestone: v3.0 Operational Command & Verification
 Phase: 21 of 25 (Source Expansion & Feed Management) -- In progress
-Plan: 03 of 05
+Plan: 04 of 05
 Status: In progress
-Last activity: 2026-03-06 -- Completed 21-03-PLAN.md (dashboard NewsFeedPanel + BreakingNewsBanner)
+Last activity: 2026-03-06 -- Completed 21-04-PLAN.md (LiveStreamsPanel + SettingsModal)
 
-Progress: [########################################################] 100% (74/74+ plans lifetime)
-v3.0:    [#########           ] 43% (9/21 plans in v3.0 -- 2/7 phases + 3 plans)
+Progress: [########################################################] 100% (75/75+ plans lifetime)
+v3.0:    [##########          ] 48% (10/21 plans in v3.0 -- 2/7 phases + 4 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 74
+- Total plans completed: 75
 - Average duration: 10 minutes
-- Total execution time: 11.9 hours
+- Total execution time: 12.0 hours
 
 **By Phase:**
 
@@ -49,7 +49,7 @@ v3.0:    [#########           ] 43% (9/21 plans in v3.0 -- 2/7 phases + 3 plans)
 | 18-polymarket-driven-forecasting | 3 | 14min | 5min |
 | 19-admin-dashboard-foundation | 3 | 20min | 7min |
 | 20-daemon-consolidation | 3 | 25min | 8min |
-| 21-source-expansion-feed-mgmt | 3 | 21min | 7min |
+| 21-source-expansion-feed-mgmt | 4 | 27min | 7min |
 
 ## Accumulated Context
 
@@ -84,6 +84,10 @@ Key decisions affecting current work:
 - Source tier/propaganda maps are frontend-only static data, ported from WM (2026-03-06)
 - Jaccard threshold 0.5 for article clustering; probability spike threshold 0.15 for breaking alerts (2026-03-06)
 - Alert sound default: off (opt-in via localStorage geopol-alert-sound) (2026-03-06)
+- YouTube IFrame API: lazy-loaded via Promise wrapper, onYouTubeIframeAPIReady set before script injection (2026-03-06)
+- Exclusive unmute: only one YouTube player can produce audio at a time (2026-03-06)
+- SettingsModal sources are static catalog (45 entries, 10 categories), not DB-driven (2026-03-06)
+- geopol:sources-changed CustomEvent dispatches on toggle; consumer wired in Plan 05 (2026-03-06)
 
 ### Deferred Issues
 
@@ -107,6 +111,6 @@ Key decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-03-06
-Stopped at: Completed 21-03-PLAN.md (dashboard NewsFeedPanel + BreakingNewsBanner)
+Stopped at: Completed 21-04-PLAN.md (LiveStreamsPanel + SettingsModal)
 Resume file: None
-Next: 21-04-PLAN.md
+Next: 21-05-PLAN.md
