@@ -188,28 +188,23 @@ async def count_today_new_forecasts(session: AsyncSession) -> int:
 
 
 async def count_today_reforecasts(session: AsyncSession) -> int:
-    """Count snapshots captured today for active Polymarket-driven comparisons.
+    """Count reforecasts done today using the reforecasted_at column.
 
-    Uses snapshot count as a proxy for re-forecast activity, since each
-    re-forecast cycle also captures new snapshots.
+    Direct query on Prediction.reforecasted_at -- no subtraction heuristic.
     """
     today_start = datetime.now(timezone.utc).replace(
         hour=0, minute=0, second=0, microsecond=0
     )
-    # Count predictions with polymarket provenance updated today
     stmt = (
         select(func.count())
         .where(
             Prediction.provenance.in_(["polymarket_driven", "polymarket_tracked"]),
-            Prediction.created_at >= today_start,
+            Prediction.reforecasted_at >= today_start,
         )
         .select_from(Prediction)
     )
     result = await session.execute(stmt)
-    total = result.scalar() or 0
-    # Subtract new forecasts (those are new, not re-forecasts)
-    new = await count_today_new_forecasts(session)
-    return max(0, total - new)
+    return result.scalar() or 0
 
 
 def _get_event_volume(event: dict) -> float:
@@ -598,7 +593,8 @@ class PolymarketAutoForecaster:
                         "brier_score": None,
                         "sample_size": 0,
                     }
-                    existing.created_at = datetime.now(timezone.utc)
+                    # Do NOT overwrite existing.created_at -- it must be immutable
+                    existing.reforecasted_at = datetime.now(timezone.utc)
                     await session.flush()
 
                     # Update comparison's geopol_probability
