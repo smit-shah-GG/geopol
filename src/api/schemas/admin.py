@@ -9,7 +9,9 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict
+from typing import Literal
+
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ProcessInfo(BaseModel):
@@ -68,3 +70,50 @@ class SourceInfo(BaseModel):
     last_run: datetime | None = None
     events_count: int = 0
     tier: str | None = None  # RSS feed tier classification
+
+
+# -----------------------------------------------------------------------
+# Feed CRUD schemas (21-01)
+# -----------------------------------------------------------------------
+
+
+class FeedInfo(BaseModel):
+    """Admin-facing RSS feed with health metrics."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    url: str
+    tier: int
+    category: str
+    lang: str
+    enabled: bool
+    last_poll_at: str | None = None
+    last_error: str | None = None
+    error_count: int = 0
+    articles_24h: int = 0
+    articles_total: int = 0
+    avg_articles_per_poll: float = 0.0
+    created_at: str
+
+
+class AddFeedRequest(BaseModel):
+    """Payload for POST /admin/feeds."""
+
+    name: str = Field(..., min_length=1, max_length=255)
+    url: str = Field(..., min_length=1)
+    tier: Literal[1, 2] = 2
+    category: str = "regional"
+    lang: str = "en"
+
+
+class UpdateFeedRequest(BaseModel):
+    """Payload for PUT /admin/feeds/{feed_id}. All fields optional."""
+
+    name: str | None = None
+    url: str | None = None
+    tier: Literal[1, 2] | None = None
+    category: str | None = None
+    lang: str | None = None
+    enabled: bool | None = None

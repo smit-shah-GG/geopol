@@ -17,23 +17,30 @@ Endpoints:
     GET  /logs                           -- ring buffer entries
     GET  /sources                        -- per-source health
     PUT  /sources/{source_name}/toggle   -- enable/disable source
+    GET  /feeds                          -- list all RSS feeds with health
+    POST /feeds                          -- add a new RSS feed
+    PUT  /feeds/{feed_id}                -- update feed properties
+    DELETE /feeds/{feed_id}              -- soft/hard delete a feed
 """
 
 from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.deps import get_db
 from src.api.log_buffer import get_ring_buffer
 from src.api.schemas.admin import (
+    AddFeedRequest,
     ConfigEntry,
     ConfigUpdate,
+    FeedInfo,
     LogEntryDTO,
     ProcessInfo,
     SourceInfo,
+    UpdateFeedRequest,
 )
 from src.api.services.admin_service import AdminService
 from src.settings import get_settings
@@ -211,3 +218,46 @@ async def toggle_source(
         raise HTTPException(400, "Request body must include 'enabled' (bool)")
     await svc.toggle_source(source_name, enabled)
     return {"status": "toggled", "source": source_name, "enabled": enabled}
+
+
+# -----------------------------------------------------------------------
+# Feed CRUD (21-01)
+# -----------------------------------------------------------------------
+
+
+@router.get("/feeds", response_model=list[FeedInfo])
+async def list_feeds(
+    svc: AdminService = Depends(_get_service),
+) -> list[FeedInfo]:
+    """Return all non-deleted RSS feeds with per-feed health metrics."""
+    return await svc.get_feeds()
+
+
+@router.post("/feeds", response_model=FeedInfo, status_code=201)
+async def add_feed(
+    body: AddFeedRequest,
+    svc: AdminService = Depends(_get_service),
+) -> FeedInfo:
+    """Add a new RSS feed to the registry."""
+    return await svc.add_feed(body)
+
+
+@router.put("/feeds/{feed_id}", response_model=FeedInfo)
+async def update_feed(
+    feed_id: int,
+    body: UpdateFeedRequest,
+    svc: AdminService = Depends(_get_service),
+) -> FeedInfo:
+    """Update feed properties (tier, enabled, category, etc.)."""
+    return await svc.update_feed(feed_id, body)
+
+
+@router.delete("/feeds/{feed_id}", status_code=204)
+async def delete_feed(
+    feed_id: int,
+    purge: bool = Query(False, description="Hard-delete instead of soft-delete"),
+    svc: AdminService = Depends(_get_service),
+) -> Response:
+    """Soft-delete a feed (or hard-delete with ?purge=true)."""
+    await svc.delete_feed(feed_id, purge=purge)
+    return Response(status_code=204)

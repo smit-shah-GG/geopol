@@ -18,8 +18,15 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.api.schemas.admin import ConfigEntry, ProcessInfo, SourceInfo
-from src.db.models import IngestRun, SystemConfig
+from src.api.schemas.admin import (
+    AddFeedRequest,
+    ConfigEntry,
+    FeedInfo,
+    ProcessInfo,
+    SourceInfo,
+    UpdateFeedRequest,
+)
+from src.db.models import IngestRun, RSSFeed, SystemConfig
 from src.scheduler.retry import JobFailureTracker
 from src.settings import Settings, get_settings
 
@@ -653,3 +660,103 @@ class AdminService:
         await self._db.execute(stmt)
         await self._db.commit()
         logger.info("Source %s toggled: enabled=%s", source_name, enabled)
+
+    # ------------------------------------------------------------------
+    # Feed CRUD (21-01)
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _feed_to_dto(feed: RSSFeed) -> FeedInfo:
+        """Convert an RSSFeed ORM instance to a FeedInfo DTO."""
+        return FeedInfo(
+            id=feed.id,
+            name=feed.name,
+            url=feed.url,
+            tier=feed.tier,
+            category=feed.category,
+            lang=feed.lang,
+            enabled=feed.enabled,
+            last_poll_at=feed.last_poll_at.isoformat() if feed.last_poll_at else None,
+            last_error=feed.last_error,
+            error_count=feed.error_count,
+            articles_24h=feed.articles_24h,
+            articles_total=feed.articles_total,
+            avg_articles_per_poll=feed.avg_articles_per_poll,
+            created_at=feed.created_at.isoformat(),
+        )
+
+    async def get_feeds(self) -> list[FeedInfo]:
+        """Return all non-deleted feeds ordered by tier then name."""
+        result = await self._db.execute(
+            select(RSSFeed)
+            .where(RSSFeed.deleted_at.is_(None))
+            .order_by(RSSFeed.tier, RSSFeed.name)
+        )
+        feeds = result.scalars().all()
+        return [self._feed_to_dto(f) for f in feeds]
+
+    async def add_feed(self, data: AddFeedRequest) -> FeedInfo:
+        """Insert a new feed. Raises 409 on duplicate name."""
+        # Check for name collision (including soft-deleted)
+        existing = await self._db.execute(
+            select(RSSFeed).where(RSSFeed.name == data.name)
+        )
+        if existing.scalar_one_or_none() is not None:
+            raise HTTPException(409, f"Feed with name {data.name!r} already exists")
+
+        feed = RSSFeed(
+            name=data.name,
+            url=data.url,
+            tier=data.tier,
+            category=data.category,
+            lang=data.lang,
+        )
+        self._db.add(feed)
+        await self._db.commit()
+        await self._db.refresh(feed)
+        logger.info("Feed added: %s (tier %d)", feed.name, feed.tier)
+        return self._feed_to_dto(feed)
+
+    async def update_feed(self, feed_id: int, data: UpdateFeedRequest) -> FeedInfo:
+        """Update non-None fields on a feed. Raises 404 if not found or deleted."""
+        result = await self._db.execute(
+            select(RSSFeed).where(
+                RSSFeed.id == feed_id,
+                RSSFeed.deleted_at.is_(None),
+            )
+        )
+        feed = result.scalar_one_or_none()
+        if feed is None:
+            raise HTTPException(404, f"Feed {feed_id} not found")
+
+        update_fields = data.model_dump(exclude_none=True)
+        if not update_fields:
+            raise HTTPException(400, "No fields to update")
+
+        for field_name, value in update_fields.items():
+            setattr(feed, field_name, value)
+
+        await self._db.commit()
+        await self._db.refresh(feed)
+        logger.info("Feed updated: id=%d, fields=%s", feed_id, list(update_fields.keys()))
+        return self._feed_to_dto(feed)
+
+    async def delete_feed(self, feed_id: int, purge: bool = False) -> None:
+        """Soft-delete (default) or hard-delete a feed. Raises 404 if not found."""
+        result = await self._db.execute(
+            select(RSSFeed).where(RSSFeed.id == feed_id)
+        )
+        feed = result.scalar_one_or_none()
+        if feed is None:
+            raise HTTPException(404, f"Feed {feed_id} not found")
+
+        if purge:
+            await self._db.delete(feed)
+            logger.info("Feed hard-deleted: id=%d, name=%s", feed_id, feed.name)
+        else:
+            if feed.deleted_at is not None:
+                raise HTTPException(404, f"Feed {feed_id} already deleted")
+            feed.deleted_at = datetime.now(timezone.utc)
+            logger.info("Feed soft-deleted: id=%d, name=%s", feed_id, feed.name)
+
+        await self._db.commit()
