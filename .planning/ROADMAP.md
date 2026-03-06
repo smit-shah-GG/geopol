@@ -457,9 +457,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 20-01-PLAN.md -- Scheduler package: APScheduler core, dependency container, 9 job wrappers, failure tracking
-- [ ] 20-02-PLAN.md -- FastAPI integration: lifespan mount, admin API rewire, graceful shutdown
-- [ ] 20-03-PLAN.md -- Frontend ProcessTable update with pause/resume controls + verification
+- [ ] 22-01-PLAN.md -- DB schema (reforecasted_at, polymarket_accuracy table), bug fix, cap tracking rewrite
+- [ ] 22-02-PLAN.md -- Resolution engine with voided detection, accuracy computation, cycle reorder, top-10 model, client hardening
+- [ ] 22-03-PLAN.md -- Admin head-to-head accuracy panel (backend endpoint + frontend AccuracyPanel)
 
 ### Phase 23: Historical Backtesting
 **Goal**: The system can evaluate its own historical prediction accuracy through walk-forward evaluation, compare TiRGN vs RE-GCN model performance, and audit calibration quality over time -- all as an internal reporting system accessible from the admin dashboard, not public-facing.
