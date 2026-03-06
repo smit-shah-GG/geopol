@@ -5,7 +5,7 @@
 See: .planning/PROJECT.md (updated 2026-03-04)
 
 **Core value:** Explainability -- every forecast must provide clear, traceable reasoning paths
-**Current focus:** v3.0 Operational Command & Verification -- Phase 22 Polymarket Hardening
+**Current focus:** v3.0 Operational Command & Verification -- Phase 23 Historical Backtesting
 
 ## Current Position
 
@@ -13,10 +13,10 @@ Milestone: v3.0 Operational Command & Verification
 Phase: 22 of 25 (Polymarket Hardening) -- Complete
 Plan: 03 of 03
 Status: Phase complete
-Last activity: 2026-03-06 -- Completed 22-02-PLAN.md (Brier scoring engine + resolution pipeline)
+Last activity: 2026-03-06 -- Completed Phase 22 (Polymarket Hardening)
 
 Progress: [########################################################] 100% (83/80+ plans lifetime)
-v3.0:    [#################   ] 72% (18/25 plans in v3.0 -- 3.6/7 phases)
+v3.0:    [#################   ] 72% (18/25 plans in v3.0 -- 4/7 phases)
 
 ## Performance Metrics
 
@@ -121,6 +121,6 @@ Key decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-03-06
-Stopped at: Completed 22-02-PLAN.md (Phase 22 complete)
+Stopped at: Phase 22 complete
 Resume file: None
-Next: /gsd:discuss-phase 23
+Next: Phase 23 (Historical Backtesting) -- depends on Phase 22 (clean resolution data)

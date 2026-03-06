@@ -213,11 +213,11 @@ Scope areas:
 
 ### Polymarket Hardening
 
-- [ ] **POLY-01**: Fix `reforecast_active()` bug where `Prediction.created_at` overwrite corrupts daily cap tracking -- reforecast must preserve original creation timestamp
-- [ ] **POLY-02**: Cumulative Brier score tracking: system computes rolling Brier score for Geopol predictions vs Polymarket market prices on all resolved matched questions, stored in `polymarket_accuracy` table
-- [ ] **POLY-03**: Head-to-head accuracy dashboard panel showing Geopol vs Polymarket Brier score curves over time, per-category breakdown, and win/loss record
-- [ ] **POLY-04**: Resolution tracking: system monitors Polymarket question resolution status, detects ambiguous/voided resolutions, and handles them gracefully (exclude from accuracy metrics)
-- [ ] **POLY-05**: Polymarket polling reliability: retry logic with exponential backoff, API rate limit compliance, graceful degradation when Polymarket API is unavailable -- no silent failures
+- [x] **POLY-01**: Fix `reforecast_active()` bug where `Prediction.created_at` overwrite corrupts daily cap tracking -- reforecast must preserve original creation timestamp
+- [x] **POLY-02**: Cumulative Brier score tracking: system computes rolling Brier score for Geopol predictions vs Polymarket market prices on all resolved matched questions, stored in `polymarket_accuracy` table
+- [x] **POLY-03**: Head-to-head accuracy dashboard panel showing Geopol vs Polymarket Brier score curves over time, per-category breakdown, and win/loss record
+- [x] **POLY-04**: Resolution tracking: system monitors Polymarket question resolution status, detects ambiguous/voided resolutions, and handles them gracefully (exclude from accuracy metrics)
+- [x] **POLY-05**: Polymarket polling reliability: retry logic with exponential backoff, API rate limit compliance, graceful degradation when Polymarket API is unavailable -- no silent failures
 
 ### Historical Backtesting
 
@@ -382,11 +382,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SRC-04 | Phase 21 | Complete |
 | SRC-05 | Phase 21 | Complete |
 | SRC-06 | Phase 21 | Complete |
-| POLY-01 | Phase 22 | Pending |
-| POLY-02 | Phase 22 | Pending |
-| POLY-03 | Phase 22 | Pending |
-| POLY-04 | Phase 22 | Pending |
-| POLY-05 | Phase 22 | Pending |
+| POLY-01 | Phase 22 | Complete |
+| POLY-02 | Phase 22 | Complete |
+| POLY-03 | Phase 22 | Complete |
+| POLY-04 | Phase 22 | Complete |
+| POLY-05 | Phase 22 | Complete |
 | BTEST-01 | Phase 23 | Pending |
 | BTEST-02 | Phase 23 | Pending |
 | BTEST-03 | Phase 23 | Pending |

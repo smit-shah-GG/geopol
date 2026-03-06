@@ -457,9 +457,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 22-01-PLAN.md -- DB schema (reforecasted_at, polymarket_accuracy table), bug fix, cap tracking rewrite
-- [ ] 22-02-PLAN.md -- Resolution engine with voided detection, accuracy computation, cycle reorder, top-10 model, client hardening
-- [ ] 22-03-PLAN.md -- Admin head-to-head accuracy panel (backend endpoint + frontend AccuracyPanel)
+- [x] 22-01-PLAN.md -- DB schema (reforecasted_at, polymarket_accuracy table), bug fix, cap tracking rewrite
+- [x] 22-02-PLAN.md -- Resolution engine with voided detection, accuracy computation, cycle reorder, top-10 model, client hardening
+- [x] 22-03-PLAN.md -- Admin head-to-head accuracy panel (backend endpoint + frontend AccuracyPanel)
 
 ### Phase 23: Historical Backtesting
 **Goal**: The system can evaluate its own historical prediction accuracy through walk-forward evaluation, compare TiRGN vs RE-GCN model performance, and audit calibration quality over time -- all as an internal reporting system accessible from the admin dashboard, not public-facing.
@@ -540,9 +540,9 @@ Phase 19 -> Phase 20. Then parallel: Phase 21 + Phase 22. Then Phase 23 (after 2
 | 19. Admin Dashboard Foundation | v3.0 | 3/3 | Complete | 2026-03-05 |
 | 20. Daemon Consolidation | v3.0 | 3/3 | Complete | 2026-03-05 |
 | 21. Source Expansion & Feed Mgmt | v3.0 | 5/5 | Complete | 2026-03-06 |
-| 22. Polymarket Hardening | v3.0 | 0/TBD | Not started | - |
+| 22. Polymarket Hardening | v3.0 | 3/3 | Complete | 2026-03-06 |
 | 23. Historical Backtesting | v3.0 | 0/TBD | Not started | - |
 | 24. Global Seeding & Globe Layers | v3.0 | 0/TBD | Not started | - |
 | 25. Frontend Finalization | v3.0 | 0/TBD | Not started | - |
 
-**Total:** 20 phases complete (v1.0 + v1.1 + v2.0 + v2.1 + v3.0 partial), 71 plans delivered. v3.0: 2/7 phases complete.
+**Total:** 22 phases complete (v1.0 + v1.1 + v2.0 + v2.1 + v3.0 partial), 78 plans delivered. v3.0: 4/7 phases complete.
