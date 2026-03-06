@@ -5,25 +5,25 @@
 See: .planning/PROJECT.md (updated 2026-03-04)
 
 **Core value:** Explainability -- every forecast must provide clear, traceable reasoning paths
-**Current focus:** v3.0 Operational Command & Verification -- Phase 20 Daemon Consolidation
+**Current focus:** v3.0 Operational Command & Verification -- Phase 21 Source Expansion & Feed Management
 
 ## Current Position
 
 Milestone: v3.0 Operational Command & Verification
-Phase: 20 of 25 (Daemon Consolidation) -- COMPLETE
-Plan: 03 of 03
-Status: Phase complete
-Last activity: 2026-03-05 -- Completed 20-03-PLAN.md (admin ProcessTable pause/resume controls)
+Phase: 21 of 25 (Source Expansion & Feed Management) -- In progress
+Plan: 01 of 05
+Status: In progress
+Last activity: 2026-03-06 -- Completed 21-01-PLAN.md (RSS feed management backend)
 
-Progress: [########################################################] 100% (71/71+ plans lifetime)
-v3.0:    [######              ] 29% (6/21 plans in v3.0 -- 2/7 phases complete)
+Progress: [########################################################] 100% (72/72+ plans lifetime)
+v3.0:    [#######             ] 33% (7/21 plans in v3.0 -- 2/7 phases + 1 plan)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 71
+- Total plans completed: 72
 - Average duration: 10 minutes
-- Total execution time: 11.6 hours
+- Total execution time: 11.7 hours
 
 **By Phase:**
 
@@ -49,6 +49,7 @@ v3.0:    [######              ] 29% (6/21 plans in v3.0 -- 2/7 phases complete)
 | 18-polymarket-driven-forecasting | 3 | 14min | 5min |
 | 19-admin-dashboard-foundation | 3 | 20min | 7min |
 | 20-daemon-consolidation | 3 | 25min | 8min |
+| 21-source-expansion-feed-mgmt | 1 | 7min | 7min |
 
 ## Accumulated Context
 
@@ -76,6 +77,8 @@ Key decisions affecting current work:
 - asyncio.Lock for heavy job mutual exclusion -- FIFO queue prevents concurrent subprocess work (2026-03-05)
 - subprocess.run for scripts/ (not importable), in-process for src.polymarket.* (2026-03-05)
 - Singleton GDELTPoller in SharedDeps -- _last_url persists across poll cycles (2026-03-05)
+- RSS feeds: DB-backed with feed_config.py fallback, auto-disable after 5 failures, callback-based health updates (2026-03-06)
+- Feed CRUD: soft-delete default, hard delete via ?purge=true, 409 on duplicate name (2026-03-06)
 
 ### Deferred Issues
 
@@ -98,7 +101,7 @@ Key decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-03-05
-Stopped at: Completed 20-03-PLAN.md (admin ProcessTable pause/resume) -- Phase 20 complete
+Last session: 2026-03-06
+Stopped at: Completed 21-01-PLAN.md (RSS feed management backend)
 Resume file: None
-Next: /gsd:discuss-phase 21 (Source Expansion -- UCDP; requires API token procurement first)
+Next: 21-02-PLAN.md (UCDP conflict data integration)
