@@ -11,19 +11,19 @@ See: .planning/PROJECT.md (updated 2026-03-04)
 
 Milestone: v3.0 Operational Command & Verification
 Phase: 22 of 25 (Polymarket Hardening) -- In progress
-Plan: 01 of 03
+Plan: 03 of 03 (plan 02 pending)
 Status: In progress
-Last activity: 2026-03-06 -- Completed 22-01-PLAN.md (Schema + Bug Fix)
+Last activity: 2026-03-06 -- Completed 22-03-PLAN.md (Admin Accuracy Panel)
 
-Progress: [########################################################] 100% (81/80+ plans lifetime)
-v3.0:    [###############     ] 64% (16/25 plans in v3.0 -- 3.3/7 phases)
+Progress: [########################################################] 100% (82/80+ plans lifetime)
+v3.0:    [################    ] 68% (17/25 plans in v3.0 -- 3.4/7 phases)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 76
+- Total plans completed: 77
 - Average duration: 10 minutes
-- Total execution time: 12.1 hours
+- Total execution time: 12.2 hours
 
 **By Phase:**
 
@@ -50,7 +50,7 @@ v3.0:    [###############     ] 64% (16/25 plans in v3.0 -- 3.3/7 phases)
 | 19-admin-dashboard-foundation | 3 | 20min | 7min |
 | 20-daemon-consolidation | 3 | 25min | 8min |
 | 21-source-expansion-feed-mgmt | 5 | 34min | 7min |
-| 22-polymarket-hardening | 1 | 5min | 5min |
+| 22-polymarket-hardening | 2 | 11min | 6min |
 
 ## Accumulated Context
 
@@ -90,6 +90,8 @@ Key decisions affecting current work:
 - Exclusive unmute: only one YouTube player can produce audio at a time (2026-03-06)
 - SettingsModal sources are static catalog (45 entries, 10 categories), not DB-driven (2026-03-06)
 - geopol:sources-changed CustomEvent dispatches on toggle; consumer wired in Plan 05 (2026-03-06)
+- Accuracy panel: live-computed from polymarket_comparisons, not from polymarket_accuracy ledger (2026-03-06)
+- Winner = lower Brier score; client-side sorting with state preservation across 30s refresh (2026-03-06)
 
 ### Deferred Issues
 
@@ -113,6 +115,6 @@ Key decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-03-06
-Stopped at: Completed 22-01-PLAN.md
+Stopped at: Completed 22-03-PLAN.md
 Resume file: None
 Next: 22-02-PLAN.md (Brier scoring engine + resolution pipeline)
