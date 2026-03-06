@@ -208,25 +208,45 @@ def _keyword_search(
     )
 
 
+def _parse_date_lenient(date_str: str) -> datetime | None:
+    """Parse dates in ISO 8601 or RFC 2822 format. Returns None on failure."""
+    if not date_str:
+        return None
+    # Try ISO 8601 first
+    for fmt in ("%Y-%m-%dT%H:%M:%SZ", "%Y-%m-%dT%H:%M:%S%z", "%Y-%m-%d"):
+        try:
+            dt = datetime.strptime(date_str, fmt)
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            return dt
+        except ValueError:
+            continue
+    # Try RFC 2822 (email.utils handles most variants)
+    from email.utils import parsedate_to_datetime
+    try:
+        return parsedate_to_datetime(date_str)
+    except Exception:
+        return None
+
+
 def _recent_search(
     collection,  # noqa: ANN001
     limit: int,
 ) -> PaginatedResponse[ArticleDTO]:
     """Recent mode: articles from the last 24 hours sorted by published_at descending.
 
-    ChromaDB ``get()`` doesn't support ORDER BY, so we over-fetch with a
-    24-hour lookback ``where`` filter, sort Python-side, and truncate.
-    ISO 8601 string comparison is lexicographically equivalent to
-    chronological order, so direct string sort works.
+    ChromaDB ``$gte`` only works on numeric metadata, and ``published_at``
+    is stored as a string (RFC 2822 or ISO 8601 depending on the feed).
+    We fetch a broad batch and filter + sort Python-side.
     """
-    cutoff = (datetime.now(timezone.utc) - timedelta(hours=24)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    cutoff_dt = datetime.now(timezone.utc) - timedelta(hours=24)
 
-    # Over-fetch to allow for sorting and truncation
-    fetch_limit = min(limit * 3, 300)
+    # Fetch a generous batch — Python-side date filter handles the rest.
+    # 6K total articles is small enough that 1000 is fine.
+    fetch_limit = min(max(limit * 10, 500), 1000)
 
     try:
         results = collection.get(
-            where={"published_at": {"$gte": cutoff}},
             limit=fetch_limit,
             include=["documents", "metadatas"],
         )
@@ -237,8 +257,8 @@ def _recent_search(
     if not results or not results.get("ids"):
         return PaginatedResponse(items=[], next_cursor=None, has_more=False)
 
-    # Build intermediate list with published_at for sorting
-    raw_articles: list[tuple[str, ArticleDTO]] = []
+    # Build intermediate list, parsing dates and filtering to 24h window
+    raw_articles: list[tuple[datetime, ArticleDTO]] = []
     ids = results["ids"]
     documents = results.get("documents") or []
     metadatas = results.get("metadatas") or []
@@ -246,24 +266,35 @@ def _recent_search(
     for i, chunk_id in enumerate(ids):
         doc = documents[i] if i < len(documents) else ""
         meta = metadatas[i] if i < len(metadatas) else {}
-        published_at = meta.get("published_at") or ""
+        published_str = meta.get("published_at") or ""
+        parsed_dt = _parse_date_lenient(published_str)
+
+        if parsed_dt is None:
+            continue
 
         raw_articles.append((
-            published_at,
+            parsed_dt,
             ArticleDTO(
                 chunk_id=chunk_id,
                 title=meta.get("title") or "Untitled",
                 url=meta.get("source_url") or "",
                 source_feed=meta.get("source_name") or "unknown",
                 country_iso=None,
-                published_at=published_at or None,
+                published_at=published_str or None,
                 snippet=(doc or "")[:200],
                 relevance_score=None,
             ),
         ))
 
-    # Sort by published_at descending (ISO string comparison = chronological)
+    # Sort by parsed datetime descending
     raw_articles.sort(key=lambda x: x[0], reverse=True)
+
+    # Prefer 24h window; fall back to most recent if stale
+    recent = [(dt, dto) for dt, dto in raw_articles if dt >= cutoff_dt]
+    if recent:
+        raw_articles = recent
+    else:
+        logger.info("No articles within 24h, falling back to most recent %d", limit)
 
     articles = [dto for _, dto in raw_articles[:limit]]
 
