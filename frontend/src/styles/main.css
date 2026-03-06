@@ -645,6 +645,62 @@ body.has-breaking-alert .dashboard-columns {
   background: rgba(230, 162, 60, 0.1);
 }
 
+/* Source health indicator */
+.news-feed-health-indicator {
+  padding: 4px 10px;
+  margin: 0 var(--space-sm);
+}
+
+.news-feed-health-indicator.hidden {
+  display: none;
+}
+
+.health-indicator-label {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  opacity: 0.7;
+  transition: opacity 0.15s;
+}
+
+.health-indicator-label::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--semantic-warning);
+  flex-shrink: 0;
+}
+
+.health-indicator-label:hover {
+  opacity: 1;
+}
+
+.health-indicator-details {
+  margin-top: var(--space-xs);
+  padding: var(--space-xs) var(--space-sm);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+}
+
+.health-indicator-details.hidden {
+  display: none;
+}
+
+.health-indicator-item {
+  padding: 2px 0;
+  color: var(--semantic-warning);
+}
+
 /* Windowed list chunks */
 .windowed-list {
   overflow-y: auto;

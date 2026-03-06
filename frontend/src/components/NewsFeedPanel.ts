@@ -7,6 +7,12 @@
  * source tier and propaganda risk data, and rendered through WindowedList for
  * scroll performance.
  *
+ * Source filtering: reads disabled sources from localStorage (geopol-disabled-sources)
+ * set by SettingsModal. Listens for geopol:sources-changed CustomEvent for live updates.
+ *
+ * Source health indicator: fetches public /api/v1/sources to show a subtle
+ * "Some sources temporarily unavailable" label when data pipelines are unhealthy.
+ *
  * Replaces EventTimelinePanel in dashboard Col 1 (Phase 21).
  */
 
@@ -302,16 +308,59 @@ function tierLabel(tier: number): string {
 }
 
 // ---------------------------------------------------------------------------
+// Disabled source preferences (mirrors SettingsModal localStorage contract)
+// ---------------------------------------------------------------------------
+
+const DISABLED_SOURCES_KEY = 'geopol-disabled-sources';
+
+function getDisabledSources(): Set<string> {
+  try {
+    const raw = localStorage.getItem(DISABLED_SOURCES_KEY);
+    if (!raw) return new Set();
+    const arr = JSON.parse(raw) as string[];
+    return new Set(arr);
+  } catch {
+    return new Set();
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Source health status (from public /api/v1/sources)
+// ---------------------------------------------------------------------------
+
+interface SourceHealthStatus {
+  name: string;
+  healthy: boolean;
+  detail: string;
+}
+
+async function fetchSourceHealth(): Promise<SourceHealthStatus[]> {
+  try {
+    const resp = await fetch('/api/v1/sources');
+    if (!resp.ok) return [];
+    return (await resp.json()) as SourceHealthStatus[];
+  } catch {
+    return [];
+  }
+}
+
+// ---------------------------------------------------------------------------
 // NewsFeedPanel
 // ---------------------------------------------------------------------------
 
 export class NewsFeedPanel extends Panel {
   private categoryFilter: CategoryKey = 'all';
   private pillContainer: HTMLElement;
+  private healthIndicator: HTMLElement;
   private listContainer: HTMLElement;
   private windowedList: WindowedList<ArticleCluster> | null = null;
   private rawArticles: ArticleDTO[] = [];
   private clusters: ArticleCluster[] = [];
+  private disabledSources: Set<string> = getDisabledSources();
+  private readonly onSourcesChanged = () => {
+    this.disabledSources = getDisabledSources();
+    this.renderArticles();
+  };
 
   constructor() {
     super({ id: 'news-feed', title: 'NEWS FEED', showCount: true });
@@ -322,6 +371,11 @@ export class NewsFeedPanel extends Panel {
     this.element.insertBefore(this.pillContainer, this.content);
     this.buildPills();
 
+    // Source health indicator (below pills, above content)
+    this.healthIndicator = document.createElement('div');
+    this.healthIndicator.className = 'news-feed-health-indicator hidden';
+    this.element.insertBefore(this.healthIndicator, this.content);
+
     // The content div becomes the scrollable list container
     this.listContainer = this.content;
 
@@ -330,6 +384,9 @@ export class NewsFeedPanel extends Panel {
       { container: this.listContainer, chunkSize: 8, bufferChunks: 1 },
       (cluster, _index) => this.renderClusterHtml(cluster),
     );
+
+    // Listen for source preference changes from SettingsModal
+    document.addEventListener('geopol:sources-changed', this.onSourcesChanged);
   }
 
   // -----------------------------------------------------------------------
@@ -360,14 +417,25 @@ export class NewsFeedPanel extends Panel {
 
   public async refresh(): Promise<void> {
     try {
-      this.rawArticles = await forecastClient.getRecentArticles(100);
+      // Fetch articles and source health in parallel
+      const [articles, sourceHealth] = await Promise.all([
+        forecastClient.getRecentArticles(100),
+        fetchSourceHealth(),
+      ]);
+
+      this.rawArticles = articles;
       // Enrich with source intelligence
       for (const art of this.rawArticles) {
         art.source_tier = getSourceTier(art.source_feed);
         art.propaganda_risk = getPropagandaRisk(art.source_feed).risk;
       }
+
+      // Refresh disabled sources from localStorage
+      this.disabledSources = getDisabledSources();
+
       this.setDataBadge('live');
       this.renderArticles();
+      this.updateHealthIndicator(sourceHealth);
     } catch (err: unknown) {
       if (this.isAbortError(err)) return;
       console.error('[NewsFeedPanel] refresh failed:', err);
@@ -382,25 +450,35 @@ export class NewsFeedPanel extends Panel {
   // -----------------------------------------------------------------------
 
   private renderArticles(): void {
-    // Filter articles by category
+    // Step 1: Filter articles by disabled source preferences
+    let visible: ArticleDTO[];
+    if (this.disabledSources.size > 0) {
+      visible = this.rawArticles.filter(
+        (a) => !this.disabledSources.has(a.source_feed),
+      );
+    } else {
+      visible = this.rawArticles;
+    }
+
+    // Step 2: Filter by category
     let filtered: ArticleDTO[];
     if (this.categoryFilter === 'all') {
-      filtered = this.rawArticles;
+      filtered = visible;
     } else if (this.categoryFilter === 'regional') {
       // Regional = tier 4 (not in any named category)
-      filtered = this.rawArticles.filter(
+      filtered = visible.filter(
         (a) => (a.source_tier ?? getSourceTier(a.source_feed)) >= 4,
       );
     } else {
       const categoryDef = CATEGORIES[this.categoryFilter]!;
-      filtered = this.rawArticles.filter((a) =>
+      filtered = visible.filter((a) =>
         categoryDef.sources.some((src) =>
           a.source_feed.toLowerCase().includes(src.toLowerCase()),
         ),
       );
     }
 
-    // Cluster
+    // Step 3: Cluster
     this.clusters = clusterArticles(filtered);
     this.setCount(this.clusters.length);
 
@@ -412,7 +490,7 @@ export class NewsFeedPanel extends Panel {
       return;
     }
 
-    // Render via windowed list
+    // Step 4: Render via windowed list
     if (this.windowedList) {
       this.windowedList.setItems(this.clusters);
     }
@@ -463,10 +541,48 @@ export class NewsFeedPanel extends Panel {
   }
 
   // -----------------------------------------------------------------------
+  // Source health indicator
+  // -----------------------------------------------------------------------
+
+  private updateHealthIndicator(sources: SourceHealthStatus[]): void {
+    const unhealthy = sources.filter((s) => !s.healthy);
+    if (unhealthy.length === 0) {
+      this.healthIndicator.classList.add('hidden');
+      return;
+    }
+
+    // Build indicator with expandable detail
+    this.healthIndicator.classList.remove('hidden');
+    this.healthIndicator.innerHTML = '';
+
+    const label = document.createElement('span');
+    label.className = 'health-indicator-label';
+    label.textContent = 'Some sources temporarily unavailable';
+    label.title = unhealthy.map((s) => `${s.name}: ${s.detail}`).join('\n');
+
+    const detailList = document.createElement('div');
+    detailList.className = 'health-indicator-details hidden';
+    for (const src of unhealthy) {
+      const item = document.createElement('div');
+      item.className = 'health-indicator-item';
+      item.textContent = `${src.name}: ${src.detail}`;
+      detailList.appendChild(item);
+    }
+
+    label.addEventListener('click', () => {
+      detailList.classList.toggle('hidden');
+    });
+
+    this.healthIndicator.appendChild(label);
+    this.healthIndicator.appendChild(detailList);
+  }
+
+  // -----------------------------------------------------------------------
   // Cleanup
   // -----------------------------------------------------------------------
 
   public override destroy(): void {
+    document.removeEventListener('geopol:sources-changed', this.onSourcesChanged);
     this.windowedList?.destroy();
     this.windowedList = null;
     super.destroy();
