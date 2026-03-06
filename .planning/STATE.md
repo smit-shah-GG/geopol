@@ -11,19 +11,19 @@ See: .planning/PROJECT.md (updated 2026-03-04)
 
 Milestone: v3.0 Operational Command & Verification
 Phase: 21 of 25 (Source Expansion & Feed Management) -- In progress
-Plan: 02 of 05
+Plan: 03 of 05
 Status: In progress
-Last activity: 2026-03-06 -- Completed 21-02-PLAN.md (cross-source dedup + articles recent mode)
+Last activity: 2026-03-06 -- Completed 21-03-PLAN.md (dashboard NewsFeedPanel + BreakingNewsBanner)
 
-Progress: [########################################################] 100% (73/73+ plans lifetime)
-v3.0:    [########            ] 38% (8/21 plans in v3.0 -- 2/7 phases + 2 plans)
+Progress: [########################################################] 100% (74/74+ plans lifetime)
+v3.0:    [#########           ] 43% (9/21 plans in v3.0 -- 2/7 phases + 3 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 73
+- Total plans completed: 74
 - Average duration: 10 minutes
-- Total execution time: 11.8 hours
+- Total execution time: 11.9 hours
 
 **By Phase:**
 
@@ -49,7 +49,7 @@ v3.0:    [########            ] 38% (8/21 plans in v3.0 -- 2/7 phases + 2 plans)
 | 18-polymarket-driven-forecasting | 3 | 14min | 5min |
 | 19-admin-dashboard-foundation | 3 | 20min | 7min |
 | 20-daemon-consolidation | 3 | 25min | 8min |
-| 21-source-expansion-feed-mgmt | 2 | 14min | 7min |
+| 21-source-expansion-feed-mgmt | 3 | 21min | 7min |
 
 ## Accumulated Context
 
@@ -81,6 +81,9 @@ Key decisions affecting current work:
 - Feed CRUD: soft-delete default, hard delete via ?purge=true, 409 on duplicate name (2026-03-06)
 - Cross-source dedup: conservative (date, country, coarse_type) fingerprint, ACLED > UCDP > GDELT priority (2026-03-06)
 - Actor1 code used as country_iso proxy for dedup fingerprinting (2026-03-06)
+- Source tier/propaganda maps are frontend-only static data, ported from WM (2026-03-06)
+- Jaccard threshold 0.5 for article clustering; probability spike threshold 0.15 for breaking alerts (2026-03-06)
+- Alert sound default: off (opt-in via localStorage geopol-alert-sound) (2026-03-06)
 
 ### Deferred Issues
 
@@ -104,6 +107,6 @@ Key decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-03-06
-Stopped at: Completed 21-02-PLAN.md (cross-source dedup + articles recent mode)
+Stopped at: Completed 21-03-PLAN.md (dashboard NewsFeedPanel + BreakingNewsBanner)
 Resume file: None
-Next: 21-03-PLAN.md
+Next: 21-04-PLAN.md
