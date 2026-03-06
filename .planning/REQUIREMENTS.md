@@ -378,10 +378,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DAEMON-05 | Phase 20 | Complete |
 | SRC-01 | Phase 21 | Pending |
 | SRC-02 | Phase 21 | Pending |
-| SRC-03 | Phase 21 | Pending |
-| SRC-04 | Phase 21 | Pending |
-| SRC-05 | Phase 21 | Pending |
-| SRC-06 | Phase 21 | Pending |
+| SRC-03 | Phase 21 | Complete |
+| SRC-04 | Phase 21 | Complete |
+| SRC-05 | Phase 21 | Complete |
+| SRC-06 | Phase 21 | Complete |
 | POLY-01 | Phase 22 | Pending |
 | POLY-02 | Phase 22 | Pending |
 | POLY-03 | Phase 22 | Pending |
