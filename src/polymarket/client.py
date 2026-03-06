@@ -158,9 +158,32 @@ class PolymarketClient:
         reraise=True,
     )
     async def _get_json(self, url: str, params: dict[str, Any] | None = None) -> Any:
-        """GET request with retry. Raises on non-200 or transport error."""
+        """GET request with retry. Raises on non-200 or transport error.
+
+        Handles HTTP 429 specifically: reads the Retry-After header and
+        sleeps for the indicated duration (capped at 60s) before raising
+        so tenacity can retry with backoff.
+        """
+        import asyncio as _asyncio
+
         session = await self._get_session()
         async with session.get(url, params=params) as resp:
+            if resp.status == 429:
+                retry_after = min(
+                    int(resp.headers.get("Retry-After", "30")), 60
+                )
+                logger.warning(
+                    "Polymarket 429 rate limit on %s, retry after %ds",
+                    url,
+                    retry_after,
+                )
+                await _asyncio.sleep(retry_after)
+                raise aiohttp.ClientResponseError(
+                    resp.request_info,
+                    resp.history,
+                    status=429,
+                    message=f"HTTP 429 rate limited from {url}",
+                )
             if resp.status != 200:
                 raise aiohttp.ClientResponseError(
                     resp.request_info,
@@ -325,6 +348,42 @@ class PolymarketClient:
             logger.warning("Failed to fetch prices for event %s: %s", event_id, exc)
             self._record_failure(exc)
             return []
+
+    async def fetch_event_details(self, event_id: str) -> dict | None:
+        """Fetch full event data including resolution metadata.
+
+        Unlike fetch_event_prices() which filters to markets with price data,
+        this returns the raw event dict with all market fields (closed,
+        resolutionSource, automaticallyResolved, umaResolutionStatus, etc.).
+
+        Returns None on failure or circuit breaker open.
+        """
+        if self._is_circuit_open():
+            return None
+        try:
+            url = f"{self.GAMMA_API_BASE}/events/{event_id}"
+            data = await self._get_json(url)
+            self._record_success()
+            return data if isinstance(data, dict) else None
+        except Exception as exc:
+            logger.warning("Failed to fetch event details for %s: %s", event_id, exc)
+            self._record_failure(exc)
+            return None
+
+    @property
+    def circuit_state(self) -> str:
+        """Return current circuit breaker state: closed | open | half-open."""
+        if not self._circuit_open:
+            return "closed"
+        elapsed = time.monotonic() - self._last_failure_time
+        if elapsed >= _CIRCUIT_RECOVERY_SECONDS:
+            return "half-open"
+        return "open"
+
+    @property
+    def consecutive_failures(self) -> int:
+        """Current consecutive failure count for admin status exposure."""
+        return self._consecutive_failures
 
     async def close(self) -> None:
         """Close internally-created session. No-op for external sessions."""

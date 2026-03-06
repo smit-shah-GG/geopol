@@ -18,6 +18,7 @@ from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.db.models import (
+    PolymarketAccuracy,
     PolymarketComparison,
     PolymarketSnapshot,
     Prediction,
@@ -240,21 +241,29 @@ class PolymarketComparisonService:
         logger.info("Captured %d snapshots for %d active comparisons", count, len(comparisons))
         return count
 
-    async def resolve_completed(self) -> int:
+    async def resolve_completed(self) -> dict[str, int]:
         """Resolve comparisons where the Polymarket event has completed.
 
-        Checks each active comparison's event status via the API. For
-        resolved events, computes Brier scores for both Polymarket and
-        Geopol and updates the comparison row.
+        Uses Gamma API resolution metadata (closed, resolutionSource,
+        umaResolutionStatus, outcomePrices) rather than price convergence
+        alone. Detects voided/cancelled markets and excludes them from
+        Brier score computation.
 
-        Brier score: (forecast - outcome)^2
-          - outcome is 1.0 if event resolved 'Yes', 0.0 if 'No'
-          - Lower is better
+        Resolution flow per active comparison:
+          1. Fetch full event details via fetch_event_details()
+          2. Check each market's closed flag
+          3. If voided -> mark "voided", exclude from accuracy
+          4. If resolved -> extract outcome, compute Brier, mark "resolved"
+
+        After committing resolutions, computes an accuracy snapshot if any
+        comparisons were resolved (not voided-only).
 
         Returns:
-            Number of comparisons resolved.
+            Dict with keys: resolved, voided, accuracy_snapshot_computed.
         """
         resolved_count = 0
+        voided_count = 0
+        last_resolved_id: int | None = None
 
         async with self._session_factory() as session:
             stmt = select(PolymarketComparison).where(
@@ -264,68 +273,261 @@ class PolymarketComparisonService:
             comparisons: list[PolymarketComparison] = list(result.scalars().all())
 
             for comp in comparisons:
-                # Fetch event to check resolution status
-                markets = await self._client.fetch_event_prices(
+                # Fetch full event data including resolution metadata
+                event_data = await self._client.fetch_event_details(
                     comp.polymarket_event_id
                 )
-                if not markets:
+                if not event_data:
                     continue
 
-                # Check if any market in the event has resolved
-                resolved_market = None
+                markets = event_data.get("markets", [])
+                if not isinstance(markets, list):
+                    continue
+
                 for market in markets:
-                    if market.get("resolved") or market.get("closed"):
-                        resolved_market = market
+                    if not isinstance(market, dict):
+                        continue
+                    if not market.get("closed"):
+                        continue
+
+                    # Check for voided/cancelled market
+                    if self._is_voided_market(market):
+                        comp.status = "voided"
+                        comp.resolved_at = _utcnow()
+                        voided_count += 1
+                        logger.info(
+                            "Voided comparison %d: %s",
+                            comp.id,
+                            comp.polymarket_title[:60],
+                        )
                         break
 
-                if resolved_market is None:
-                    continue
+                    # Market is closed and not voided -- extract outcome
+                    outcome = self._extract_outcome(market)
+                    if outcome is not None:
+                        # Get final Polymarket price at resolution
+                        pm_final_price = _parse_outcome_price([market])
+                        if pm_final_price is None:
+                            pm_final_price = comp.polymarket_price or 0.5
 
-                # Determine outcome from resolution data
-                outcome = self._extract_outcome(resolved_market)
-                if outcome is None:
-                    logger.warning(
-                        "Cannot determine outcome for resolved event %s",
-                        comp.polymarket_event_id,
-                    )
-                    continue
+                        # Get Geopol probability (use stored value)
+                        geopol_prob = comp.geopol_probability
+                        if geopol_prob is None:
+                            geopol_prob = 0.5
 
-                # Get final Polymarket price at resolution
-                pm_final_price = _parse_outcome_price([resolved_market])
-                if pm_final_price is None:
-                    pm_final_price = comp.polymarket_price or 0.5
+                        # Compute Brier scores
+                        geopol_brier = (geopol_prob - outcome) ** 2
+                        polymarket_brier = (pm_final_price - outcome) ** 2
 
-                # Get Geopol probability (use stored value)
-                geopol_prob = comp.geopol_probability
-                if geopol_prob is None:
-                    geopol_prob = 0.5
+                        comp.status = "resolved"
+                        comp.polymarket_outcome = outcome
+                        comp.geopol_brier = geopol_brier
+                        comp.polymarket_brier = polymarket_brier
+                        comp.resolved_at = _utcnow()
+                        last_resolved_id = comp.id
+                        resolved_count += 1
 
-                # Compute Brier scores
-                geopol_brier = (geopol_prob - outcome) ** 2
-                polymarket_brier = (pm_final_price - outcome) ** 2
-
-                # Update comparison row
-                comp.status = "resolved"
-                comp.polymarket_outcome = outcome
-                comp.geopol_brier = geopol_brier
-                comp.polymarket_brier = polymarket_brier
-                comp.resolved_at = _utcnow()
-                resolved_count += 1
-
-                logger.info(
-                    "Resolved comparison %d: outcome=%.1f, "
-                    "geopol_brier=%.4f, polymarket_brier=%.4f",
-                    comp.id,
-                    outcome,
-                    geopol_brier,
-                    polymarket_brier,
-                )
+                        logger.info(
+                            "Resolved comparison %d: outcome=%.1f, "
+                            "geopol_brier=%.4f, polymarket_brier=%.4f",
+                            comp.id,
+                            outcome,
+                            geopol_brier,
+                            polymarket_brier,
+                        )
+                        break
 
             await session.commit()
 
+        counts: dict[str, int] = {
+            "resolved": resolved_count,
+            "voided": voided_count,
+            "accuracy_snapshot_computed": 0,
+        }
+
         if resolved_count:
-            logger.info("Resolved %d comparisons", resolved_count)
-        return resolved_count
+            logger.info(
+                "Resolved %d, voided %d comparisons", resolved_count, voided_count
+            )
+            await self.compute_accuracy_snapshot(
+                triggered_by_comparison_id=last_resolved_id
+            )
+            counts["accuracy_snapshot_computed"] = 1
+
+        return counts
+
+    @staticmethod
+    def _is_voided_market(market: dict[str, Any]) -> bool:
+        """Detect voided/cancelled markets from Gamma API resolution metadata.
+
+        Must only be called when ``market.get("closed") is True``.
+
+        Voided if any of:
+          - Outcome prices near [0.5, 0.5] (both within 0.05 of 0.5)
+          - resolutionSource contains "void", "cancel", or "invalid"
+          - umaResolutionStatus contains "void" or "resolved_too_early"
+
+        All resolution metadata is logged at DEBUG level for future
+        heuristic refinement.
+        """
+        import json as _json
+
+        # Log all resolution metadata for debugging
+        logger.debug(
+            "Resolution metadata: closed=%s, resolutionSource=%s, "
+            "automaticallyResolved=%s, umaResolutionStatus=%s, "
+            "outcomePrices=%s",
+            market.get("closed"),
+            market.get("resolutionSource"),
+            market.get("automaticallyResolved"),
+            market.get("umaResolutionStatus"),
+            market.get("outcomePrices"),
+        )
+
+        # Check resolutionSource for void/cancel/invalid keywords
+        resolution_source = market.get("resolutionSource", "")
+        if isinstance(resolution_source, str) and resolution_source:
+            source_lower = resolution_source.lower()
+            if any(kw in source_lower for kw in ("void", "cancel", "invalid")):
+                return True
+
+        # Check umaResolutionStatus
+        uma_status = market.get("umaResolutionStatus", "")
+        if isinstance(uma_status, str) and uma_status:
+            status_lower = uma_status.lower()
+            if any(kw in status_lower for kw in ("void", "resolved_too_early")):
+                return True
+
+        # Check outcome prices near [0.5, 0.5] (ambiguous resolution)
+        outcome_prices = market.get("outcomePrices")
+        if isinstance(outcome_prices, str):
+            try:
+                outcome_prices = _json.loads(outcome_prices)
+            except (ValueError, TypeError):
+                outcome_prices = None
+
+        if isinstance(outcome_prices, list) and len(outcome_prices) >= 2:
+            try:
+                prices = [float(p) for p in outcome_prices[:2]]
+                if all(abs(p - 0.5) <= 0.05 for p in prices):
+                    return True
+            except (ValueError, TypeError):
+                pass
+
+        return False
+
+    async def compute_accuracy_snapshot(
+        self, triggered_by_comparison_id: int | None = None
+    ) -> dict[str, Any]:
+        """Compute cumulative accuracy metrics and persist a snapshot row.
+
+        Queries all resolved (non-voided) comparisons for aggregate Brier
+        scores, win/loss/draw counts, and a rolling 30-day window. Inserts
+        one PolymarketAccuracy row per invocation.
+
+        Called automatically from resolve_completed() after committing
+        resolved comparisons.
+
+        Returns:
+            Dict with total_resolved, geopol_brier, polymarket_brier,
+            geopol_wins, polymarket_wins, draws.
+        """
+        from datetime import timedelta
+
+        async with self._session_factory() as session:
+            # Cumulative stats from all resolved comparisons (exclude voided)
+            stmt = select(
+                func.count(),
+                func.avg(PolymarketComparison.geopol_brier),
+                func.avg(PolymarketComparison.polymarket_brier),
+            ).where(
+                PolymarketComparison.status == "resolved"
+            ).select_from(PolymarketComparison)
+            result = await session.execute(stmt)
+            row = result.first()
+            total_resolved = row[0] or 0
+            geopol_avg = float(row[1]) if row[1] is not None else 0.0
+            polymarket_avg = float(row[2]) if row[2] is not None else 0.0
+
+            # Win/loss/draw counts
+            geopol_wins_stmt = (
+                select(func.count())
+                .where(
+                    PolymarketComparison.status == "resolved",
+                    PolymarketComparison.geopol_brier
+                    < PolymarketComparison.polymarket_brier,
+                )
+                .select_from(PolymarketComparison)
+            )
+            geopol_wins = (await session.execute(geopol_wins_stmt)).scalar() or 0
+
+            pm_wins_stmt = (
+                select(func.count())
+                .where(
+                    PolymarketComparison.status == "resolved",
+                    PolymarketComparison.geopol_brier
+                    > PolymarketComparison.polymarket_brier,
+                )
+                .select_from(PolymarketComparison)
+            )
+            pm_wins = (await session.execute(pm_wins_stmt)).scalar() or 0
+
+            draws = total_resolved - geopol_wins - pm_wins
+
+            # Rolling 30-day window
+            thirty_days_ago = _utcnow() - timedelta(days=30)
+            rolling_stmt = select(
+                func.count(),
+                func.avg(PolymarketComparison.geopol_brier),
+                func.avg(PolymarketComparison.polymarket_brier),
+            ).where(
+                PolymarketComparison.status == "resolved",
+                PolymarketComparison.resolved_at >= thirty_days_ago,
+            ).select_from(PolymarketComparison)
+            rolling_row = (await session.execute(rolling_stmt)).first()
+
+            snapshot = PolymarketAccuracy(
+                total_resolved=total_resolved,
+                geopol_cumulative_brier=geopol_avg,
+                polymarket_cumulative_brier=polymarket_avg,
+                geopol_wins=geopol_wins,
+                polymarket_wins=pm_wins,
+                draws=draws,
+                rolling_30d_geopol_brier=(
+                    float(rolling_row[1])
+                    if rolling_row and rolling_row[1] is not None
+                    else None
+                ),
+                rolling_30d_polymarket_brier=(
+                    float(rolling_row[2])
+                    if rolling_row and rolling_row[2] is not None
+                    else None
+                ),
+                rolling_30d_count=rolling_row[0] if rolling_row else 0,
+                triggered_by_comparison_id=triggered_by_comparison_id,
+            )
+            session.add(snapshot)
+            await session.commit()
+
+            logger.info(
+                "Accuracy snapshot: %d resolved, geopol_brier=%.4f, "
+                "pm_brier=%.4f, wins=%d/%d/%d (geopol/pm/draw)",
+                total_resolved,
+                geopol_avg,
+                polymarket_avg,
+                geopol_wins,
+                pm_wins,
+                draws,
+            )
+
+            return {
+                "total_resolved": total_resolved,
+                "geopol_brier": geopol_avg,
+                "polymarket_brier": polymarket_avg,
+                "geopol_wins": geopol_wins,
+                "polymarket_wins": pm_wins,
+                "draws": draws,
+            }
 
     @staticmethod
     def _extract_outcome(market: dict[str, Any]) -> float | None:
