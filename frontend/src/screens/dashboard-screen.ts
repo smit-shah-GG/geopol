@@ -39,6 +39,7 @@ import { SearchBar } from '@/components/SearchBar';
 // Modals
 import { ScenarioExplorer } from '@/components/ScenarioExplorer';
 import { CountryBriefPage } from '@/components/CountryBriefPage';
+import { SettingsModal } from '@/components/SettingsModal';
 
 // ---------------------------------------------------------------------------
 // State scoped to this screen mount
@@ -54,6 +55,7 @@ let searchBar: SearchBar | null = null;
 // Modal references -- must be destroyed on unmount to remove global listeners
 let scenarioExplorer: ScenarioExplorer | null = null;
 let countryBriefPage: CountryBriefPage | null = null;
+let settingsModal: SettingsModal | null = null;
 
 // Live streams panel
 let liveStreamsPanel: LiveStreamsPanel | null = null;
@@ -145,9 +147,16 @@ export function mountDashboard(container: HTMLElement, ctx: GeoPolAppContext): v
   const myForecastsPanel = new MyForecastsPanel();
   const comparisonPanel = new ComparisonPanel();
 
-  // -- Search bar at top of Col 2 --
+  // -- Settings modal (global, triggered by gear button) --
+  settingsModal = new SettingsModal();
+
+  // -- Search bar + settings gear at top of Col 2 --
   searchBar = new SearchBar();
-  columns.col2.appendChild(searchBar.getElement());
+  const searchRow = document.createElement('div');
+  searchRow.className = 'dashboard-search-row';
+  searchRow.appendChild(searchBar.getElement());
+  searchRow.appendChild(settingsModal.createTriggerButton());
+  columns.col2.appendChild(searchRow);
 
   // -- Live streams panel --
   liveStreamsPanel = new LiveStreamsPanel();
@@ -328,6 +337,10 @@ export function unmountDashboard(ctx: GeoPolAppContext): void {
   if (countryBriefPage) {
     countryBriefPage.destroy();
     countryBriefPage = null;
+  }
+  if (settingsModal) {
+    settingsModal.destroy();
+    settingsModal = null;
   }
 
   // Destroy live streams panel
