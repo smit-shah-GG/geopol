@@ -12,6 +12,7 @@ Tables:
     forecast_requests          -- User-submitted forecast request queue + tracking
     polymarket_comparisons     -- Paired geopol-vs-Polymarket forecast tracking
     polymarket_snapshots       -- Time-series price/probability snapshots per comparison
+    rss_feeds                  -- Admin-managed RSS feed registry with health metrics
 """
 
 from __future__ import annotations
@@ -22,6 +23,7 @@ from typing import Any, Optional
 
 from sqlalchemy import (
     Boolean,
+    CheckConstraint,
     Computed,
     DateTime,
     Float,
@@ -428,4 +430,54 @@ class PolymarketSnapshot(Base):
         return (
             f"<PolymarketSnapshot(id={self.id}, comparison={self.comparison_id}, "
             f"pm={self.polymarket_price:.3f}, gp={self.geopol_probability:.3f})>"
+        )
+
+
+class RSSFeed(Base):
+    """Admin-managed RSS feed with health metrics and soft-delete.
+
+    Feeds are seeded from ``feed_config.py`` via the 007 Alembic migration.
+    The RSS daemon reads enabled, non-deleted feeds from this table at each
+    poll cycle, falling back to ``feed_config.py`` constants if the DB is
+    unreachable.
+
+    Health metrics (error_count, articles_24h, last_poll_at, last_error)
+    are updated after every poll cycle. Feeds auto-disable after 5
+    consecutive poll failures.
+    """
+
+    __tablename__ = "rss_feeds"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    url: Mapped[str] = mapped_column(Text, nullable=False)
+    tier: Mapped[int] = mapped_column(Integer, nullable=False, default=2)
+    category: Mapped[str] = mapped_column(String(50), nullable=False, default="regional")
+    lang: Mapped[str] = mapped_column(String(10), nullable=False, default="en")
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    last_poll_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    last_error: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    error_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    articles_24h: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    articles_total: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    avg_articles_per_poll: Mapped[float] = mapped_column(
+        Float, nullable=False, default=0.0
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    __table_args__ = (
+        CheckConstraint("tier IN (1, 2)", name="ck_rss_feeds_tier"),
+    )
+
+    def __repr__(self) -> str:
+        return (
+            f"<RSSFeed(id={self.id}, name={self.name!r}, "
+            f"tier={self.tier}, enabled={self.enabled})>"
         )
