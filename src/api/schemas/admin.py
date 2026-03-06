@@ -117,3 +117,51 @@ class UpdateFeedRequest(BaseModel):
     category: str | None = None
     lang: str | None = None
     enabled: bool | None = None
+
+
+# -----------------------------------------------------------------------
+# Accuracy DTOs (22-03)
+# -----------------------------------------------------------------------
+
+
+class ResolvedComparisonDTO(BaseModel):
+    """Single resolved or voided Polymarket comparison for the accuracy table."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    polymarket_title: str
+    polymarket_event_id: str
+    geopol_probability: float | None = None
+    polymarket_price: float | None = None
+    polymarket_outcome: float | None = None  # 1.0=Yes, 0.0=No, None=voided
+    geopol_brier: float | None = None
+    polymarket_brier: float | None = None
+    winner: str | None = None  # "geopol" | "polymarket" | "draw" | None (voided)
+    status: str  # "resolved" | "voided"
+    resolved_at: str | None = None
+    created_at: str
+    country_iso: str | None = None
+    category: str | None = None
+
+
+class AccuracySummary(BaseModel):
+    """Aggregate accuracy stats."""
+
+    total_resolved: int = 0
+    total_voided: int = 0
+    geopol_wins: int = 0
+    polymarket_wins: int = 0
+    draws: int = 0
+    geopol_cumulative_brier: float | None = None
+    polymarket_cumulative_brier: float | None = None
+    rolling_30d_geopol_brier: float | None = None
+    rolling_30d_polymarket_brier: float | None = None
+    rolling_30d_count: int = 0
+
+
+class AccuracyResponse(BaseModel):
+    """Full accuracy endpoint response: summary + resolved comparisons."""
+
+    summary: AccuracySummary
+    comparisons: list[ResolvedComparisonDTO]

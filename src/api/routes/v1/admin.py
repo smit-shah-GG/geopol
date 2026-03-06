@@ -17,6 +17,7 @@ Endpoints:
     GET  /logs                           -- ring buffer entries
     GET  /sources                        -- per-source health
     PUT  /sources/{source_name}/toggle   -- enable/disable source
+    GET  /accuracy                       -- head-to-head Brier accuracy
     GET  /feeds                          -- list all RSS feeds with health
     POST /feeds                          -- add a new RSS feed
     PUT  /feeds/{feed_id}                -- update feed properties
@@ -33,6 +34,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.api.deps import get_db
 from src.api.log_buffer import get_ring_buffer
 from src.api.schemas.admin import (
+    AccuracyResponse,
     AddFeedRequest,
     ConfigEntry,
     ConfigUpdate,
@@ -218,6 +220,19 @@ async def toggle_source(
         raise HTTPException(400, "Request body must include 'enabled' (bool)")
     await svc.toggle_source(source_name, enabled)
     return {"status": "toggled", "source": source_name, "enabled": enabled}
+
+
+# -----------------------------------------------------------------------
+# Accuracy (22-03)
+# -----------------------------------------------------------------------
+
+
+@router.get("/accuracy", response_model=AccuracyResponse)
+async def get_accuracy(
+    svc: AdminService = Depends(_get_service),
+) -> AccuracyResponse:
+    """Return head-to-head accuracy: summary stats + resolved comparisons."""
+    return await svc.get_accuracy()
 
 
 # -----------------------------------------------------------------------

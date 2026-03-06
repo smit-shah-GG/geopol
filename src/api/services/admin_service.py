@@ -19,14 +19,17 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.schemas.admin import (
+    AccuracyResponse,
+    AccuracySummary,
     AddFeedRequest,
     ConfigEntry,
     FeedInfo,
     ProcessInfo,
+    ResolvedComparisonDTO,
     SourceInfo,
     UpdateFeedRequest,
 )
-from src.db.models import IngestRun, RSSFeed, SystemConfig
+from src.db.models import IngestRun, PolymarketComparison, Prediction, RSSFeed, SystemConfig
 from src.scheduler.retry import JobFailureTracker
 from src.settings import Settings, get_settings
 
@@ -660,6 +663,132 @@ class AdminService:
         await self._db.execute(stmt)
         await self._db.commit()
         logger.info("Source %s toggled: enabled=%s", source_name, enabled)
+
+    # ------------------------------------------------------------------
+    # Accuracy (22-03)
+    # ------------------------------------------------------------------
+
+    async def get_accuracy(self) -> AccuracyResponse:
+        """Return head-to-head accuracy: summary stats + resolved comparisons.
+
+        Computes summary (wins/losses/draws, cumulative and rolling 30d Brier)
+        from live polymarket_comparisons data, plus a list of up to 200
+        resolved/voided comparisons with prediction metadata (country, category).
+        """
+        now = datetime.now(timezone.utc)
+        thirty_days_ago = now - timedelta(days=30)
+
+        # ------ Summary: resolved counts + cumulative Brier ------
+        resolved_stmt = select(
+            func.count().label("total"),
+            func.avg(PolymarketComparison.geopol_brier).label("avg_geopol"),
+            func.avg(PolymarketComparison.polymarket_brier).label("avg_pm"),
+        ).where(PolymarketComparison.status == "resolved")
+
+        resolved_row = (await self._db.execute(resolved_stmt)).one()
+        total_resolved: int = resolved_row.total or 0
+        geopol_cumulative = float(resolved_row.avg_geopol) if resolved_row.avg_geopol is not None else None
+        pm_cumulative = float(resolved_row.avg_pm) if resolved_row.avg_pm is not None else None
+
+        # Voided count
+        voided_count_result = await self._db.execute(
+            select(func.count()).where(PolymarketComparison.status == "voided")
+        )
+        total_voided: int = voided_count_result.scalar() or 0
+
+        # Win/loss/draw counts (only resolved with both Brier scores)
+        wins_stmt = select(
+            func.count().filter(
+                PolymarketComparison.geopol_brier < PolymarketComparison.polymarket_brier
+            ).label("geopol_wins"),
+            func.count().filter(
+                PolymarketComparison.geopol_brier > PolymarketComparison.polymarket_brier
+            ).label("pm_wins"),
+        ).where(
+            PolymarketComparison.status == "resolved",
+            PolymarketComparison.geopol_brier.is_not(None),
+            PolymarketComparison.polymarket_brier.is_not(None),
+        )
+        wins_row = (await self._db.execute(wins_stmt)).one()
+        geopol_wins: int = wins_row.geopol_wins or 0
+        pm_wins: int = wins_row.pm_wins or 0
+        draws = total_resolved - geopol_wins - pm_wins
+
+        # ------ Rolling 30d Brier ------
+        rolling_stmt = select(
+            func.count().label("cnt"),
+            func.avg(PolymarketComparison.geopol_brier).label("avg_geopol"),
+            func.avg(PolymarketComparison.polymarket_brier).label("avg_pm"),
+        ).where(
+            PolymarketComparison.status == "resolved",
+            PolymarketComparison.resolved_at >= thirty_days_ago,
+        )
+        rolling_row = (await self._db.execute(rolling_stmt)).one()
+        rolling_30d_count: int = rolling_row.cnt or 0
+        rolling_30d_geopol = float(rolling_row.avg_geopol) if rolling_row.avg_geopol is not None else None
+        rolling_30d_pm = float(rolling_row.avg_pm) if rolling_row.avg_pm is not None else None
+
+        summary = AccuracySummary(
+            total_resolved=total_resolved,
+            total_voided=total_voided,
+            geopol_wins=geopol_wins,
+            polymarket_wins=pm_wins,
+            draws=draws,
+            geopol_cumulative_brier=geopol_cumulative,
+            polymarket_cumulative_brier=pm_cumulative,
+            rolling_30d_geopol_brier=rolling_30d_geopol,
+            rolling_30d_polymarket_brier=rolling_30d_pm,
+            rolling_30d_count=rolling_30d_count,
+        )
+
+        # ------ Comparisons list ------
+        comp_stmt = (
+            select(PolymarketComparison, Prediction.country_iso, Prediction.category)
+            .outerjoin(Prediction, Prediction.id == PolymarketComparison.geopol_prediction_id)
+            .where(PolymarketComparison.status.in_(["resolved", "voided"]))
+            .order_by(PolymarketComparison.resolved_at.desc())
+            .limit(200)
+        )
+        rows = (await self._db.execute(comp_stmt)).all()
+
+        comparisons: list[ResolvedComparisonDTO] = []
+        for row in rows:
+            comp: PolymarketComparison = row[0]
+            country_iso: str | None = row[1]
+            category: str | None = row[2]
+
+            # Determine winner
+            winner: str | None = None
+            if comp.status == "voided":
+                winner = None
+            elif comp.geopol_brier is not None and comp.polymarket_brier is not None:
+                if comp.geopol_brier < comp.polymarket_brier:
+                    winner = "geopol"
+                elif comp.geopol_brier > comp.polymarket_brier:
+                    winner = "polymarket"
+                else:
+                    winner = "draw"
+
+            comparisons.append(
+                ResolvedComparisonDTO(
+                    id=comp.id,
+                    polymarket_title=comp.polymarket_title,
+                    polymarket_event_id=comp.polymarket_event_id,
+                    geopol_probability=comp.geopol_probability,
+                    polymarket_price=comp.polymarket_price,
+                    polymarket_outcome=comp.polymarket_outcome,
+                    geopol_brier=comp.geopol_brier,
+                    polymarket_brier=comp.polymarket_brier,
+                    winner=winner,
+                    status=comp.status,
+                    resolved_at=comp.resolved_at.isoformat() if comp.resolved_at else None,
+                    created_at=comp.created_at.isoformat(),
+                    country_iso=country_iso,
+                    category=category,
+                )
+            )
+
+        return AccuracyResponse(summary=summary, comparisons=comparisons)
 
     # ------------------------------------------------------------------
     # Feed CRUD (21-01)
