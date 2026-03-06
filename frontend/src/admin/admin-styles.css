@@ -756,8 +756,246 @@
 }
 
 /* =========================================================================
- * Source Manager
+ * Source / Feed Manager
  * ========================================================================= */
+
+/* -- Feed management header ---------------------------------------------- */
+
+.admin-layout .feed-mgmt-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.admin-layout .feed-mgmt-title {
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: var(--admin-text);
+}
+
+/* -- Add feed form ------------------------------------------------------- */
+
+.admin-layout .feed-add-form {
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.admin-layout .feed-add-form.hidden {
+  display: none;
+}
+
+.admin-layout .feed-form-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.admin-layout .feed-form-row .config-input {
+  flex: 1;
+  min-width: 180px;
+}
+
+.admin-layout .feed-form-label {
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  color: var(--admin-text-dim);
+  letter-spacing: 1px;
+}
+
+.admin-layout .feed-tier-select {
+  background: #111;
+  border: 1px solid var(--admin-border);
+  border-radius: 4px;
+  padding: 6px 10px;
+  color: var(--admin-text);
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  outline: none;
+}
+
+.admin-layout .feed-tier-select:focus {
+  border-color: var(--admin-accent);
+}
+
+/* -- Alert banner -------------------------------------------------------- */
+
+.admin-layout .feed-alert-banner {
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  border-radius: 6px;
+  padding: 10px 16px;
+  margin-bottom: 16px;
+  color: #f59e0b;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.admin-layout .feed-alert-banner.hidden {
+  display: none;
+}
+
+/* -- Feed card grid ------------------------------------------------------ */
+
+.admin-layout .feed-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+.admin-layout .feed-card {
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: border-color 0.2s;
+}
+
+.admin-layout .feed-card:hover {
+  border-color: #555;
+}
+
+.admin-layout .feed-card.feed-auto-disabled {
+  border-color: rgba(245, 158, 11, 0.5);
+  background: rgba(245, 158, 11, 0.04);
+}
+
+/* -- Tier badges --------------------------------------------------------- */
+
+.admin-layout .feed-tier-badge {
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-family: 'Courier New', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.admin-layout .feed-tier-badge.tier-1 {
+  background: rgba(245, 158, 11, 0.2);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+}
+
+.admin-layout .feed-tier-badge.tier-2 {
+  background: rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.4);
+}
+
+/* -- Feed URL ------------------------------------------------------------ */
+
+.admin-layout .feed-url {
+  font-size: 11px;
+  color: var(--admin-text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 220px;
+  cursor: help;
+}
+
+/* -- Inline tier selector ------------------------------------------------ */
+
+.admin-layout .feed-tier-inline-select {
+  background: #111;
+  border: 1px solid var(--admin-border);
+  border-radius: 4px;
+  padding: 2px 6px;
+  color: var(--admin-text);
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  outline: none;
+}
+
+.admin-layout .feed-tier-inline-select:focus {
+  border-color: var(--admin-accent);
+}
+
+/* -- Error text ---------------------------------------------------------- */
+
+.admin-layout .feed-error-text {
+  color: #ef4444;
+  font-size: 11px;
+  font-family: 'Courier New', monospace;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 200px;
+  cursor: help;
+}
+
+.admin-layout .feed-error-label {
+  color: #ef4444;
+}
+
+.admin-layout .feed-error-warning {
+  color: #f59e0b;
+  font-weight: 600;
+}
+
+.admin-layout .feed-error-critical {
+  color: #ef4444;
+  font-weight: 600;
+}
+
+/* -- Delete button ------------------------------------------------------- */
+
+.admin-layout .feed-delete-row {
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px solid var(--admin-border);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.admin-layout .feed-delete-btn {
+  padding: 3px 10px;
+  background: transparent;
+  border: 1px solid #666;
+  color: #888;
+  border-radius: 4px;
+  font-family: 'Courier New', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.admin-layout .feed-delete-btn:hover {
+  border-color: #ef4444;
+  color: #ef4444;
+}
+
+/* -- Stats footer -------------------------------------------------------- */
+
+.admin-layout .feed-stats-footer {
+  margin-top: 16px;
+  padding: 10px 16px;
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
+  border-radius: 6px;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  color: var(--admin-text-dim);
+  letter-spacing: 0.5px;
+}
+
+/* -- Legacy source grid (kept for backward compat) ----------------------- */
 
 .admin-layout .source-grid {
   display: grid;

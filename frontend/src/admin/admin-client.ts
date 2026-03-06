@@ -7,10 +7,13 @@
  */
 
 import type {
+  AddFeedRequest,
   ConfigEntry,
+  FeedInfo,
   LogEntry,
   ProcessInfo,
   SourceInfo,
+  UpdateFeedRequest,
 } from '@/admin/admin-types';
 
 const API_BASE = '/api/v1/admin';
@@ -111,6 +114,38 @@ export class AdminClient {
         body: JSON.stringify({ enabled }),
       },
     );
+  }
+
+  // -----------------------------------------------------------------------
+  // Feed CRUD (21-05)
+  // -----------------------------------------------------------------------
+
+  /** GET /feeds -- list all RSS feeds with health metrics. */
+  async getFeeds(): Promise<FeedInfo[]> {
+    return this.request<FeedInfo[]>('/feeds');
+  }
+
+  /** POST /feeds -- add a new RSS feed. */
+  async addFeed(data: AddFeedRequest): Promise<FeedInfo> {
+    return this.request<FeedInfo>('/feeds', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  /** PUT /feeds/{id} -- update feed properties. */
+  async updateFeed(id: number, data: UpdateFeedRequest): Promise<FeedInfo> {
+    return this.request<FeedInfo>(`/feeds/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  /** DELETE /feeds/{id} -- soft-delete by default, hard delete with purge=true. */
+  async deleteFeed(id: number, purge = false): Promise<void> {
+    await this.request<void>(`/feeds/${id}${purge ? '?purge=true' : ''}`, {
+      method: 'DELETE',
+    });
   }
 
   // -----------------------------------------------------------------------

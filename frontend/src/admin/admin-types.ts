@@ -50,5 +50,42 @@ export interface SourceInfo {
   tier: string | null;
 }
 
+/** Admin-facing RSS feed with health metrics (mirrors backend FeedInfo). */
+export interface FeedInfo {
+  id: number;
+  name: string;
+  url: string;
+  tier: number;
+  category: string;
+  lang: string;
+  enabled: boolean;
+  last_poll_at: string | null;
+  last_error: string | null;
+  error_count: number;
+  articles_24h: number;
+  articles_total: number;
+  avg_articles_per_poll: number;
+  created_at: string;
+}
+
+/** Payload for POST /admin/feeds. */
+export interface AddFeedRequest {
+  name: string;
+  url: string;
+  tier: 1 | 2;
+  category?: string;
+  lang?: string;
+}
+
+/** Payload for PUT /admin/feeds/{feed_id}. All fields optional. */
+export interface UpdateFeedRequest {
+  name?: string;
+  url?: string;
+  tier?: 1 | 2;
+  category?: string;
+  lang?: string;
+  enabled?: boolean;
+}
+
 /** Admin sidebar navigation sections. */
 export type AdminSection = 'processes' | 'config' | 'logs' | 'sources';
