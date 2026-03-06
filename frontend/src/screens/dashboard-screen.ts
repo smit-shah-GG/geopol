@@ -1,11 +1,13 @@
 /**
  * Dashboard screen -- 4-column layout with all existing panels.
  *
- * Column assignments:
- *   Col 1: RiskIndexPanel
- *   Col 2: SearchBar, ForecastPanel, ComparisonPanel
- *   Col 3: MyForecastsPanel, SourcesPanel
- *   Col 4: EventTimeline, SystemHealth, Polymarket
+ * Column assignments (Phase 21):
+ *   Col 1 (25%): NewsFeedPanel
+ *   Col 2 (30%): SearchBar, ForecastPanel, ComparisonPanel
+ *   Col 3 (30%): MyForecastsPanel
+ *   Col 4 (15%): RiskIndexPanel, SystemHealth, Polymarket
+ *
+ * BreakingNewsBanner is a standalone overlay attached to document.body.
  *
  * Owns the RefreshScheduler lifecycle and all inter-panel event wiring.
  */
@@ -19,11 +21,10 @@ import type { ForecastResponse, HealthResponse, CountryRiskSummary, ForecastRequ
 // Panels
 import { ForecastPanel } from '@/components/ForecastPanel';
 import { RiskIndexPanel } from '@/components/RiskIndexPanel';
-import { EventTimelinePanel } from '@/components/EventTimelinePanel';
+import { NewsFeedPanel } from '@/components/NewsFeedPanel';
 import { SystemHealthPanel } from '@/components/SystemHealthPanel';
 import { PolymarketPanel } from '@/components/PolymarketPanel';
 import { MyForecastsPanel } from '@/components/MyForecastsPanel';
-import { SourcesPanel } from '@/components/SourcesPanel';
 import { ComparisonPanel } from '@/components/ComparisonPanel';
 
 // Search
@@ -79,11 +80,10 @@ export function mountDashboard(container: HTMLElement, ctx: GeoPolAppContext): v
   // -- Create panels --
   const forecastPanel = new ForecastPanel();
   const riskIndexPanel = new RiskIndexPanel();
-  const eventTimelinePanel = new EventTimelinePanel();
+  const newsFeedPanel = new NewsFeedPanel();
   const healthPanel = new SystemHealthPanel();
   const polymarketPanel = new PolymarketPanel();
   const myForecastsPanel = new MyForecastsPanel();
-  const sourcesPanel = new SourcesPanel();
   const comparisonPanel = new ComparisonPanel();
 
   // -- Search bar at top of Col 2 --
@@ -91,23 +91,25 @@ export function mountDashboard(container: HTMLElement, ctx: GeoPolAppContext): v
   columns.col2.appendChild(searchBar.getElement());
 
   // -- Mount panels into columns --
-  columns.col1.appendChild(riskIndexPanel.getElement());
+  // Col 1 (25%): News feed
+  columns.col1.appendChild(newsFeedPanel.getElement());
+  // Col 2 (30%): Search + forecasts + comparisons
   columns.col2.appendChild(forecastPanel.getElement());
   columns.col2.appendChild(comparisonPanel.getElement());
+  // Col 3 (30%): My forecasts
   columns.col3.appendChild(myForecastsPanel.getElement());
-  columns.col3.appendChild(sourcesPanel.getElement());
-  columns.col4.appendChild(eventTimelinePanel.getElement());
+  // Col 4 (15%): Risk index + health + polymarket
+  columns.col4.appendChild(riskIndexPanel.getElement());
   columns.col4.appendChild(healthPanel.getElement());
   columns.col4.appendChild(polymarketPanel.getElement());
 
   // -- Register in context --
   ctx.panels['forecasts'] = forecastPanel;
   ctx.panels['risk-index'] = riskIndexPanel;
-  ctx.panels['event-timeline'] = eventTimelinePanel;
+  ctx.panels['news-feed'] = newsFeedPanel;
   ctx.panels['system-health'] = healthPanel;
   ctx.panels['polymarket'] = polymarketPanel;
   ctx.panels['my-forecasts'] = myForecastsPanel;
-  ctx.panels['sources'] = sourcesPanel;
   ctx.panels['comparisons'] = comparisonPanel;
 
   // -- Modals (attach global event listeners in constructor) --
@@ -181,16 +183,9 @@ export function mountDashboard(container: HTMLElement, ctx: GeoPolAppContext): v
       intervalMs: 30_000,
     },
     {
-      name: 'events',
+      name: 'news-feed',
       fn: async () => {
-        await eventTimelinePanel.refresh();
-      },
-      intervalMs: 30_000,
-    },
-    {
-      name: 'sources',
-      fn: async () => {
-        await sourcesPanel.refresh();
+        await newsFeedPanel.refresh();
       },
       intervalMs: 60_000,
     },

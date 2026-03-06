@@ -4,11 +4,11 @@
  * Replaces the Phase 12 3-column CSS Grid. Each column scrolls
  * independently and hosts a vertical stack of panels.
  *
- * Column assignments (Phase 15):
- *   Col 1 (15%):  Risk Index
- *   Col 2 (35%):  Forecasts
- *   Col 3 (30%):  Empty (Plan 03 adds MyForecasts + Sources)
- *   Col 4 (20%):  Events, Health, Polymarket
+ * Column assignments (Phase 21):
+ *   Col 1 (25%):  NewsFeedPanel
+ *   Col 2 (30%):  SearchBar, ForecastPanel, ComparisonPanel
+ *   Col 3 (30%):  MyForecastsPanel
+ *   Col 4 (15%):  RiskIndexPanel, SystemHealth, Polymarket
  */
 
 import { h } from '@/utils/dom-utils';

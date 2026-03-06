@@ -300,6 +300,10 @@ export interface ArticleDTO {
   published_at: string | null;
   snippet: string;
   relevance_score: number | null;
+  /** Frontend enrichment: source tier (1-4) from SOURCE_TIERS map */
+  source_tier?: number;
+  /** Frontend enrichment: propaganda risk level from PROPAGANDA_RISK map */
+  propaganda_risk?: string;
 }
 
 // --- advisory.py ---

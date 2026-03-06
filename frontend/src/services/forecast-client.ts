@@ -354,6 +354,23 @@ export class ForecastServiceClient {
     ) as Promise<PaginatedResponse<EventDTO>>;
   }
 
+  /**
+   * GET /articles?sort=recent&limit=N -- recent articles for NewsFeedPanel.
+   * Convenience wrapper around getArticles() with sort=recent default.
+   */
+  async getRecentArticles(limit?: number): Promise<ArticleDTO[]> {
+    const sp = new URLSearchParams({ sort: 'recent' });
+    if (limit !== undefined) sp.set('limit', String(limit));
+    const key = `/articles?${sp.toString()}`;
+    const result = await this.dedup(key, () =>
+      this.forecastBreaker.execute(
+        () => this.fetchJson<PaginatedResponse<ArticleDTO>>(key),
+        EMPTY_ARTICLES as unknown as PaginatedResponse<ArticleDTO>,
+      ),
+    ) as PaginatedResponse<ArticleDTO>;
+    return result.items;
+  }
+
   /** GET /articles with optional filter parameters. */
   async getArticles(params?: {
     country?: string;

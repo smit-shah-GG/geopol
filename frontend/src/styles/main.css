@@ -250,10 +250,10 @@ body {
   min-height: 0;
 }
 
-.dashboard-col--1 { width: 15%; }
-.dashboard-col--2 { width: 35%; }
-.dashboard-col--3 { width: 30%; }
-.dashboard-col--4 { width: 20%; }
+.dashboard-col--1 { width: 25%; min-width: 280px; }
+.dashboard-col--2 { width: 30%; min-width: 300px; }
+.dashboard-col--3 { width: 30%; min-width: 280px; }
+.dashboard-col--4 { width: 15%; min-width: 180px; }
 
 .dashboard-col + .dashboard-col {
   border-left: 1px solid var(--border);
@@ -377,4 +377,284 @@ body {
   .nav-bar {
     padding: 0 var(--space-sm);
   }
+}
+
+/* ========================================================================
+   Breaking News Alert Layout
+   ======================================================================== */
+
+:root {
+  --breaking-alert-offset: 0px;
+}
+
+body.has-breaking-alert .dashboard-columns {
+  padding-top: var(--breaking-alert-offset);
+  transition: padding-top var(--transition-base);
+}
+
+.breaking-news-container {
+  position: fixed;
+  top: 36px; /* below nav bar */
+  left: 0;
+  right: 0;
+  z-index: calc(var(--z-modal) + 10);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  pointer-events: none;
+}
+
+.breaking-alert {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-sm) var(--space-lg);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  color: #fff;
+  pointer-events: auto;
+  cursor: pointer;
+  animation: alert-slide-down 200ms ease-out;
+}
+
+.breaking-alert.severity-critical {
+  background: #dc2626;
+}
+
+.breaking-alert.severity-high {
+  background: #d97706;
+}
+
+@keyframes alert-slide-down {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.breaking-alert-icon {
+  font-size: var(--font-size-lg);
+  flex-shrink: 0;
+}
+
+.breaking-alert-content {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  flex: 1;
+  min-width: 0;
+}
+
+.breaking-alert-level {
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  flex-shrink: 0;
+}
+
+.breaking-alert-headline {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.breaking-alert-meta {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: var(--font-size-xs);
+  flex-shrink: 0;
+}
+
+.breaking-alert-dismiss {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: var(--font-size-lg);
+  cursor: pointer;
+  padding: 0 var(--space-xs);
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.breaking-alert-dismiss:hover {
+  color: #fff;
+}
+
+/* ========================================================================
+   NewsFeedPanel
+   ======================================================================== */
+
+/* Category filter pills */
+.news-feed-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  padding: var(--space-sm);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.news-feed-pill {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  padding: 2px 8px;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transition: all var(--transition-fast);
+}
+
+.news-feed-pill:hover {
+  color: var(--text-secondary);
+  border-color: var(--text-muted);
+}
+
+.news-feed-pill.active {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-muted);
+}
+
+/* Article cluster cards */
+.news-cluster {
+  padding: var(--space-sm) var(--space-md);
+  border-bottom: 1px solid var(--border-subtle);
+  transition: background var(--transition-fast);
+}
+
+.news-cluster:hover {
+  background: var(--bg-elevated);
+}
+
+.news-cluster-header {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-sm);
+}
+
+.news-cluster-title {
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  text-decoration: none;
+  line-height: var(--line-height-tight);
+  display: block;
+}
+
+.news-cluster-title:hover {
+  color: var(--accent);
+}
+
+.news-cluster-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-top: var(--space-xs);
+  font-size: var(--font-size-xs);
+}
+
+.news-cluster-time {
+  color: var(--text-muted);
+}
+
+.news-cluster-snippet {
+  color: var(--text-secondary);
+  font-size: var(--font-size-xs);
+  margin-top: var(--space-xs);
+  line-height: var(--line-height-base);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+/* Source tier badges */
+.tier-badge {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  padding: 1px 5px;
+  border-radius: 2px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.tier-badge.tier-1 {
+  color: #f5c842;
+  border: 1px solid rgba(245, 200, 66, 0.4);
+  background: rgba(245, 200, 66, 0.08);
+}
+
+.tier-badge.tier-2 {
+  color: var(--accent);
+  border: 1px solid rgba(58, 123, 213, 0.4);
+  background: rgba(58, 123, 213, 0.08);
+}
+
+.tier-badge.tier-3 {
+  color: var(--semantic-success);
+  border: 1px solid rgba(46, 204, 113, 0.4);
+  background: rgba(46, 204, 113, 0.08);
+}
+
+.tier-badge.tier-4 {
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+}
+
+/* Source count badge */
+.source-count-badge {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+  padding: 1px 5px;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  cursor: default;
+}
+
+.source-count-badge:hover {
+  color: var(--text-primary);
+  border-color: var(--text-muted);
+}
+
+/* Propaganda risk indicator */
+.propaganda-badge {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  padding: 1px 4px;
+  border-radius: 2px;
+}
+
+.propaganda-badge.high {
+  color: var(--semantic-critical);
+  background: rgba(230, 57, 70, 0.1);
+}
+
+.propaganda-badge.medium {
+  color: var(--semantic-warning);
+  background: rgba(230, 162, 60, 0.1);
+}
+
+/* Windowed list chunks */
+.windowed-list {
+  overflow-y: auto;
+  contain: layout style;
+}
+
+.windowed-chunk {
+  contain: content;
+}
+
+.windowed-chunk.rendered {
+  contain: layout style;
 }
