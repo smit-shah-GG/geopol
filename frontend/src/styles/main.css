@@ -719,28 +719,99 @@ body.has-breaking-alert .dashboard-columns {
    LiveStreamsPanel
    ======================================================================== */
 
-/* Region pill bar (reuses news-feed-pill styling) */
+/* Channel pill bar (horizontal scroll, source names) */
 .live-streams-pills {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: var(--space-xs);
   padding: var(--space-sm);
   border-bottom: 1px solid var(--border-subtle);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.live-streams-pills::-webkit-scrollbar { display: none; }
+
+/* Channel name pills */
+.live-streams-channel-pill {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  padding: 2px 8px;
+  cursor: pointer;
+  letter-spacing: 0.5px;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.live-streams-channel-pill:hover {
+  color: var(--text-secondary);
+  border-color: var(--text-muted);
+}
+.live-streams-channel-pill.active {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-muted);
 }
 
-/* Player grid: 2-column layout */
-.live-streams-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-xs);
+/* Gear button in header */
+.live-streams-gear-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 6px;
+  margin-left: auto;
+  transition: color var(--transition-fast);
+  line-height: 1;
+}
+.live-streams-gear-btn:hover {
+  color: var(--accent);
+}
+
+/* Region filter popover */
+[data-panel="live-streams"] {
+  position: relative;
+}
+.live-streams-region-popover {
+  position: absolute;
+  right: var(--space-sm);
+  top: 36px;
+  z-index: 50;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
   padding: var(--space-xs);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 140px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
-
-/* Individual player card */
-.live-stream-card {
-  background: var(--bg);
-  border: 1px solid var(--border-subtle);
-  overflow: hidden;
+.live-streams-region-popover.hidden {
+  display: none;
+}
+.live-streams-region-option {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  padding: 4px 8px;
+  cursor: pointer;
+  text-align: left;
+  border-radius: 2px;
+  transition: all var(--transition-fast);
+}
+.live-streams-region-option:hover {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+}
+.live-streams-region-option.active {
+  color: var(--accent);
+  background: var(--accent-muted);
 }
 
 /* 16:9 aspect ratio wrapper */
@@ -839,8 +910,7 @@ body.has-breaking-alert .dashboard-columns {
 }
 
 /* Empty state */
-.live-streams-grid .empty-state {
-  grid-column: 1 / -1;
+[data-panel="live-streams"] .empty-state {
   display: flex;
   align-items: center;
   justify-content: center;

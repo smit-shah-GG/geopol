@@ -1,13 +1,16 @@
 /**
- * LiveStreamsPanel -- YouTube live stream embeds with region filtering,
- * idle detection, and exclusive-unmute controls.
+ * LiveStreamsPanel -- Single YouTube live stream player with channel-name pills
+ * and region filtering via gear icon popover.
  *
- * Displays 15-20 curated geopolitical news live streams in a 2-column grid.
- * Region pills filter visible channels. Idle detection pauses all players
- * after 5 minutes of inactivity. Only one player can be unmuted at a time.
+ * Shows one stream at a time. Channel pills (e.g., "BBC News", "Al Jazeera")
+ * act as the primary selector. Gear icon in the panel header opens a region
+ * filter popover that narrows which channel pills are visible.
  *
  * YouTube IFrame API loaded lazily via dynamic script injection with a
  * Promise wrapper to handle the async onYouTubeIframeAPIReady callback.
+ * Uses loadVideoById() to switch streams without destroying the player.
+ *
+ * Idle detection pauses the player after 5 minutes of inactivity.
  */
 
 import { Panel } from './Panel';
@@ -25,6 +28,7 @@ interface YTPlayerInstance {
   isMuted(): boolean;
   destroy(): void;
   getIframe(): HTMLIFrameElement;
+  loadVideoById(videoId: string): void;
 }
 
 interface YTPlayerOptions {
@@ -68,12 +72,6 @@ export interface LiveChannel {
   language?: string;
 }
 
-/**
- * Curated list of geopolitical news channels with known live stream video IDs.
- *
- * YouTube live stream IDs are the video IDs of each channel's persistent live
- * stream URL. These are well-known public IDs that rarely change.
- */
 const CHANNELS: LiveChannel[] = [
   // Global / Wire
   { id: 'aljazeera', name: 'Al Jazeera English', youtubeId: 'gCNeDWCI0vo', region: 'Middle East', language: 'en' },
@@ -104,12 +102,6 @@ const REGION_FILTERS: RegionFilter[] = ['All', 'Americas', 'Europe', 'Middle Eas
 
 let ytApiPromise: Promise<void> | null = null;
 
-/**
- * Load the YouTube IFrame API asynchronously.
- * Sets window.onYouTubeIframeAPIReady BEFORE injecting the script tag
- * to prevent the race condition where the callback fires before we listen.
- * Returns immediately if the API is already loaded.
- */
 function loadYouTubeAPI(): Promise<void> {
   if (window.YT?.Player) {
     return Promise.resolve();
@@ -120,7 +112,6 @@ function loadYouTubeAPI(): Promise<void> {
   }
 
   ytApiPromise = new Promise<void>((resolve) => {
-    // Set callback BEFORE script injection -- critical ordering
     window.onYouTubeIframeAPIReady = () => {
       resolve();
     };
@@ -138,10 +129,7 @@ function loadYouTubeAPI(): Promise<void> {
 // Constants
 // ---------------------------------------------------------------------------
 
-/** Idle timeout: 5 minutes of no user interaction. */
 const IDLE_TIMEOUT_MS = 300_000;
-
-/** Events that reset the idle timer. */
 const ACTIVITY_EVENTS: (keyof DocumentEventMap)[] = ['mousemove', 'keypress', 'click', 'scroll'];
 
 // ---------------------------------------------------------------------------
@@ -150,60 +138,145 @@ const ACTIVITY_EVENTS: (keyof DocumentEventMap)[] = ['mousemove', 'keypress', 'c
 
 export class LiveStreamsPanel extends Panel {
   private regionFilter: RegionFilter = 'All';
+  private activeChannel: LiveChannel;
+  private player: YTPlayerInstance | null = null;
+  private isMuted = true;
+
+  private gearBtn: HTMLElement;
+  private regionPopover: HTMLElement;
   private pillContainer: HTMLElement;
-  private gridContainer: HTMLElement;
-  private players: Map<string, YTPlayerInstance> = new Map();
-  private unmutedPlayerId: string | null = null;
+  private playerWrapper: HTMLElement;
+  private playerTarget: HTMLElement;
+  private channelInfoBar: HTMLElement;
+  private muteBtn: HTMLElement;
+
   private idleTimer: ReturnType<typeof setTimeout> | null = null;
   private isIdle = false;
   private activityHandler: (() => void) | null = null;
+  private readonly onClickOutside: (e: MouseEvent) => void;
 
   constructor() {
     super({ id: 'live-streams', title: 'LIVE STREAMS', showCount: false });
 
-    // Region pill bar
+    // Default to first channel
+    this.activeChannel = CHANNELS[0]!;
+
+    // Gear button in header (right side)
+    this.gearBtn = h('button', {
+      className: 'live-streams-gear-btn',
+      'aria-label': 'Filter by region',
+      title: 'Filter by region',
+    });
+    this.gearBtn.innerHTML = '&#9881;';
+    this.gearBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.regionPopover.classList.toggle('hidden');
+    });
+    this.header.appendChild(this.gearBtn);
+
+    // Channel pill bar
     this.pillContainer = document.createElement('div');
     this.pillContainer.className = 'live-streams-pills';
     this.element.insertBefore(this.pillContainer, this.content);
-    this.buildRegionPills();
 
-    // Grid container for players
-    this.gridContainer = this.content;
-    this.gridContainer.classList.add('live-streams-grid');
+    // Region filter popover (hidden by default)
+    this.regionPopover = document.createElement('div');
+    this.regionPopover.className = 'live-streams-region-popover hidden';
+    this.buildRegionPopover();
+    this.element.insertBefore(this.regionPopover, this.content);
 
-    // Remove loading state -- we render immediately
-    replaceChildren(this.gridContainer);
+    // Clear base class loading state before building player UI
+    replaceChildren(this.content);
+
+    // Player area (single stream)
+    this.playerWrapper = h('div', { className: 'live-stream-player-wrapper' });
+    this.playerTarget = h('div', { className: 'live-stream-player-target' });
+    this.playerTarget.id = 'yt-player-active';
+    this.playerWrapper.appendChild(this.playerTarget);
+
+    // Mute toggle overlay
+    this.muteBtn = h('button', {
+      className: 'live-stream-mute-btn',
+      'aria-label': 'Unmute',
+    }, 'MUTED');
+    this.muteBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.toggleMute();
+    });
+    this.playerWrapper.appendChild(this.muteBtn);
+
+    this.content.appendChild(this.playerWrapper);
+
+    // Channel info bar below player
+    this.channelInfoBar = h('div', { className: 'live-stream-info' },
+      h('span', { className: 'live-stream-dot' }),
+      h('span', { className: 'live-stream-name' }, this.activeChannel.name),
+    );
+    this.content.appendChild(this.channelInfoBar);
+
+    // Build channel pills
+    this.buildChannelPills();
+
+    // Close popover on outside click
+    this.onClickOutside = (e: MouseEvent) => {
+      if (
+        !this.regionPopover.contains(e.target as Node) &&
+        !this.gearBtn.contains(e.target as Node)
+      ) {
+        this.regionPopover.classList.add('hidden');
+      }
+    };
+    document.addEventListener('click', this.onClickOutside);
 
     // Setup idle detection
     this.setupIdleDetection();
 
-    // Load API and render players
-    this.initPlayers();
+    // Load API and create player
+    this.initPlayer();
   }
 
   // -------------------------------------------------------------------------
-  // Region pills
+  // Region popover
   // -------------------------------------------------------------------------
 
-  private buildRegionPills(): void {
+  private buildRegionPopover(): void {
     for (const region of REGION_FILTERS) {
-      const pill = document.createElement('button');
-      pill.className = `news-feed-pill${region === 'All' ? ' active' : ''}`;
-      pill.textContent = region.toUpperCase();
-      pill.addEventListener('click', () => {
+      const btn = h('button', {
+        className: `live-streams-region-option${region === 'All' ? ' active' : ''}`,
+      }, region);
+      btn.addEventListener('click', () => {
         this.regionFilter = region;
-        for (const btn of this.pillContainer.querySelectorAll('.news-feed-pill')) {
-          btn.classList.toggle('active', btn === pill);
+        for (const opt of this.regionPopover.querySelectorAll('.live-streams-region-option')) {
+          opt.classList.toggle('active', opt === btn);
         }
-        this.rebuildPlayers();
+        this.regionPopover.classList.add('hidden');
+        this.buildChannelPills();
+        // If active channel is not in filtered set, switch to first visible
+        const filtered = this.getFilteredChannels();
+        if (filtered.length > 0 && !filtered.some((ch) => ch.id === this.activeChannel.id)) {
+          this.selectChannel(filtered[0]!);
+        }
       });
-      this.pillContainer.appendChild(pill);
+      this.regionPopover.appendChild(btn);
     }
   }
 
   // -------------------------------------------------------------------------
-  // Filtered channels
+  // Channel pills
   // -------------------------------------------------------------------------
+
+  private buildChannelPills(): void {
+    replaceChildren(this.pillContainer);
+
+    const channels = this.getFilteredChannels();
+    for (const channel of channels) {
+      const pill = h('button', {
+        className: `live-streams-channel-pill${channel.id === this.activeChannel.id ? ' active' : ''}`,
+      }, channel.name);
+      pill.addEventListener('click', () => this.selectChannel(channel));
+      this.pillContainer.appendChild(pill);
+    }
+  }
 
   private getFilteredChannels(): LiveChannel[] {
     if (this.regionFilter === 'All') return CHANNELS;
@@ -213,172 +286,134 @@ export class LiveStreamsPanel extends Panel {
   }
 
   // -------------------------------------------------------------------------
+  // Channel selection
+  // -------------------------------------------------------------------------
+
+  private selectChannel(channel: LiveChannel): void {
+    if (this.activeChannel.id === channel.id) return;
+    this.activeChannel = channel;
+
+    // Update channel info bar
+    const nameEl = this.channelInfoBar.querySelector('.live-stream-name');
+    if (nameEl) nameEl.textContent = channel.name;
+
+    // Update pill active state
+    for (const pill of this.pillContainer.querySelectorAll('.live-streams-channel-pill')) {
+      pill.classList.toggle('active', pill.textContent === channel.name);
+    }
+
+    // Switch the stream
+    this.switchStream(channel);
+  }
+
+  private switchStream(channel: LiveChannel): void {
+    if (this.player) {
+      try {
+        this.player.loadVideoById(channel.youtubeId);
+        // Maintain current mute state
+        if (this.isMuted) {
+          this.player.mute();
+        } else {
+          this.player.unMute();
+        }
+        return;
+      } catch {
+        // loadVideoById failed — fall back to full recreation
+      }
+    }
+
+    // Recreate player from scratch
+    this.destroyPlayer();
+    this.playerTarget = h('div', { className: 'live-stream-player-target' });
+    this.playerTarget.id = 'yt-player-active';
+    // Insert before mute button
+    this.playerWrapper.insertBefore(this.playerTarget, this.muteBtn);
+    this.createPlayer(channel);
+  }
+
+  // -------------------------------------------------------------------------
   // Player lifecycle
   // -------------------------------------------------------------------------
 
-  private async initPlayers(): Promise<void> {
+  private async initPlayer(): Promise<void> {
     try {
       await loadYouTubeAPI();
-      this.rebuildPlayers();
+      this.createPlayer(this.activeChannel);
     } catch (err) {
       console.error('[LiveStreamsPanel] YouTube API load failed:', err);
       this.showError('Failed to load YouTube player API');
     }
   }
 
-  /**
-   * Destroy all existing players and create new ones for filtered channels.
-   * Called on region filter change and initial mount.
-   */
-  private rebuildPlayers(): void {
-    // Destroy existing players
-    for (const [, player] of this.players) {
-      try { player.destroy(); } catch { /* iframe may already be removed */ }
-    }
-    this.players.clear();
-    this.unmutedPlayerId = null;
-
-    const channels = this.getFilteredChannels();
-
-    if (channels.length === 0) {
-      replaceChildren(
-        this.gridContainer,
-        h('div', { className: 'empty-state' }, 'No streams for this region'),
-      );
-      return;
-    }
-
-    // Clear grid and build player containers
-    replaceChildren(this.gridContainer);
-
-    for (const channel of channels) {
-      const card = this.createPlayerCard(channel);
-      this.gridContainer.appendChild(card);
-    }
-
-    // Create YT.Player instances if API is ready
-    if (window.YT?.Player) {
-      for (const channel of channels) {
-        this.createPlayer(channel);
-      }
-    }
-  }
-
-  private createPlayerCard(channel: LiveChannel): HTMLElement {
-    const card = h('div', { className: 'live-stream-card', dataset: { channelId: channel.id } });
-
-    // 16:9 aspect ratio container
-    const playerWrapper = h('div', { className: 'live-stream-player-wrapper' });
-    const playerTarget = h('div', { className: 'live-stream-player-target' });
-    playerTarget.id = `yt-player-${channel.id}`;
-    playerWrapper.appendChild(playerTarget);
-
-    // Mute toggle overlay
-    const muteBtn = h('button', {
-      className: 'live-stream-mute-btn',
-      'aria-label': 'Unmute',
-    }, 'MUTED');
-    muteBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      this.toggleMute(channel.id);
-    });
-    playerWrapper.appendChild(muteBtn);
-
-    card.appendChild(playerWrapper);
-
-    // Channel info bar
-    const infoBar = h('div', { className: 'live-stream-info' },
-      h('span', { className: 'live-stream-dot' }),
-      h('span', { className: 'live-stream-name' }, channel.name),
-    );
-    card.appendChild(infoBar);
-
-    return card;
-  }
-
   private createPlayer(channel: LiveChannel): void {
     if (!window.YT?.Player) return;
 
-    const targetEl = document.getElementById(`yt-player-${channel.id}`);
+    const targetEl = document.getElementById('yt-player-active');
     if (!targetEl) return;
 
     try {
-      const player = new window.YT.Player(targetEl, {
+      this.player = new window.YT.Player(targetEl, {
         videoId: channel.youtubeId,
         host: 'https://www.youtube-nocookie.com',
         playerVars: {
           autoplay: 1,
           mute: 1,
-          controls: 0,
+          controls: 1,
           modestbranding: 1,
           rel: 0,
           showinfo: 0,
-          fs: 0,
           playsinline: 1,
         },
         events: {
           onReady: () => {
-            // Player is ready and muted by default
+            this.isMuted = true;
+            this.updateMuteUI();
           },
           onError: (event) => {
             console.warn(`[LiveStreamsPanel] Player error for ${channel.name}: code ${event.data}`);
-            // Show error state on the card
-            const card = this.gridContainer.querySelector(`[data-channel-id="${channel.id}"]`);
-            if (card) {
-              const wrapper = card.querySelector('.live-stream-player-wrapper');
-              if (wrapper) {
-                const errorEl = h('div', { className: 'live-stream-offline' }, 'OFFLINE');
-                wrapper.appendChild(errorEl);
-              }
-            }
+            const errorEl = h('div', { className: 'live-stream-offline' }, 'OFFLINE');
+            this.playerWrapper.appendChild(errorEl);
           },
         },
       });
-
-      this.players.set(channel.id, player);
     } catch (err) {
       console.error(`[LiveStreamsPanel] Failed to create player for ${channel.name}:`, err);
     }
   }
 
-  // -------------------------------------------------------------------------
-  // Mute controls (exclusive unmute)
-  // -------------------------------------------------------------------------
-
-  private toggleMute(channelId: string): void {
-    const player = this.players.get(channelId);
-    if (!player) return;
-
-    if (this.unmutedPlayerId === channelId) {
-      // Currently unmuted -- mute it
-      player.mute();
-      this.unmutedPlayerId = null;
-      this.updateMuteUI(channelId, true);
-    } else {
-      // Mute the currently unmuted player first
-      if (this.unmutedPlayerId) {
-        const prev = this.players.get(this.unmutedPlayerId);
-        if (prev) {
-          prev.mute();
-          this.updateMuteUI(this.unmutedPlayerId, true);
-        }
-      }
-      // Unmute this one
-      player.unMute();
-      this.unmutedPlayerId = channelId;
-      this.updateMuteUI(channelId, false);
+  private destroyPlayer(): void {
+    if (this.player) {
+      try { this.player.destroy(); } catch { /* iframe may already be removed */ }
+      this.player = null;
     }
+    // Remove old player target and offline overlay
+    const oldTarget = document.getElementById('yt-player-active');
+    if (oldTarget) oldTarget.remove();
+    const offline = this.playerWrapper.querySelector('.live-stream-offline');
+    if (offline) offline.remove();
   }
 
-  private updateMuteUI(channelId: string, isMuted: boolean): void {
-    const card = this.gridContainer.querySelector(`[data-channel-id="${channelId}"]`);
-    if (!card) return;
-    const btn = card.querySelector('.live-stream-mute-btn');
-    if (btn) {
-      btn.textContent = isMuted ? 'MUTED' : 'UNMUTED';
-      btn.classList.toggle('unmuted', !isMuted);
-      btn.setAttribute('aria-label', isMuted ? 'Unmute' : 'Mute');
+  // -------------------------------------------------------------------------
+  // Mute controls
+  // -------------------------------------------------------------------------
+
+  private toggleMute(): void {
+    if (!this.player) return;
+
+    if (this.isMuted) {
+      this.player.unMute();
+      this.isMuted = false;
+    } else {
+      this.player.mute();
+      this.isMuted = true;
     }
+    this.updateMuteUI();
+  }
+
+  private updateMuteUI(): void {
+    this.muteBtn.textContent = this.isMuted ? 'MUTED' : 'UNMUTED';
+    this.muteBtn.classList.toggle('unmuted', !this.isMuted);
+    this.muteBtn.setAttribute('aria-label', this.isMuted ? 'Unmute' : 'Mute');
   }
 
   // -------------------------------------------------------------------------
@@ -412,24 +447,15 @@ export class LiveStreamsPanel extends Panel {
   private goIdle(): void {
     if (this.isIdle) return;
     this.isIdle = true;
-
-    // Pause all playing streams
-    for (const [, player] of this.players) {
-      try { player.pauseVideo(); } catch { /* player may not be ready */ }
+    if (this.player) {
+      try { this.player.pauseVideo(); } catch { /* player may not be ready */ }
     }
   }
 
   private resumeFromIdle(): void {
     this.isIdle = false;
-
-    // Resume: play the first visible player
-    const channels = this.getFilteredChannels();
-    if (channels.length > 0) {
-      const firstId = channels[0]!.id;
-      const firstPlayer = this.players.get(firstId);
-      if (firstPlayer) {
-        try { firstPlayer.playVideo(); } catch { /* player may not be ready */ }
-      }
+    if (this.player) {
+      try { this.player.playVideo(); } catch { /* player may not be ready */ }
     }
   }
 
@@ -438,13 +464,11 @@ export class LiveStreamsPanel extends Panel {
   // -------------------------------------------------------------------------
 
   public override destroy(): void {
-    // Clear idle timer
     if (this.idleTimer) {
       clearTimeout(this.idleTimer);
       this.idleTimer = null;
     }
 
-    // Remove idle detection listeners
     if (this.activityHandler) {
       for (const event of ACTIVITY_EVENTS) {
         document.removeEventListener(event, this.activityHandler);
@@ -452,12 +476,8 @@ export class LiveStreamsPanel extends Panel {
       this.activityHandler = null;
     }
 
-    // Destroy all YouTube players
-    for (const [, player] of this.players) {
-      try { player.destroy(); } catch { /* best-effort */ }
-    }
-    this.players.clear();
-
+    document.removeEventListener('click', this.onClickOutside);
+    this.destroyPlayer();
     super.destroy();
   }
 }

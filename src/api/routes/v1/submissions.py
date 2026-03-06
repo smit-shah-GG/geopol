@@ -144,7 +144,10 @@ async def confirm_submission(
         )
 
     request.status = "confirmed"
-    await db.flush()
+    # Commit before scheduling so the worker's independent session can see
+    # the "confirmed" row. flush() alone leaves the row locked, and the
+    # worker's SELECT FOR UPDATE SKIP LOCKED silently skips it.
+    await db.commit()
 
     logger.info("ForecastRequest %s confirmed by %s", request_id, client)
 

@@ -2,9 +2,9 @@
  * Dashboard screen -- 4-column layout with all existing panels.
  *
  * Column assignments (Phase 21):
- *   Col 1 (25%): NewsFeedPanel, LiveStreamsPanel
+ *   Col 1 (25%): NewsFeedPanel
  *   Col 2 (30%): SearchBar, ForecastPanel, ComparisonPanel
- *   Col 3 (30%): MyForecastsPanel
+ *   Col 3 (30%): MyForecastsPanel, LiveStreamsPanel
  *   Col 4 (15%): RiskIndexPanel, SystemHealth, Polymarket
  *
  * BreakingNewsBanner is a standalone overlay attached to document.body.
@@ -162,14 +162,14 @@ export function mountDashboard(container: HTMLElement, ctx: GeoPolAppContext): v
   liveStreamsPanel = new LiveStreamsPanel();
 
   // -- Mount panels into columns --
-  // Col 1 (25%): News feed + live streams
+  // Col 1 (25%): News feed
   columns.col1.appendChild(newsFeedPanel.getElement());
-  columns.col1.appendChild(liveStreamsPanel.getElement());
   // Col 2 (30%): Search + forecasts + comparisons
   columns.col2.appendChild(forecastPanel.getElement());
   columns.col2.appendChild(comparisonPanel.getElement());
-  // Col 3 (30%): My forecasts
+  // Col 3 (30%): My forecasts + live streams
   columns.col3.appendChild(myForecastsPanel.getElement());
+  columns.col3.appendChild(liveStreamsPanel.getElement());
   // Col 4 (15%): Risk index + health + polymarket
   columns.col4.appendChild(riskIndexPanel.getElement());
   columns.col4.appendChild(healthPanel.getElement());

@@ -7,7 +7,7 @@
  * Column assignments (Phase 21):
  *   Col 1 (25%):  NewsFeedPanel
  *   Col 2 (30%):  SearchBar, ForecastPanel, ComparisonPanel
- *   Col 3 (30%):  MyForecastsPanel
+ *   Col 3 (30%):  MyForecastsPanel, LiveStreamsPanel
  *   Col 4 (15%):  RiskIndexPanel, SystemHealth, Polymarket
  */
 
