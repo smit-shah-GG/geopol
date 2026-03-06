@@ -12,6 +12,7 @@ Tables:
     forecast_requests          -- User-submitted forecast request queue + tracking
     polymarket_comparisons     -- Paired geopol-vs-Polymarket forecast tracking
     polymarket_snapshots       -- Time-series price/probability snapshots per comparison
+    polymarket_accuracy        -- Cumulative Brier score snapshots (Geopol vs Polymarket)
     rss_feeds                  -- Admin-managed RSS feed registry with health metrics
 """
 
@@ -101,6 +102,11 @@ class Prediction(Base):
     # Direct dedup lookup for Polymarket-driven forecasts
     polymarket_event_id: Mapped[Optional[str]] = mapped_column(
         String(100), nullable=True, index=True
+    )
+    # Timestamp of the most recent re-forecast (None if never re-forecasted).
+    # Immutable created_at tracks original creation; this tracks reforecast activity.
+    reforecasted_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True, index=True
     )
 
     # Full-text search on question -- generated column, GIN-indexed in migration 004
@@ -363,7 +369,7 @@ class PolymarketComparison(Base):
     )
     status: Mapped[str] = mapped_column(
         String(20), nullable=False, default="active"
-    )  # active | resolved
+    )  # active | resolved | voided
     polymarket_outcome: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     geopol_brier: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     polymarket_brier: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
@@ -430,6 +436,45 @@ class PolymarketSnapshot(Base):
         return (
             f"<PolymarketSnapshot(id={self.id}, comparison={self.comparison_id}, "
             f"pm={self.polymarket_price:.3f}, gp={self.geopol_probability:.3f})>"
+        )
+
+
+class PolymarketAccuracy(Base):
+    """Cumulative accuracy snapshot: Geopol vs Polymarket Brier scores.
+
+    Append-only ledger. A new row is written each time a PolymarketComparison
+    resolves, recording the running totals at that moment. Enables time-series
+    accuracy curves without recomputing from raw comparison rows.
+    """
+
+    __tablename__ = "polymarket_accuracy"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    total_resolved: Mapped[int] = mapped_column(Integer, nullable=False)
+    geopol_cumulative_brier: Mapped[float] = mapped_column(Float, nullable=False)
+    polymarket_cumulative_brier: Mapped[float] = mapped_column(Float, nullable=False)
+    geopol_wins: Mapped[int] = mapped_column(Integer, nullable=False)
+    polymarket_wins: Mapped[int] = mapped_column(Integer, nullable=False)
+    draws: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    rolling_30d_geopol_brier: Mapped[Optional[float]] = mapped_column(
+        Float, nullable=True
+    )
+    rolling_30d_polymarket_brier: Mapped[Optional[float]] = mapped_column(
+        Float, nullable=True
+    )
+    rolling_30d_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    computed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    triggered_by_comparison_id: Mapped[Optional[int]] = mapped_column(
+        Integer, nullable=True
+    )
+
+    def __repr__(self) -> str:
+        return (
+            f"<PolymarketAccuracy(id={self.id}, resolved={self.total_resolved}, "
+            f"geopol_brier={self.geopol_cumulative_brier:.4f}, "
+            f"pm_brier={self.polymarket_cumulative_brier:.4f})>"
         )
 
 
