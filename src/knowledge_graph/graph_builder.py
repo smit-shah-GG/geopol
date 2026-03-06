@@ -18,6 +18,7 @@ from pathlib import Path
 
 from .entity_normalization import EntityNormalizer
 from .relation_classification import RelationClassifier
+from .cross_source_dedup import CrossSourceDedupFilter
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +45,7 @@ class TemporalKnowledgeGraph:
         self.graph = nx.MultiDiGraph()
         self.normalizer = normalizer or EntityNormalizer()
         self.classifier = classifier or RelationClassifier()
+        self.dedup_filter = CrossSourceDedupFilter()
 
         # Metadata
         self.graph.graph['created'] = datetime.utcnow().isoformat()
@@ -51,12 +53,18 @@ class TemporalKnowledgeGraph:
         self.graph.graph['event_count'] = 0
         self.graph.graph['unique_relations'] = 0
 
-    def add_event_from_db_row(self, row: Dict) -> Optional[Tuple[str, str]]:
+    def add_event_from_db_row(self, row: Dict, source: str = "gdelt") -> Optional[Tuple[str, str]]:
         """
         Add single event to graph from database row.
 
+        Applies cross-source dedup before insertion. Events that collide
+        on (date, country, coarse_event_type) with a higher-priority source
+        are suppressed.
+
         Args:
             row: Database row with event data
+            source: Data source name (e.g., "gdelt", "acled", "ucdp").
+                Defaults to "gdelt" for backward compatibility.
 
         Returns:
             Tuple of (source_entity_id, target_entity_id) or None if invalid
@@ -70,6 +78,18 @@ class TemporalKnowledgeGraph:
         num_mentions = row.get('num_mentions')
         goldstein_scale = row.get('goldstein_scale')
         tone = row.get('tone')
+
+        # Cross-source dedup: check fingerprint before graph insertion
+        event_id = str(row.get('id', ''))
+        country_iso = actor1_code[:3] if actor1_code else None
+        if not self.dedup_filter.should_insert(
+            event_date=event_date or '',
+            country_iso=country_iso,
+            cameo_code=event_code or '',
+            source=source,
+            event_id=event_id,
+        ):
+            return None
 
         # Resolve entities
         source_entity, target_entity = self.normalizer.resolve_entity_pair(
@@ -248,6 +268,11 @@ class TemporalKnowledgeGraph:
             f"{stats['final_nodes']} nodes, {stats['final_edges']} edges, "
             f"{stats['duration_seconds']:.2f}s"
         )
+
+        # Log cross-source dedup stats
+        dedup_stats = self.dedup_filter.stats
+        if dedup_stats['suppressed'] > 0:
+            logger.info("Cross-source dedup stats: %s", dedup_stats)
 
         return stats
 
