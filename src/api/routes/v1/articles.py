@@ -1,13 +1,17 @@
 """
-RSS article search endpoint with dual-mode ChromaDB queries.
+RSS article search endpoint with tri-mode ChromaDB queries.
 
-Two search modes:
+Three search modes:
   1. **Keyword mode** (default): Uses ``collection.get()`` with metadata
      filters for country and date range. Text search is applied as a
      Python-side filter on document content.
-  2. **Semantic mode** (``?semantic=true``): Uses ``collection.query()``
+  2. **Recent mode** (``?sort=recent``): Uses ``collection.get()`` with a
+     24-hour lookback window, then sorts Python-side by ``published_at``
+     descending. Primary data source for NewsFeedPanel.
+  3. **Semantic mode** (``?semantic=true``): Uses ``collection.query()``
      with the ``text`` parameter as the embedding query string. Returns
      results ranked by cosine similarity with ``relevance_score``.
+     The ``sort`` parameter is ignored in semantic mode.
 
 The ChromaDB collection name follows the RSS daemon's ``ArticleIndexer``
 convention (``rss_articles``).
@@ -18,6 +22,7 @@ Requires API key authentication.
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
@@ -68,10 +73,12 @@ def _get_collection():  # noqa: ANN202
     response_model=PaginatedResponse[ArticleDTO],
     summary="Search articles",
     description=(
-        "Returns RSS articles from ChromaDB. Supports two modes: "
+        "Returns RSS articles from ChromaDB. Supports three modes: "
         "keyword filtering (default) with country and date range metadata "
-        "filters, and semantic search (?semantic=true) with vector similarity. "
-        "Semantic mode requires a text query parameter."
+        "filters; recent mode (?sort=recent) returning articles from the "
+        "last 24 hours sorted by publication time descending; and semantic "
+        "search (?semantic=true) with vector similarity. Semantic mode "
+        "requires a text query parameter and ignores the sort parameter."
     ),
     responses={
         400: {"model": ProblemDetail, "description": "Missing text for semantic search"},
@@ -83,10 +90,11 @@ async def list_articles(
     end_date: str | None = Query(None, description="End date (YYYY-MM-DD, inclusive)"),
     text: str | None = Query(None, description="Text query (required for semantic mode)"),
     semantic: bool = Query(default=False, description="Enable semantic (vector similarity) search"),
+    sort: str | None = Query(None, description="Sort mode: 'recent' for time-descending (last 24h)"),
     limit: int = Query(default=20, ge=1, le=100, description="Max results"),
     _client: str = Depends(verify_api_key),
 ) -> PaginatedResponse[ArticleDTO]:
-    """Search articles in keyword or semantic mode."""
+    """Search articles in keyword, recent, or semantic mode."""
     # Validate: semantic mode requires text
     if semantic and not text:
         raise HTTPException(
@@ -100,7 +108,10 @@ async def list_articles(
 
     try:
         if semantic:
+            # sort parameter ignored in semantic mode -- relevance-sorted by definition
             return _semantic_search(collection, text, limit)  # type: ignore[arg-type]
+        if sort == "recent":
+            return _recent_search(collection, limit)
         return _keyword_search(collection, country, start_date, end_date, text, limit)
     except Exception:
         logger.error("Article search failed", exc_info=True)
@@ -194,6 +205,72 @@ def _keyword_search(
         items=articles,
         next_cursor=None,  # No cursor for keyword mode (simple get)
         has_more=False,
+    )
+
+
+def _recent_search(
+    collection,  # noqa: ANN001
+    limit: int,
+) -> PaginatedResponse[ArticleDTO]:
+    """Recent mode: articles from the last 24 hours sorted by published_at descending.
+
+    ChromaDB ``get()`` doesn't support ORDER BY, so we over-fetch with a
+    24-hour lookback ``where`` filter, sort Python-side, and truncate.
+    ISO 8601 string comparison is lexicographically equivalent to
+    chronological order, so direct string sort works.
+    """
+    cutoff = (datetime.now(timezone.utc) - timedelta(hours=24)).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    # Over-fetch to allow for sorting and truncation
+    fetch_limit = min(limit * 3, 300)
+
+    try:
+        results = collection.get(
+            where={"published_at": {"$gte": cutoff}},
+            limit=fetch_limit,
+            include=["documents", "metadatas"],
+        )
+    except Exception:
+        logger.warning("ChromaDB get() failed for recent search", exc_info=True)
+        return PaginatedResponse(items=[], next_cursor=None, has_more=False)
+
+    if not results or not results.get("ids"):
+        return PaginatedResponse(items=[], next_cursor=None, has_more=False)
+
+    # Build intermediate list with published_at for sorting
+    raw_articles: list[tuple[str, ArticleDTO]] = []
+    ids = results["ids"]
+    documents = results.get("documents") or []
+    metadatas = results.get("metadatas") or []
+
+    for i, chunk_id in enumerate(ids):
+        doc = documents[i] if i < len(documents) else ""
+        meta = metadatas[i] if i < len(metadatas) else {}
+        published_at = meta.get("published_at") or ""
+
+        raw_articles.append((
+            published_at,
+            ArticleDTO(
+                chunk_id=chunk_id,
+                title=meta.get("title") or "Untitled",
+                url=meta.get("source_url") or "",
+                source_feed=meta.get("source_name") or "unknown",
+                country_iso=None,
+                published_at=published_at or None,
+                snippet=(doc or "")[:200],
+                relevance_score=None,
+            ),
+        ))
+
+    # Sort by published_at descending (ISO string comparison = chronological)
+    raw_articles.sort(key=lambda x: x[0], reverse=True)
+
+    articles = [dto for _, dto in raw_articles[:limit]]
+
+    return PaginatedResponse(
+        items=articles,
+        next_cursor=None,
+        has_more=len(raw_articles) > limit,
     )
 
 
