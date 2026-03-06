@@ -62,66 +62,204 @@ async def gdelt_poll_cycle() -> None:
         raise
 
 
-async def rss_poll_tier1() -> None:
-    """Poll tier-1 RSS feeds (high-priority news sources)."""
-    try:
-        from src.ingest.feed_config import TIER_1_FEEDS
-        from src.ingest.rss_daemon import DaemonConfig, RSSDaemon
+async def _get_feeds_from_db(tier: int) -> list | None:
+    """Query rss_feeds for enabled, non-deleted feeds of the given tier.
 
-        deps = get_shared_deps()
-        config = DaemonConfig(
-            tier1_interval=deps.settings.rss_poll_interval_tier1,
-            tier2_interval=deps.settings.rss_poll_interval_tier2,
-            retention_days=deps.settings.rss_article_retention_days,
-        )
-        daemon = RSSDaemon(config=config)
-        try:
-            metrics = await daemon.poll_feeds(TIER_1_FEEDS)
-            logger.info(
-                "rss_tier1: feeds=%d, new=%d, dup=%d, chunks=%d, %.1fs",
-                metrics.feeds_polled,
-                metrics.articles_new,
-                metrics.articles_duplicate,
-                metrics.chunks_indexed,
-                metrics.duration_seconds,
+    Returns a list of FeedSource objects, or None if the DB is unreachable
+    (caller should fall back to feed_config.py constants).
+    """
+    try:
+        from sqlalchemy import select
+
+        from src.db.models import RSSFeed
+        from src.db.postgres import async_session_factory, init_db
+        from src.ingest.feed_config import FeedSource, FeedTier
+
+        if async_session_factory is None:
+            init_db()
+
+        async with async_session_factory() as session:
+            result = await session.execute(
+                select(RSSFeed).where(
+                    RSSFeed.enabled.is_(True),
+                    RSSFeed.deleted_at.is_(None),
+                    RSSFeed.tier == tier,
+                )
             )
-            await daemon._record_ingest_run(metrics, "tier-1")
-        finally:
-            # Clean up the aiohttp session created by RSSDaemon
-            if daemon._session and not daemon._session.closed:
-                await daemon._session.close()
+            rows = result.scalars().all()
+
+        return [
+            FeedSource(
+                name=row.name,
+                url=row.url,
+                tier=FeedTier(row.tier),
+                category=row.category,
+                lang=row.lang,
+            )
+            for row in rows
+        ]
+    except Exception as exc:
+        logger.warning(
+            "Failed to query rss_feeds for tier %d, falling back to feed_config: %s",
+            tier,
+            exc,
+        )
+        return None
+
+
+async def _update_feed_health(
+    per_feed_results: list,
+) -> None:
+    """Update rss_feeds health metrics after a poll cycle.
+
+    For each feed result:
+    - On success: reset error_count, clear last_error, update article counts
+    - On error: increment error_count, set last_error
+    - Auto-disable at 5 consecutive failures
+
+    Non-fatal: logs and continues on DB errors.
+    """
+    try:
+        from sqlalchemy import select, update
+
+        from src.db.models import RSSFeed
+        from src.db.postgres import async_session_factory, init_db
+
+        if async_session_factory is None:
+            init_db()
+
+        now = datetime.now(timezone.utc)
+        async with async_session_factory() as session:
+            for result in per_feed_results:
+                feed_name = result.feed_name
+
+                # Look up the feed row
+                row = await session.execute(
+                    select(RSSFeed).where(RSSFeed.name == feed_name)
+                )
+                feed = row.scalar_one_or_none()
+                if feed is None:
+                    continue  # Feed was deleted between query and poll
+
+                feed.last_poll_at = now
+
+                if result.error:
+                    # Feed fetch failed
+                    feed.error_count += 1
+                    feed.last_error = result.error[:2000]  # Truncate long errors
+
+                    if feed.error_count >= 5 and feed.enabled:
+                        feed.enabled = False
+                        logger.warning(
+                            "Feed %s auto-disabled after %d consecutive failures",
+                            feed_name,
+                            feed.error_count,
+                        )
+                else:
+                    # Feed fetch succeeded -- reset error state
+                    feed.error_count = 0
+                    feed.last_error = None
+                    feed.articles_total += result.articles_new
+                    feed.articles_24h = result.articles_found  # Approximation
+                    # Running average: weighted towards recent polls
+                    total_polls = max(
+                        feed.articles_total / max(feed.avg_articles_per_poll, 1.0),
+                        1.0,
+                    ) if feed.avg_articles_per_poll > 0 else 1.0
+                    feed.avg_articles_per_poll = (
+                        (feed.avg_articles_per_poll * (total_polls - 1) + result.articles_found)
+                        / total_polls
+                    )
+
+            await session.commit()
+    except Exception as exc:
+        logger.warning("Failed to update feed health metrics: %s", exc)
+
+
+async def _rss_poll_tier(tier: int, tier_label: str) -> None:
+    """Shared logic for tier-1 and tier-2 RSS polling.
+
+    1. Query rss_feeds DB for enabled feeds of the given tier (fallback to
+       feed_config.py constants if DB is unreachable).
+    2. Poll feeds via RSSDaemon.
+    3. Update per-feed health metrics in rss_feeds table.
+    4. Record IngestRun audit row.
+    """
+    from src.ingest.rss_daemon import CycleMetrics, DaemonConfig, RSSDaemon
+
+    deps = get_shared_deps()
+    config = DaemonConfig(
+        tier1_interval=deps.settings.rss_poll_interval_tier1,
+        tier2_interval=deps.settings.rss_poll_interval_tier2,
+        retention_days=deps.settings.rss_article_retention_days,
+    )
+
+    # Step 1: Get feeds from DB (preferred) or fallback to constants
+    feeds = await _get_feeds_from_db(tier)
+    if feeds is None:
+        # DB unavailable -- use hardcoded fallback
+        if tier == 1:
+            from src.ingest.feed_config import TIER_1_FEEDS
+            feeds = TIER_1_FEEDS
+        else:
+            from src.ingest.feed_config import TIER_2_FEEDS
+            feeds = TIER_2_FEEDS
+        logger.warning(
+            "rss_%s: using feed_config.py fallback (%d feeds)",
+            tier_label,
+            len(feeds),
+        )
+
+    if not feeds:
+        logger.info("rss_%s: no enabled feeds for tier %d, skipping", tier_label, tier)
+        return
+
+    # Step 2: Poll
+    daemon = RSSDaemon(config=config)
+    try:
+        metrics = await daemon.poll_feeds(feeds)
+        logger.info(
+            "rss_%s: feeds=%d, new=%d, dup=%d, chunks=%d, %.1fs",
+            tier_label,
+            metrics.feeds_polled,
+            metrics.articles_new,
+            metrics.articles_duplicate,
+            metrics.chunks_indexed,
+            metrics.duration_seconds,
+        )
+
+        # Step 3: Update per-feed health metrics
+        if metrics.per_feed:
+            await _update_feed_health(metrics.per_feed)
+
+        # Step 4: Record IngestRun
+        await daemon._record_ingest_run(metrics, tier_label)
+    finally:
+        if daemon._session and not daemon._session.closed:
+            await daemon._session.close()
+
+
+async def rss_poll_tier1() -> None:
+    """Poll tier-1 RSS feeds from the rss_feeds DB table.
+
+    Falls back to feed_config.py TIER_1_FEEDS if the database is
+    unreachable. Updates per-feed health metrics after polling.
+    """
+    try:
+        await _rss_poll_tier(tier=1, tier_label="tier-1")
     except Exception:
         logger.exception("rss_poll_tier1 failed")
         raise
 
 
 async def rss_poll_tier2() -> None:
-    """Poll tier-2 RSS feeds (lower-priority / regional sources)."""
-    try:
-        from src.ingest.feed_config import TIER_2_FEEDS
-        from src.ingest.rss_daemon import DaemonConfig, RSSDaemon
+    """Poll tier-2 RSS feeds from the rss_feeds DB table.
 
-        deps = get_shared_deps()
-        config = DaemonConfig(
-            tier1_interval=deps.settings.rss_poll_interval_tier1,
-            tier2_interval=deps.settings.rss_poll_interval_tier2,
-            retention_days=deps.settings.rss_article_retention_days,
-        )
-        daemon = RSSDaemon(config=config)
-        try:
-            metrics = await daemon.poll_feeds(TIER_2_FEEDS)
-            logger.info(
-                "rss_tier2: feeds=%d, new=%d, dup=%d, chunks=%d, %.1fs",
-                metrics.feeds_polled,
-                metrics.articles_new,
-                metrics.articles_duplicate,
-                metrics.chunks_indexed,
-                metrics.duration_seconds,
-            )
-            await daemon._record_ingest_run(metrics, "tier-2")
-        finally:
-            if daemon._session and not daemon._session.closed:
-                await daemon._session.close()
+    Falls back to feed_config.py TIER_2_FEEDS if the database is
+    unreachable. Updates per-feed health metrics after polling.
+    """
+    try:
+        await _rss_poll_tier(tier=2, tier_label="tier-2")
     except Exception:
         logger.exception("rss_poll_tier2 failed")
         raise

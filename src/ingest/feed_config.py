@@ -1,6 +1,13 @@
 """
 Tiered RSS feed configuration for geopolitical news ingestion.
 
+**NOTE (Phase 21):** This module is now primarily a seed source for the
+Alembic 007 migration (which populates the ``rss_feeds`` PostgreSQL table)
+and a runtime fallback when the DB is unreachable. At runtime, the RSS
+daemon reads enabled feeds from the ``rss_feeds`` table, not from the
+constants defined here. Add new feeds via the admin API, not by editing
+this file.
+
 Feeds extracted from World Monitor's feeds.ts (298-domain list), filtered
 to geopolitically relevant sources only. Startup/VC, lifestyle, podcast,
 and purely tech-focused feeds excluded.

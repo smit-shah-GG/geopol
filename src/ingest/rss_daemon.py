@@ -10,6 +10,10 @@ to avoid overwhelming downstream services or the host NIC.
 
 Each poll cycle records an IngestRun row with daemon_type='rss' for
 audit and monitoring.
+
+Per-feed health metrics are tracked via ``PerFeedResult`` dataclass,
+returned from ``poll_feeds()`` for callers to persist to the rss_feeds
+table. The daemon itself remains decoupled from SQLAlchemy.
 """
 
 from __future__ import annotations
@@ -38,6 +42,16 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass
+class PerFeedResult:
+    """Per-feed outcome from a poll cycle, used to update rss_feeds health."""
+
+    feed_name: str
+    articles_found: int = 0
+    articles_new: int = 0
+    error: str | None = None  # Non-None means the feed fetch itself failed
+
+
+@dataclass
 class CycleMetrics:
     """Metrics for a single poll cycle."""
 
@@ -48,6 +62,7 @@ class CycleMetrics:
     articles_failed: int = 0
     chunks_indexed: int = 0
     duration_seconds: float = 0.0
+    per_feed: list[PerFeedResult] = field(default_factory=list)
 
 
 @dataclass
@@ -194,7 +209,9 @@ class RSSDaemon:
         """
         Poll a set of feeds: fetch RSS, extract articles, index chunks.
 
-        Returns aggregated metrics for the cycle.
+        Returns aggregated metrics for the cycle, including per-feed results
+        in ``CycleMetrics.per_feed`` for callers to persist to the rss_feeds
+        table.
         """
         metrics = CycleMetrics()
         start = time.monotonic()
@@ -207,16 +224,28 @@ class RSSDaemon:
         ]
         feed_results = await asyncio.gather(*feed_tasks, return_exceptions=True)
 
-        # Flatten entries with source attribution
+        # Flatten entries with source attribution + track per-feed fetch results
         all_entries: list[tuple[dict[str, str], FeedSource]] = []
+        feed_entry_counts: dict[str, int] = {}  # feed_name -> articles found
+
         for feed, result in zip(feeds, feed_results):
             if isinstance(result, Exception):
                 logger.error("Feed %s raised exception: %s", feed.name, result)
+                metrics.per_feed.append(
+                    PerFeedResult(feed_name=feed.name, error=str(result))
+                )
                 continue
+            if not result:
+                # Feed returned zero entries (could be HTTP error or empty feed)
+                metrics.per_feed.append(
+                    PerFeedResult(feed_name=feed.name, articles_found=0)
+                )
+
             metrics.feeds_polled += 1
             # Cap entries per feed
             capped = result[: self.config.max_articles_per_feed]
             metrics.articles_found += len(capped)
+            feed_entry_counts[feed.name] = len(capped)
             for entry in capped:
                 all_entries.append((entry, feed))
 
@@ -227,7 +256,13 @@ class RSSDaemon:
         ]
         article_results = await asyncio.gather(*article_tasks, return_exceptions=True)
 
-        for result in article_results:
+        # Track per-feed new article counts
+        per_feed_new: dict[str, int] = {}
+        # Map article results back to feeds via positional correspondence
+        entry_feed_map = [feed for _, feed in all_entries]
+
+        for i, result in enumerate(article_results):
+            feed_name = entry_feed_map[i].name if i < len(entry_feed_map) else "unknown"
             if isinstance(result, Exception):
                 metrics.articles_failed += 1
                 continue
@@ -235,10 +270,23 @@ class RSSDaemon:
             if status == "new":
                 metrics.articles_new += 1
                 metrics.chunks_indexed += result.get("chunks", 0)
+                per_feed_new[feed_name] = per_feed_new.get(feed_name, 0) + 1
             elif status == "duplicate":
                 metrics.articles_duplicate += 1
             else:
                 metrics.articles_failed += 1
+
+        # Build per-feed results for feeds that were successfully fetched
+        for feed_name, found in feed_entry_counts.items():
+            # Only add if not already added as error
+            if not any(r.feed_name == feed_name for r in metrics.per_feed):
+                metrics.per_feed.append(
+                    PerFeedResult(
+                        feed_name=feed_name,
+                        articles_found=found,
+                        articles_new=per_feed_new.get(feed_name, 0),
+                    )
+                )
 
         metrics.duration_seconds = time.monotonic() - start
         return metrics
