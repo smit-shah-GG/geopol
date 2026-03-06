@@ -27,6 +27,9 @@ import { PolymarketPanel } from '@/components/PolymarketPanel';
 import { MyForecastsPanel } from '@/components/MyForecastsPanel';
 import { ComparisonPanel } from '@/components/ComparisonPanel';
 
+// Breaking news overlay
+import { BreakingNewsBanner, type BreakingNewsDetail } from '@/components/BreakingNewsBanner';
+
 // Search
 import { SearchBar } from '@/components/SearchBar';
 
@@ -49,6 +52,15 @@ let searchBar: SearchBar | null = null;
 let scenarioExplorer: ScenarioExplorer | null = null;
 let countryBriefPage: CountryBriefPage | null = null;
 
+// Breaking news banner -- standalone overlay, not a panel
+let breakingNewsBanner: BreakingNewsBanner | null = null;
+
+// Previous forecast probabilities for spike detection (forecast_id -> probability)
+let previousProbabilities: Map<string, number> = new Map();
+
+/** Probability spike threshold: if probability changed by more than this, fire alert. */
+const PROBABILITY_SPIKE_THRESHOLD = 0.15;
+
 // ---------------------------------------------------------------------------
 // Data push helpers
 // ---------------------------------------------------------------------------
@@ -67,6 +79,47 @@ function pushHealth(health: HealthResponse, panel: SystemHealthPanel): void {
 
 function pushRequests(requests: ForecastRequestStatus[], panel: MyForecastsPanel): void {
   panel.update(requests);
+}
+
+/**
+ * Check for probability spikes across forecasts and dispatch breaking news events.
+ * Fires when any forecast's probability changed by more than PROBABILITY_SPIKE_THRESHOLD
+ * since the last refresh cycle.
+ */
+function checkProbabilitySpikes(forecasts: ForecastResponse[]): void {
+  // Skip on first load (no previous data to compare)
+  if (previousProbabilities.size === 0) {
+    for (const f of forecasts) {
+      previousProbabilities.set(f.forecast_id, f.probability);
+    }
+    return;
+  }
+
+  for (const f of forecasts) {
+    const prev = previousProbabilities.get(f.forecast_id);
+    if (prev !== undefined) {
+      const delta = Math.abs(f.probability - prev);
+      if (delta > PROBABILITY_SPIKE_THRESHOLD) {
+        const direction = f.probability > prev ? 'rose' : 'fell';
+        const detail: BreakingNewsDetail = {
+          id: `spike-${f.forecast_id}-${Date.now()}`,
+          headline: `${f.question} -- probability ${direction} to ${(f.probability * 100).toFixed(0)}%`,
+          source: 'Geopol Forecast',
+          threatLevel: delta > 0.3 ? 'critical' : 'high',
+          timestamp: new Date(),
+        };
+        document.dispatchEvent(
+          new CustomEvent('geopol:breaking-news', { detail }),
+        );
+      }
+    }
+  }
+
+  // Update stored probabilities
+  previousProbabilities.clear();
+  for (const f of forecasts) {
+    previousProbabilities.set(f.forecast_id, f.probability);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -116,6 +169,9 @@ export function mountDashboard(container: HTMLElement, ctx: GeoPolAppContext): v
   scenarioExplorer = new ScenarioExplorer();
   countryBriefPage = new CountryBriefPage();
 
+  // -- Breaking news banner (standalone overlay on document.body) --
+  breakingNewsBanner = new BreakingNewsBanner();
+
   // -- Initial data load --
   const loadInitial = async (): Promise<void> => {
     const [forecasts, countries, health, polymarket, requests, comparisons] = await Promise.all([
@@ -128,12 +184,18 @@ export function mountDashboard(container: HTMLElement, ctx: GeoPolAppContext): v
     ]);
 
     pushForecasts(forecasts, forecastPanel);
+    checkProbabilitySpikes(forecasts);
     pushCountries(countries, riskIndexPanel);
     searchBar?.updateCountries(countries);
     pushHealth(health, healthPanel);
     pushRequests(requests, myForecastsPanel);
     polymarketPanel.update(polymarket);
     comparisonPanel.update(comparisons);
+
+    // Trigger initial news feed load (not in Promise.all to avoid blocking dashboard)
+    newsFeedPanel.refresh().catch((err) => {
+      console.error('[Dashboard] Initial news feed load failed:', err);
+    });
   };
 
   loadInitial().catch((err) => {
@@ -162,6 +224,7 @@ export function mountDashboard(container: HTMLElement, ctx: GeoPolAppContext): v
       fn: async () => {
         const forecasts = await forecastClient.getTopForecasts(10);
         pushForecasts(forecasts, forecastPanel);
+        checkProbabilitySpikes(forecasts);
       },
       intervalMs: 60_000,
     },
@@ -255,4 +318,13 @@ export function unmountDashboard(ctx: GeoPolAppContext): void {
     countryBriefPage.destroy();
     countryBriefPage = null;
   }
+
+  // Destroy breaking news banner
+  if (breakingNewsBanner) {
+    breakingNewsBanner.destroy();
+    breakingNewsBanner = null;
+  }
+
+  // Clear spike detection state
+  previousProbabilities.clear();
 }
