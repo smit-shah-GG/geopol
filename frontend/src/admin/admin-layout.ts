@@ -13,6 +13,7 @@ import { ProcessTable } from '@/admin/panels/ProcessTable';
 import { ConfigEditor } from '@/admin/panels/ConfigEditor';
 import { LogViewer } from '@/admin/panels/LogViewer';
 import { SourceManager } from '@/admin/panels/SourceManager';
+import { AccuracyPanel } from '@/admin/panels/AccuracyPanel';
 import type { AdminSection } from '@/admin/admin-types';
 import type { AdminPanel } from '@/admin/panels/ProcessTable';
 
@@ -27,6 +28,7 @@ const SECTION_TITLES: Record<AdminSection, string> = {
   config: 'CONFIGURATION',
   logs: 'SYSTEM LOGS',
   sources: 'DATA SOURCES',
+  accuracy: 'POLYMARKET ACCURACY',
 };
 
 /**
@@ -96,5 +98,6 @@ function createPanel(section: AdminSection, client: AdminClient): AdminPanel {
     case 'config': return new ConfigEditor(client);
     case 'logs': return new LogViewer(client);
     case 'sources': return new SourceManager(client);
+    case 'accuracy': return new AccuracyPanel(client);
   }
 }

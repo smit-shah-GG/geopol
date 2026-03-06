@@ -7,6 +7,7 @@
  */
 
 import type {
+  AccuracyData,
   AddFeedRequest,
   ConfigEntry,
   FeedInfo,
@@ -114,6 +115,15 @@ export class AdminClient {
         body: JSON.stringify({ enabled }),
       },
     );
+  }
+
+  // -----------------------------------------------------------------------
+  // Accuracy (22-03)
+  // -----------------------------------------------------------------------
+
+  /** GET /accuracy -- head-to-head Brier accuracy data. */
+  async getAccuracy(): Promise<AccuracyData> {
+    return this.request<AccuracyData>('/accuracy');
   }
 
   // -----------------------------------------------------------------------

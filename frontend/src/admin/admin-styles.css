@@ -1219,3 +1219,117 @@
   margin-top: 12px;
   text-align: center;
 }
+
+/* =========================================================================
+ * Accuracy Panel (22-03)
+ * ========================================================================= */
+
+/* -- Stats bar ----------------------------------------------------------- */
+
+.admin-layout .accuracy-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.admin-layout .accuracy-stat-card {
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
+  border-radius: 6px;
+  padding: 12px;
+  text-align: center;
+}
+
+.admin-layout .accuracy-stat-card .stat-value {
+  font-size: 24px;
+  font-weight: 700;
+  font-family: 'Courier New', monospace;
+  color: var(--admin-text);
+}
+
+.admin-layout .accuracy-stat-card .stat-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  color: var(--admin-text-dim);
+  letter-spacing: 0.05em;
+  margin-top: 4px;
+  font-family: 'Courier New', monospace;
+}
+
+/* -- Winner badges ------------------------------------------------------- */
+
+.admin-layout .winner-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: 'Courier New', monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.admin-layout .winner-badge.geopol {
+  background: rgba(34, 197, 94, 0.2);
+  color: #22c55e;
+}
+
+.admin-layout .winner-badge.polymarket {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+}
+
+.admin-layout .winner-badge.draw {
+  background: rgba(156, 163, 175, 0.2);
+  color: #9ca3af;
+}
+
+.admin-layout .winner-badge.voided {
+  background: rgba(156, 163, 175, 0.1);
+  color: #6b7280;
+  text-decoration: line-through;
+}
+
+/* -- Voided table rows --------------------------------------------------- */
+
+.admin-layout .process-table tr.voided {
+  opacity: 0.5;
+}
+
+.admin-layout .process-table tr.voided .question-cell {
+  text-decoration: line-through;
+}
+
+/* -- Sortable headers ---------------------------------------------------- */
+
+.admin-layout .process-table th.sortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.admin-layout .process-table th.sortable:hover {
+  color: var(--admin-accent);
+}
+
+.admin-layout .process-table th.sort-asc::after {
+  content: ' \25B2';
+  font-size: 10px;
+}
+
+.admin-layout .process-table th.sort-desc::after {
+  content: ' \25BC';
+  font-size: 10px;
+}
+
+/* -- Empty state --------------------------------------------------------- */
+
+.admin-layout .accuracy-empty {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--admin-text-dim);
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+  border: 1px dashed var(--admin-border);
+  border-radius: 8px;
+}

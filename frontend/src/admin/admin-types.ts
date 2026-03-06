@@ -87,5 +87,43 @@ export interface UpdateFeedRequest {
   enabled?: boolean;
 }
 
+/** Single resolved or voided Polymarket comparison for the accuracy table. */
+export interface ResolvedComparison {
+  id: number;
+  polymarket_title: string;
+  polymarket_event_id: string;
+  geopol_probability: number | null;
+  polymarket_price: number | null;
+  polymarket_outcome: number | null;
+  geopol_brier: number | null;
+  polymarket_brier: number | null;
+  winner: string | null; // "geopol" | "polymarket" | "draw" | null
+  status: string; // "resolved" | "voided"
+  resolved_at: string | null;
+  created_at: string;
+  country_iso: string | null;
+  category: string | null;
+}
+
+/** Aggregate accuracy stats. */
+export interface AccuracySummary {
+  total_resolved: number;
+  total_voided: number;
+  geopol_wins: number;
+  polymarket_wins: number;
+  draws: number;
+  geopol_cumulative_brier: number | null;
+  polymarket_cumulative_brier: number | null;
+  rolling_30d_geopol_brier: number | null;
+  rolling_30d_polymarket_brier: number | null;
+  rolling_30d_count: number;
+}
+
+/** Full accuracy endpoint response. */
+export interface AccuracyData {
+  summary: AccuracySummary;
+  comparisons: ResolvedComparison[];
+}
+
 /** Admin sidebar navigation sections. */
-export type AdminSection = 'processes' | 'config' | 'logs' | 'sources';
+export type AdminSection = 'processes' | 'config' | 'logs' | 'sources' | 'accuracy';
