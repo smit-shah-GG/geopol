@@ -658,3 +658,137 @@ body.has-breaking-alert .dashboard-columns {
 .windowed-chunk.rendered {
   contain: layout style;
 }
+
+/* ========================================================================
+   LiveStreamsPanel
+   ======================================================================== */
+
+/* Region pill bar (reuses news-feed-pill styling) */
+.live-streams-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  padding: var(--space-sm);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+/* Player grid: 2-column layout */
+.live-streams-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-xs);
+  padding: var(--space-xs);
+}
+
+/* Individual player card */
+.live-stream-card {
+  background: var(--bg);
+  border: 1px solid var(--border-subtle);
+  overflow: hidden;
+}
+
+/* 16:9 aspect ratio wrapper */
+.live-stream-player-wrapper {
+  position: relative;
+  width: 100%;
+  padding-top: 56.25%; /* 16:9 */
+  background: #000;
+  overflow: hidden;
+}
+
+.live-stream-player-wrapper iframe,
+.live-stream-player-target {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+/* Mute toggle overlay button */
+.live-stream-mute-btn {
+  position: absolute;
+  bottom: var(--space-xs);
+  right: var(--space-xs);
+  z-index: 2;
+  background: rgba(0, 0, 0, 0.7);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  padding: 2px 6px;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transition: all var(--transition-fast);
+}
+
+.live-stream-mute-btn:hover {
+  color: var(--text-primary);
+  border-color: var(--text-muted);
+}
+
+.live-stream-mute-btn.unmuted {
+  color: var(--semantic-success);
+  border-color: var(--semantic-success);
+  background: rgba(46, 204, 113, 0.15);
+}
+
+/* Channel info bar below player */
+.live-stream-info {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-xs) var(--space-sm);
+  background: var(--bg-surface);
+}
+
+/* Live indicator dot (pulsing red) */
+.live-stream-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--semantic-critical);
+  flex-shrink: 0;
+  animation: live-pulse 2s ease-in-out infinite;
+}
+
+@keyframes live-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.live-stream-name {
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Offline overlay for errored players */
+.live-stream-offline {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.8);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  letter-spacing: 1px;
+  z-index: 1;
+}
+
+/* Empty state */
+.live-streams-grid .empty-state {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-xl);
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+}

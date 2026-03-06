@@ -2,7 +2,7 @@
  * Dashboard screen -- 4-column layout with all existing panels.
  *
  * Column assignments (Phase 21):
- *   Col 1 (25%): NewsFeedPanel
+ *   Col 1 (25%): NewsFeedPanel, LiveStreamsPanel
  *   Col 2 (30%): SearchBar, ForecastPanel, ComparisonPanel
  *   Col 3 (30%): MyForecastsPanel
  *   Col 4 (15%): RiskIndexPanel, SystemHealth, Polymarket
@@ -26,6 +26,9 @@ import { SystemHealthPanel } from '@/components/SystemHealthPanel';
 import { PolymarketPanel } from '@/components/PolymarketPanel';
 import { MyForecastsPanel } from '@/components/MyForecastsPanel';
 import { ComparisonPanel } from '@/components/ComparisonPanel';
+
+// Live streams
+import { LiveStreamsPanel } from '@/components/LiveStreamsPanel';
 
 // Breaking news overlay
 import { BreakingNewsBanner, type BreakingNewsDetail } from '@/components/BreakingNewsBanner';
@@ -51,6 +54,9 @@ let searchBar: SearchBar | null = null;
 // Modal references -- must be destroyed on unmount to remove global listeners
 let scenarioExplorer: ScenarioExplorer | null = null;
 let countryBriefPage: CountryBriefPage | null = null;
+
+// Live streams panel
+let liveStreamsPanel: LiveStreamsPanel | null = null;
 
 // Breaking news banner -- standalone overlay, not a panel
 let breakingNewsBanner: BreakingNewsBanner | null = null;
@@ -143,9 +149,13 @@ export function mountDashboard(container: HTMLElement, ctx: GeoPolAppContext): v
   searchBar = new SearchBar();
   columns.col2.appendChild(searchBar.getElement());
 
+  // -- Live streams panel --
+  liveStreamsPanel = new LiveStreamsPanel();
+
   // -- Mount panels into columns --
-  // Col 1 (25%): News feed
+  // Col 1 (25%): News feed + live streams
   columns.col1.appendChild(newsFeedPanel.getElement());
+  columns.col1.appendChild(liveStreamsPanel.getElement());
   // Col 2 (30%): Search + forecasts + comparisons
   columns.col2.appendChild(forecastPanel.getElement());
   columns.col2.appendChild(comparisonPanel.getElement());
@@ -160,6 +170,7 @@ export function mountDashboard(container: HTMLElement, ctx: GeoPolAppContext): v
   ctx.panels['forecasts'] = forecastPanel;
   ctx.panels['risk-index'] = riskIndexPanel;
   ctx.panels['news-feed'] = newsFeedPanel;
+  ctx.panels['live-streams'] = liveStreamsPanel;
   ctx.panels['system-health'] = healthPanel;
   ctx.panels['polymarket'] = polymarketPanel;
   ctx.panels['my-forecasts'] = myForecastsPanel;
@@ -317,6 +328,12 @@ export function unmountDashboard(ctx: GeoPolAppContext): void {
   if (countryBriefPage) {
     countryBriefPage.destroy();
     countryBriefPage = null;
+  }
+
+  // Destroy live streams panel
+  if (liveStreamsPanel) {
+    liveStreamsPanel.destroy();
+    liveStreamsPanel = null;
   }
 
   // Destroy breaking news banner
