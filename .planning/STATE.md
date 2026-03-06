@@ -10,20 +10,20 @@ See: .planning/PROJECT.md (updated 2026-03-04)
 ## Current Position
 
 Milestone: v3.0 Operational Command & Verification
-Phase: 21 of 25 (Source Expansion & Feed Management) -- Complete
-Plan: 05 of 05
-Status: Complete
-Last activity: 2026-03-06 -- Completed Phase 21 (Source Expansion & Feed Management)
+Phase: 22 of 25 (Polymarket Hardening) -- In progress
+Plan: 01 of 03
+Status: In progress
+Last activity: 2026-03-06 -- Completed 22-01-PLAN.md (Schema + Bug Fix)
 
-Progress: [########################################################] 100% (80/80+ plans lifetime)
-v3.0:    [##############      ] 60% (15/25 plans in v3.0 -- 3/7 phases)
+Progress: [########################################################] 100% (81/80+ plans lifetime)
+v3.0:    [###############     ] 64% (16/25 plans in v3.0 -- 3.3/7 phases)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 75
+- Total plans completed: 76
 - Average duration: 10 minutes
-- Total execution time: 12.0 hours
+- Total execution time: 12.1 hours
 
 **By Phase:**
 
@@ -50,6 +50,7 @@ v3.0:    [##############      ] 60% (15/25 plans in v3.0 -- 3/7 phases)
 | 19-admin-dashboard-foundation | 3 | 20min | 7min |
 | 20-daemon-consolidation | 3 | 25min | 8min |
 | 21-source-expansion-feed-mgmt | 5 | 34min | 7min |
+| 22-polymarket-hardening | 1 | 5min | 5min |
 
 ## Accumulated Context
 
@@ -61,7 +62,8 @@ Key decisions affecting current work:
 - Admin dashboard at `/admin` route, same app, dynamic import code-split, route-level auth gating (2026-03-04)
 - APScheduler 3.11.2 for daemon consolidation -- single process, in-process with FastAPI, AsyncIOScheduler, MemoryJobStore (2026-03-04)
 - Backtesting: isolated internal reporting only -- walk-forward eval, model comparison, calibration audit (2026-03-04)
-- Polymarket: fix created_at overwrite + add rigorous Brier score tracking (2026-03-04)
+- Polymarket: created_at overwrite bug FIXED in 22-01; reforecasted_at column tracks reforecast activity (2026-03-06)
+- PolymarketAccuracy table: append-only cumulative Brier score ledger (2026-03-06)
 - Source expansion: UCDP (not ICEWS -- dead since April 2023), RSS feed management from admin, per-source health (2026-03-04)
 - Global seeding: all ~195 countries get baseline risk from GDELT + ACLED + UCDP + advisories (2026-03-04)
 - Globe layer pills: Arcs/Heatmap/Scenarios are no-ops -- data-wiring fix, not toggle fix (2026-03-04)
@@ -111,6 +113,6 @@ Key decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-03-06
-Stopped at: Phase 21 complete
+Stopped at: Completed 22-01-PLAN.md
 Resume file: None
-Next: Phase 22 (Polymarket Hardening) or Phase 24 (Global Seeding) -- parallel tracks
+Next: 22-02-PLAN.md (Brier scoring engine + resolution pipeline)
