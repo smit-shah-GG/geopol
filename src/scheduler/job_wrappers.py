@@ -362,6 +362,34 @@ async def heavy_polymarket_cycle() -> None:
         raise
 
 
+async def heavy_backtest(config_json: str) -> None:
+    """Run a backtest in a ProcessPoolExecutor worker.
+
+    Acquires the heavy job lock to prevent concurrent heavy workloads,
+    then dispatches ``run_backtest`` with the serialized config. This
+    wrapper is NOT registered as an APScheduler interval job -- it's
+    called on-demand via asyncio.create_task() from AdminService.
+
+    Args:
+        config_json: JSON-serialized BacktestRunConfig string.
+    """
+    try:
+        from src.scheduler.heavy_runner import run_backtest
+
+        async with _heavy_job_lock:
+            loop = asyncio.get_running_loop()
+            returncode = await loop.run_in_executor(
+                _get_process_executor(), run_backtest, config_json
+            )
+            if returncode != 0:
+                raise RuntimeError(
+                    f"backtest run exited with code {returncode}"
+                )
+    except Exception:
+        logger.exception("heavy_backtest failed")
+        raise
+
+
 async def heavy_tkg_retrain() -> None:
     """Run weekly TKG model retraining in a subprocess.
 

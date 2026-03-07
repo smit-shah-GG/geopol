@@ -89,7 +89,7 @@ def run_polymarket_cycle() -> int:
 
         import aiohttp
 
-        from src.db.postgres import async_session_factory, init_db
+        from src.db import postgres as _pg
         from src.forecasting.gemini_client import GeminiClient
         from src.polymarket.auto_forecaster import PolymarketAutoForecaster
         from src.polymarket.client import PolymarketClient
@@ -100,8 +100,9 @@ def run_polymarket_cycle() -> int:
         settings = get_settings()
 
         # Ensure DB engine exists in this subprocess
-        if async_session_factory is None:
-            init_db()
+        if _pg.async_session_factory is None:
+            _pg.init_db()
+        async_session_factory = _pg.async_session_factory
 
         gemini_client = GeminiClient()
         matcher = PolymarketMatcher(
@@ -166,6 +167,51 @@ def run_polymarket_cycle() -> int:
         return 0
     except Exception:
         _logger.exception("Polymarket cycle failed")
+        return 1
+
+
+def run_backtest(config_json: str) -> int:
+    """Execute a backtest run in-process with its own asyncio event loop.
+
+    Creates its own DB engine (subprocess isolation), deserializes the
+    BacktestRunConfig from the JSON string, and runs BacktestRunner.
+    The config_json is a plain string -- passes through ProcessPoolExecutor
+    pickling without issue.
+
+    Args:
+        config_json: JSON-serialized BacktestRunConfig (from to_json()).
+
+    Returns:
+        0 on success, 1 on failure.
+    """
+    import asyncio as _asyncio
+    import logging as _logging
+
+    _logger = _logging.getLogger(__name__)
+
+    async def _run() -> None:
+        from src.backtesting.runner import BacktestRunner
+        from src.backtesting.schemas import BacktestRunConfig
+        from src.db import postgres as _pg
+
+        # Create own DB engine in subprocess (no shared state with parent)
+        if _pg.async_session_factory is None:
+            _pg.init_db()
+
+        config = BacktestRunConfig.from_json(config_json)
+        runner = BacktestRunner(
+            run_config=config,
+            async_session_factory=_pg.async_session_factory,
+        )
+        await runner.run()
+
+    _logger.info("Starting backtest run (in-process)")
+    try:
+        _asyncio.run(_run())
+        _logger.info("Backtest run completed successfully")
+        return 0
+    except Exception:
+        _logger.exception("Backtest run failed")
         return 1
 
 
