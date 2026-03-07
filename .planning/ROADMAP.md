@@ -474,9 +474,10 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 20-01-PLAN.md -- Scheduler package: APScheduler core, dependency container, 9 job wrappers, failure tracking
-- [ ] 20-02-PLAN.md -- FastAPI integration: lifespan mount, admin API rewire, graceful shutdown
-- [ ] 20-03-PLAN.md -- Frontend ProcessTable update with pause/resume controls + verification
+- [ ] 23-01-PLAN.md -- Backtesting engine: ORM models, Alembic migration, runner, evaluator, temporal index, weight snapshot, export
+- [ ] 23-02-PLAN.md -- API + scheduler integration: admin endpoints, heavy job wiring, checkpoint discovery
+- [ ] 23-03-PLAN.md -- BacktestingPanel frontend: run list, drill-down, d3 charts, export buttons
+
 
 ### Phase 24: Global Seeding & Globe Layers
 **Goal**: The globe choropleth renders meaningful risk data for all ~195 countries (not just those with active forecasts), and the three currently-empty globe layers (heatmap, arcs, scenarios) display real data from the event store and knowledge graph.
