@@ -14,6 +14,8 @@ Tables:
     polymarket_snapshots       -- Time-series price/probability snapshots per comparison
     polymarket_accuracy        -- Cumulative Brier score snapshots (Geopol vs Polymarket)
     rss_feeds                  -- Admin-managed RSS feed registry with health metrics
+    backtest_runs              -- Walk-forward evaluation run metadata and lifecycle
+    backtest_results           -- Per-window evaluation metrics for a backtest run
 """
 
 from __future__ import annotations
@@ -525,4 +527,172 @@ class RSSFeed(Base):
         return (
             f"<RSSFeed(id={self.id}, name={self.name!r}, "
             f"tier={self.tier}, enabled={self.enabled})>"
+        )
+
+
+class BacktestRun(Base):
+    """A single walk-forward backtesting evaluation run.
+
+    Lifecycle: pending -> running -> completed | cancelled | failed.
+    Cancellation is DB-based: admin sets status='cancelling'; the runner
+    polls between windows and transitions to 'cancelled' with partial
+    results preserved.
+    """
+
+    __tablename__ = "backtest_runs"
+
+    id: Mapped[str] = mapped_column(
+        String(36), primary_key=True, default=_new_uuid
+    )
+    label: Mapped[str] = mapped_column(String(200), nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    # Run configuration (frozen at start)
+    window_size_days: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=14
+    )
+    slide_step_days: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=7
+    )
+    min_predictions_per_window: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=3
+    )
+    checkpoints_json: Mapped[dict[str, Any]] = mapped_column(
+        JSON, nullable=False, default=dict
+    )
+    # e.g. {"tirgn": "tirgn_best.npz", "regcn": "regcn_jraph_best.npz"}
+
+    # Run lifecycle
+    status: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="pending"
+    )  # pending | running | completed | cancelled | failed
+    started_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    completed_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    # Progress tracking
+    total_windows: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0
+    )
+    completed_windows: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0
+    )
+    total_predictions: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0
+    )
+
+    # Aggregate summary (computed on completion)
+    aggregate_brier: Mapped[Optional[float]] = mapped_column(
+        Float, nullable=True
+    )
+    aggregate_mrr: Mapped[Optional[float]] = mapped_column(
+        Float, nullable=True
+    )
+    vs_polymarket_record_json: Mapped[Optional[dict]] = mapped_column(
+        JSON, nullable=True
+    )
+    # e.g. {"geopol_wins": 5, "polymarket_wins": 3, "draws": 1}
+
+    error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow
+    )
+
+    def __repr__(self) -> str:
+        return (
+            f"<BacktestRun(id={self.id!r}, label={self.label!r}, "
+            f"status={self.status!r}, windows={self.completed_windows}/{self.total_windows})>"
+        )
+
+
+class BacktestResult(Base):
+    """Per-window evaluation metrics for a backtest run.
+
+    Each row captures the metrics computed from re-predicting resolved
+    predictions within a single evaluation window using a specific model
+    checkpoint. Calibration weight snapshot and per-prediction details
+    are stored as JSON for drill-down analysis.
+    """
+
+    __tablename__ = "backtest_results"
+
+    id: Mapped[int] = mapped_column(
+        Integer, primary_key=True, autoincrement=True
+    )
+    run_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("backtest_runs.id"), nullable=False, index=True
+    )
+
+    # Window definition
+    window_start: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    window_end: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    prediction_start: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    prediction_end: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+
+    # Model identification
+    checkpoint_name: Mapped[str] = mapped_column(
+        String(100), nullable=False
+    )
+    # "tirgn_best" or "regcn_jraph_best" etc.
+
+    # Metrics
+    num_predictions: Mapped[int] = mapped_column(Integer, nullable=False)
+    brier_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    mrr: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    hits_at_1: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    hits_at_10: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+
+    # Calibration data (for reliability diagrams)
+    calibration_bins_json: Mapped[Optional[dict]] = mapped_column(
+        JSON, nullable=True
+    )
+    # {"bins": [...], "predicted_avg": [...], "observed_freq": [...], "counts": [...]}
+
+    # Per-prediction details (for drill-down)
+    prediction_details_json: Mapped[Optional[list]] = mapped_column(
+        JSON, nullable=True
+    )
+    # [{"prediction_id": "...", "question": "...", "predicted_prob": 0.7, ...}]
+
+    # Polymarket comparison (for Geopol vs PM head-to-head)
+    polymarket_brier: Mapped[Optional[float]] = mapped_column(
+        Float, nullable=True
+    )
+    geopol_vs_pm_wins: Mapped[Optional[int]] = mapped_column(
+        Integer, nullable=True
+    )
+    pm_vs_geopol_wins: Mapped[Optional[int]] = mapped_column(
+        Integer, nullable=True
+    )
+
+    # Calibration weight state used for this window
+    weight_snapshot_json: Mapped[Optional[dict]] = mapped_column(
+        JSON, nullable=True
+    )
+    # {"global": 0.58, "super:verbal_conflict": 0.62, "14": 0.71, ...}
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow
+    )
+
+    __table_args__ = (
+        Index("ix_backtest_results_run_id_window", "run_id", "window_start"),
+    )
+
+    def __repr__(self) -> str:
+        return (
+            f"<BacktestResult(id={self.id}, run_id={self.run_id!r}, "
+            f"checkpoint={self.checkpoint_name!r}, "
+            f"brier={self.brier_score}, n={self.num_predictions})>"
         )
