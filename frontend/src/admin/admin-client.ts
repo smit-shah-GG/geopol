@@ -9,11 +9,15 @@
 import type {
   AccuracyData,
   AddFeedRequest,
+  BacktestRun,
+  BacktestRunDetail,
+  CheckpointInfo,
   ConfigEntry,
   FeedInfo,
   LogEntry,
   ProcessInfo,
   SourceInfo,
+  StartBacktestRequest,
   UpdateFeedRequest,
 } from '@/admin/admin-types';
 
@@ -156,6 +160,53 @@ export class AdminClient {
     await this.request<void>(`/feeds/${id}${purge ? '?purge=true' : ''}`, {
       method: 'DELETE',
     });
+  }
+
+  // -----------------------------------------------------------------------
+  // Backtesting (23-03)
+  // -----------------------------------------------------------------------
+
+  /** GET /backtesting/runs -- list all backtest runs. */
+  async getBacktestRuns(): Promise<BacktestRun[]> {
+    return this.request<BacktestRun[]>('/backtesting/runs');
+  }
+
+  /** POST /backtesting/runs -- start a new backtest run. */
+  async startBacktestRun(config: StartBacktestRequest): Promise<BacktestRun> {
+    return this.request<BacktestRun>('/backtesting/runs', {
+      method: 'POST',
+      body: JSON.stringify(config),
+    });
+  }
+
+  /** GET /backtesting/runs/{runId} -- detail with per-window results. */
+  async getBacktestRun(runId: string): Promise<BacktestRunDetail> {
+    return this.request<BacktestRunDetail>(`/backtesting/runs/${encodeURIComponent(runId)}`);
+  }
+
+  /** POST /backtesting/runs/{runId}/cancel -- cancel running/pending run. */
+  async cancelBacktestRun(runId: string): Promise<BacktestRun> {
+    return this.request<BacktestRun>(
+      `/backtesting/runs/${encodeURIComponent(runId)}/cancel`,
+      { method: 'POST' },
+    );
+  }
+
+  /** GET /backtesting/runs/{runId}/export?format={format} -- download as blob. */
+  async exportBacktestRun(runId: string, format: 'csv' | 'json'): Promise<Blob> {
+    const url = `${API_BASE}/backtesting/runs/${encodeURIComponent(runId)}/export?format=${format}`;
+    const response = await fetch(url, {
+      headers: { 'X-Admin-Key': this.key },
+    });
+    if (!response.ok) {
+      throw new Error(`Export failed: ${response.status}`);
+    }
+    return response.blob();
+  }
+
+  /** GET /backtesting/checkpoints -- list available model checkpoints. */
+  async getCheckpoints(): Promise<CheckpointInfo[]> {
+    return this.request<CheckpointInfo[]>('/backtesting/checkpoints');
   }
 
   // -----------------------------------------------------------------------

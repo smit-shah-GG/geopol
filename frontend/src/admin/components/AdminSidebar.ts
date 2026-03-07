@@ -1,7 +1,7 @@
 /**
  * AdminSidebar -- vertical navigation for admin sections.
  *
- * Five sections: Processes, Config, Logs, Sources, Accuracy.
+ * Six sections: Processes, Config, Logs, Sources, Accuracy, Backtesting.
  * Active item gets a red accent background via `.active` class.
  * Calls back to the layout on section change.
  */
@@ -21,6 +21,7 @@ const NAV_ITEMS: NavItem[] = [
   { section: 'logs',      label: 'Logs',      icon: '\u2263' },  // triple bar
   { section: 'sources',   label: 'Sources',   icon: '\u26A1' },  // lightning
   { section: 'accuracy',  label: 'Accuracy',  icon: '\u25CE' },  // bullseye
+  { section: 'backtesting', label: 'Backtesting', icon: '\u23F1' },  // stopwatch
 ];
 
 export class AdminSidebar {

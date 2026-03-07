@@ -14,6 +14,7 @@ import { ConfigEditor } from '@/admin/panels/ConfigEditor';
 import { LogViewer } from '@/admin/panels/LogViewer';
 import { SourceManager } from '@/admin/panels/SourceManager';
 import { AccuracyPanel } from '@/admin/panels/AccuracyPanel';
+import { BacktestingPanel } from '@/admin/panels/BacktestingPanel';
 import type { AdminSection } from '@/admin/admin-types';
 import type { AdminPanel } from '@/admin/panels/ProcessTable';
 
@@ -29,6 +30,7 @@ const SECTION_TITLES: Record<AdminSection, string> = {
   logs: 'SYSTEM LOGS',
   sources: 'DATA SOURCES',
   accuracy: 'POLYMARKET ACCURACY',
+  backtesting: 'HISTORICAL BACKTESTING',
 };
 
 /**
@@ -99,5 +101,6 @@ function createPanel(section: AdminSection, client: AdminClient): AdminPanel {
     case 'logs': return new LogViewer(client);
     case 'sources': return new SourceManager(client);
     case 'accuracy': return new AccuracyPanel(client);
+    case 'backtesting': return new BacktestingPanel(client);
   }
 }
