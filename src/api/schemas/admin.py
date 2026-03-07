@@ -165,3 +165,97 @@ class AccuracyResponse(BaseModel):
 
     summary: AccuracySummary
     comparisons: list[ResolvedComparisonDTO]
+
+
+# -----------------------------------------------------------------------
+# Backtesting DTOs (23-02)
+# -----------------------------------------------------------------------
+
+
+class CheckpointInfo(BaseModel):
+    """Model checkpoint metadata for TiRGN / RE-GCN comparison."""
+
+    name: str
+    model_type: str  # "tirgn" | "regcn"
+    path: str
+    metrics: dict[str, float] | None = None  # mrr, hits_at_1, etc.
+    created_at: str | None = None
+
+
+class StartBacktestRequest(BaseModel):
+    """Payload for POST /admin/backtesting/runs."""
+
+    label: str = Field(..., min_length=1, max_length=200)
+    description: str | None = None
+    window_size_days: int = Field(14, ge=7, le=90)
+    slide_step_days: int = Field(7, ge=1, le=30)
+    min_predictions_per_window: int = Field(3, ge=1, le=20)
+    checkpoints: dict[str, str] = Field(
+        ..., min_length=1,
+        description="model_name -> checkpoint_filename, at least 1 entry",
+    )
+
+
+class BacktestRunDTO(BaseModel):
+    """Backtest run metadata for admin listing and detail views."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    label: str
+    description: str | None = None
+    window_size_days: int
+    slide_step_days: int
+    min_predictions_per_window: int
+    checkpoints_json: dict[str, Any] | None = None
+    status: str
+    started_at: str | None = None
+    completed_at: str | None = None
+    total_windows: int = 0
+    completed_windows: int = 0
+    total_predictions: int = 0
+    aggregate_brier: float | None = None
+    aggregate_mrr: float | None = None
+    vs_polymarket_record_json: dict[str, Any] | None = None
+    error_message: str | None = None
+    created_at: str | None = None
+
+
+class BacktestResultDTO(BaseModel):
+    """Per-window evaluation metrics for a backtest run."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    run_id: str
+    window_start: str | None = None
+    window_end: str | None = None
+    prediction_start: str | None = None
+    prediction_end: str | None = None
+    checkpoint_name: str
+    num_predictions: int
+    brier_score: float | None = None
+    mrr: float | None = None
+    hits_at_1: float | None = None
+    hits_at_10: float | None = None
+    calibration_bins_json: dict[str, Any] | None = None
+    prediction_details_json: list[dict[str, Any]] | None = None
+    polymarket_brier: float | None = None
+    geopol_vs_pm_wins: int | None = None
+    pm_vs_geopol_wins: int | None = None
+    weight_snapshot_json: dict[str, Any] | None = None
+    created_at: str | None = None
+
+
+class BacktestRunDetailDTO(BaseModel):
+    """Drill-down response: run metadata + all window results."""
+
+    run: BacktestRunDTO
+    results: list[BacktestResultDTO]
+
+
+class BacktestExportDTO(BaseModel):
+    """Export format selection for backtest results."""
+
+    format: Literal["csv", "json"]
+    run_ids: list[str] | None = None

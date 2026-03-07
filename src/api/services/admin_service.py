@@ -22,14 +22,19 @@ from src.api.schemas.admin import (
     AccuracyResponse,
     AccuracySummary,
     AddFeedRequest,
+    BacktestResultDTO,
+    BacktestRunDTO,
+    BacktestRunDetailDTO,
+    CheckpointInfo,
     ConfigEntry,
     FeedInfo,
     ProcessInfo,
     ResolvedComparisonDTO,
     SourceInfo,
+    StartBacktestRequest,
     UpdateFeedRequest,
 )
-from src.db.models import IngestRun, PolymarketComparison, Prediction, RSSFeed, SystemConfig
+from src.db.models import BacktestResult, BacktestRun, IngestRun, PolymarketComparison, Prediction, RSSFeed, SystemConfig
 from src.scheduler.retry import JobFailureTracker
 from src.settings import Settings, get_settings
 
@@ -889,3 +894,279 @@ class AdminService:
             logger.info("Feed soft-deleted: id=%d, name=%s", feed_id, feed.name)
 
         await self._db.commit()
+
+    # ------------------------------------------------------------------
+    # Backtesting (23-02)
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _backtest_run_to_dto(run: BacktestRun) -> BacktestRunDTO:
+        """Convert a BacktestRun ORM instance to a BacktestRunDTO."""
+        return BacktestRunDTO(
+            id=run.id,
+            label=run.label,
+            description=run.description,
+            window_size_days=run.window_size_days,
+            slide_step_days=run.slide_step_days,
+            min_predictions_per_window=run.min_predictions_per_window,
+            checkpoints_json=run.checkpoints_json,
+            status=run.status,
+            started_at=run.started_at.isoformat() if run.started_at else None,
+            completed_at=run.completed_at.isoformat() if run.completed_at else None,
+            total_windows=run.total_windows,
+            completed_windows=run.completed_windows,
+            total_predictions=run.total_predictions,
+            aggregate_brier=run.aggregate_brier,
+            aggregate_mrr=run.aggregate_mrr,
+            vs_polymarket_record_json=run.vs_polymarket_record_json,
+            error_message=run.error_message,
+            created_at=run.created_at.isoformat() if run.created_at else None,
+        )
+
+    @staticmethod
+    def _backtest_result_to_dto(r: BacktestResult) -> BacktestResultDTO:
+        """Convert a BacktestResult ORM instance to a BacktestResultDTO."""
+        return BacktestResultDTO(
+            id=r.id,
+            run_id=r.run_id,
+            window_start=r.window_start.isoformat() if r.window_start else None,
+            window_end=r.window_end.isoformat() if r.window_end else None,
+            prediction_start=r.prediction_start.isoformat() if r.prediction_start else None,
+            prediction_end=r.prediction_end.isoformat() if r.prediction_end else None,
+            checkpoint_name=r.checkpoint_name,
+            num_predictions=r.num_predictions,
+            brier_score=r.brier_score,
+            mrr=r.mrr,
+            hits_at_1=r.hits_at_1,
+            hits_at_10=r.hits_at_10,
+            calibration_bins_json=r.calibration_bins_json,
+            prediction_details_json=r.prediction_details_json,
+            polymarket_brier=r.polymarket_brier,
+            geopol_vs_pm_wins=r.geopol_vs_pm_wins,
+            pm_vs_geopol_wins=r.pm_vs_geopol_wins,
+            weight_snapshot_json=r.weight_snapshot_json,
+            created_at=r.created_at.isoformat() if r.created_at else None,
+        )
+
+    async def get_backtest_runs(self) -> list[BacktestRunDTO]:
+        """Return all backtest runs ordered by created_at desc."""
+        result = await self._db.execute(
+            select(BacktestRun).order_by(BacktestRun.created_at.desc())
+        )
+        runs = result.scalars().all()
+        return [self._backtest_run_to_dto(r) for r in runs]
+
+    async def start_backtest_run(
+        self, request: StartBacktestRequest,
+    ) -> BacktestRunDTO:
+        """Create a new BacktestRun and dispatch the heavy backtest job.
+
+        The endpoint returns immediately with a 'pending' run DTO.
+        Execution proceeds asynchronously via asyncio.create_task ->
+        heavy_backtest -> ProcessPoolExecutor -> BacktestRunner.
+
+        Raises:
+            HTTPException 400: Invalid checkpoint configuration.
+        """
+        import asyncio as _asyncio
+
+        from src.backtesting.schemas import BacktestRunConfig
+
+        # Create DB row first with status='pending'.
+        run = BacktestRun(
+            label=request.label,
+            description=request.description,
+            window_size_days=request.window_size_days,
+            slide_step_days=request.slide_step_days,
+            min_predictions_per_window=request.min_predictions_per_window,
+            checkpoints_json=request.checkpoints,
+            status="pending",
+        )
+        self._db.add(run)
+        await self._db.commit()
+        await self._db.refresh(run)
+
+        # Build BacktestRunConfig with the assigned run_id.
+        config = BacktestRunConfig(
+            label=request.label,
+            checkpoints=request.checkpoints,
+            window_size_days=request.window_size_days,
+            slide_step_days=request.slide_step_days,
+            min_predictions_per_window=request.min_predictions_per_window,
+            description=request.description,
+            run_id=run.id,
+        )
+        config_json = config.to_json()
+
+        # Fire-and-forget dispatch to ProcessPoolExecutor.
+        from src.scheduler.job_wrappers import heavy_backtest
+
+        _asyncio.create_task(heavy_backtest(config_json))
+        logger.info("Backtest run %s dispatched (label=%s)", run.id, run.label)
+
+        return self._backtest_run_to_dto(run)
+
+    async def get_backtest_run_detail(
+        self, run_id: str,
+    ) -> BacktestRunDetailDTO:
+        """Fetch a backtest run with all window-level results.
+
+        Raises:
+            HTTPException 404: Run not found.
+        """
+        run = await self._db.get(BacktestRun, run_id)
+        if run is None:
+            raise HTTPException(404, f"Backtest run {run_id} not found")
+
+        result = await self._db.execute(
+            select(BacktestResult)
+            .where(BacktestResult.run_id == run_id)
+            .order_by(
+                BacktestResult.window_start.asc(),
+                BacktestResult.checkpoint_name.asc(),
+            )
+        )
+        results = result.scalars().all()
+
+        return BacktestRunDetailDTO(
+            run=self._backtest_run_to_dto(run),
+            results=[self._backtest_result_to_dto(r) for r in results],
+        )
+
+    async def cancel_backtest_run(self, run_id: str) -> BacktestRunDTO:
+        """Set a backtest run's status to 'cancelling'.
+
+        The runner polls status between windows and transitions to 'cancelled'
+        upon detecting the 'cancelling' signal.
+
+        Raises:
+            HTTPException 404: Run not found.
+            HTTPException 409: Run is not in a cancellable state.
+        """
+        run = await self._db.get(BacktestRun, run_id)
+        if run is None:
+            raise HTTPException(404, f"Backtest run {run_id} not found")
+
+        if run.status not in ("running", "pending"):
+            raise HTTPException(
+                409,
+                f"Cannot cancel run in status '{run.status}' "
+                f"(must be 'running' or 'pending')",
+            )
+
+        run.status = "cancelling"
+        await self._db.commit()
+        await self._db.refresh(run)
+        logger.info("Backtest run %s set to cancelling", run_id)
+        return self._backtest_run_to_dto(run)
+
+    async def export_backtest_run(
+        self, run_id: str, fmt: str,
+    ) -> str | dict:
+        """Export backtest results as CSV string or JSON dict.
+
+        Raises:
+            HTTPException 404: Run not found.
+            HTTPException 409: Run not in an exportable state.
+            HTTPException 400: Invalid format.
+        """
+        from src.backtesting.export import export_run_csv, export_run_json
+
+        run = await self._db.get(BacktestRun, run_id)
+        if run is None:
+            raise HTTPException(404, f"Backtest run {run_id} not found")
+
+        exportable = {"completed", "cancelled"}
+        if run.status not in exportable:
+            raise HTTPException(
+                409,
+                f"Cannot export run in status '{run.status}' "
+                f"(must be 'completed' or 'cancelled')",
+            )
+
+        if fmt == "csv":
+            return await export_run_csv(self._db, run_id)
+        elif fmt == "json":
+            return await export_run_json(self._db, run_id)
+        else:
+            raise HTTPException(400, f"Invalid format: {fmt} (must be 'csv' or 'json')")
+
+    async def get_checkpoints(self) -> list[CheckpointInfo]:
+        """Scan models/tkg/ for available TiRGN and RE-GCN checkpoints.
+
+        Reads JSON metadata files to extract model type, training metrics,
+        and creation timestamp. Malformed or unreadable files are skipped.
+
+        Returns:
+            Sorted list: by model_type then name.
+        """
+        import json
+        from pathlib import Path
+
+        model_dir = Path("models/tkg")
+        if not model_dir.is_dir():
+            logger.warning("Checkpoint directory %s not found", model_dir)
+            return []
+
+        checkpoints: list[CheckpointInfo] = []
+
+        for json_path in sorted(model_dir.glob("*.json")):
+            name = json_path.stem  # e.g. "tirgn_best"
+
+            # Skip non-checkpoint metadata (e.g. last_trained.json)
+            is_tirgn = name.startswith("tirgn_")
+            is_regcn = name.startswith("regcn_jraph_")
+            if not is_tirgn and not is_regcn:
+                continue
+
+            # Verify corresponding weight file exists
+            if is_tirgn:
+                weight_path = json_path.with_suffix(".npz")
+            else:
+                weight_path = json_path.with_suffix(".npz")
+            if not weight_path.exists():
+                logger.warning(
+                    "Checkpoint %s has metadata but no weight file, skipping",
+                    name,
+                )
+                continue
+
+            try:
+                with open(json_path) as f:
+                    meta = json.load(f)
+            except (json.JSONDecodeError, OSError) as exc:
+                logger.warning(
+                    "Failed to read checkpoint metadata %s: %s", json_path, exc,
+                )
+                continue
+
+            model_type = meta.get("model_type", "regcn" if is_regcn else "tirgn")
+            metrics_raw = meta.get("metrics")
+            metrics: dict[str, float] | None = None
+            if isinstance(metrics_raw, dict):
+                metrics = {
+                    k: float(v)
+                    for k, v in metrics_raw.items()
+                    if isinstance(v, (int, float))
+                }
+
+            # Use file modification time as creation timestamp
+            try:
+                mtime = json_path.stat().st_mtime
+                created_at = datetime.fromtimestamp(mtime, tz=timezone.utc).isoformat()
+            except OSError:
+                created_at = None
+
+            checkpoints.append(
+                CheckpointInfo(
+                    name=name,
+                    model_type=model_type,
+                    path=str(weight_path),
+                    metrics=metrics,
+                    created_at=created_at,
+                )
+            )
+
+        # Sort by model_type then name for stable ordering
+        checkpoints.sort(key=lambda c: (c.model_type, c.name))
+        return checkpoints

@@ -22,6 +22,12 @@ Endpoints:
     POST /feeds                          -- add a new RSS feed
     PUT  /feeds/{feed_id}                -- update feed properties
     DELETE /feeds/{feed_id}              -- soft/hard delete a feed
+    GET  /backtesting/runs               -- list all backtest runs
+    POST /backtesting/runs               -- start a new backtest run
+    GET  /backtesting/runs/{run_id}      -- get run detail with window results
+    POST /backtesting/runs/{run_id}/cancel -- cancel a running backtest
+    GET  /backtesting/runs/{run_id}/export -- export results (CSV/JSON)
+    GET  /backtesting/checkpoints        -- list available model checkpoints
 """
 
 from __future__ import annotations
@@ -36,12 +42,17 @@ from src.api.log_buffer import get_ring_buffer
 from src.api.schemas.admin import (
     AccuracyResponse,
     AddFeedRequest,
+    BacktestResultDTO,
+    BacktestRunDTO,
+    BacktestRunDetailDTO,
+    CheckpointInfo,
     ConfigEntry,
     ConfigUpdate,
     FeedInfo,
     LogEntryDTO,
     ProcessInfo,
     SourceInfo,
+    StartBacktestRequest,
     UpdateFeedRequest,
 )
 from src.api.services.admin_service import AdminService
@@ -276,3 +287,110 @@ async def delete_feed(
     """Soft-delete a feed (or hard-delete with ?purge=true)."""
     await svc.delete_feed(feed_id, purge=purge)
     return Response(status_code=204)
+
+
+# -----------------------------------------------------------------------
+# Backtesting (23-02)
+# -----------------------------------------------------------------------
+
+
+@router.get("/backtesting/runs", response_model=list[BacktestRunDTO])
+async def list_backtest_runs(
+    svc: AdminService = Depends(_get_service),
+) -> list[BacktestRunDTO]:
+    """Return all backtest runs ordered by creation date (newest first)."""
+    return await svc.get_backtest_runs()
+
+
+@router.post(
+    "/backtesting/runs",
+    response_model=BacktestRunDTO,
+    status_code=201,
+)
+async def start_backtest_run(
+    body: StartBacktestRequest,
+    svc: AdminService = Depends(_get_service),
+) -> BacktestRunDTO:
+    """Start a new backtest run. Returns immediately with status='pending'.
+
+    The backtest executes asynchronously in a ProcessPoolExecutor worker
+    with heavy job mutual exclusion (queues behind pipeline/polymarket/tkg).
+    """
+    return await svc.start_backtest_run(body)
+
+
+@router.get(
+    "/backtesting/runs/{run_id}",
+    response_model=BacktestRunDetailDTO,
+)
+async def get_backtest_run_detail(
+    run_id: str,
+    svc: AdminService = Depends(_get_service),
+) -> BacktestRunDetailDTO:
+    """Get a backtest run with all window-level results."""
+    return await svc.get_backtest_run_detail(run_id)
+
+
+@router.post(
+    "/backtesting/runs/{run_id}/cancel",
+    response_model=BacktestRunDTO,
+)
+async def cancel_backtest_run(
+    run_id: str,
+    svc: AdminService = Depends(_get_service),
+) -> BacktestRunDTO:
+    """Cancel a running or pending backtest.
+
+    Sets status='cancelling'; the runner polls between windows and
+    transitions to 'cancelled' with partial results preserved.
+    """
+    return await svc.cancel_backtest_run(run_id)
+
+
+@router.get("/backtesting/runs/{run_id}/export")
+async def export_backtest_run(
+    run_id: str,
+    format: str = Query("json", description="Export format: csv or json"),
+    svc: AdminService = Depends(_get_service),
+) -> Response:
+    """Export backtest results as CSV or JSON.
+
+    CSV includes a methodology comment block; JSON includes full
+    window details and a methodology section. Both formats are
+    self-documenting for external analysis.
+    """
+    result = await svc.export_backtest_run(run_id, format)
+
+    if isinstance(result, str):
+        # CSV string
+        return Response(
+            content=result,
+            media_type="text/csv",
+            headers={
+                "Content-Disposition": f'attachment; filename="backtest_{run_id}.csv"',
+            },
+        )
+    # JSON dict -- FastAPI auto-serializes
+    from fastapi.responses import JSONResponse
+
+    return JSONResponse(
+        content=result,
+        headers={
+            "Content-Disposition": f'attachment; filename="backtest_{run_id}.json"',
+        },
+    )
+
+
+@router.get(
+    "/backtesting/checkpoints",
+    response_model=list[CheckpointInfo],
+)
+async def list_checkpoints(
+    svc: AdminService = Depends(_get_service),
+) -> list[CheckpointInfo]:
+    """List available TiRGN and RE-GCN model checkpoints.
+
+    Scans the models/tkg/ directory for checkpoint files and reads
+    JSON metadata to extract training metrics and model type.
+    """
+    return await svc.get_checkpoints()
