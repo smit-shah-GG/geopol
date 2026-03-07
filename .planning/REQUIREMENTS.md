@@ -221,11 +221,11 @@ Scope areas:
 
 ### Historical Backtesting
 
-- [ ] **BTEST-01**: Walk-forward evaluation harness: train on [t₀,t₁], predict [t₁,t₂], slide window forward, producing MRR/Brier curves over time -- uses static model weights for v3.0 (full TKG retraining per window deferred)
-- [ ] **BTEST-02**: Model comparison framework: run identical evaluation windows against TiRGN and RE-GCN checkpoints, producing side-by-side accuracy tables and delta charts
-- [ ] **BTEST-03**: Calibration audit: reliability diagrams computed over sliding time windows showing how calibration quality evolves -- detects calibration drift before it degrades live predictions
-- [ ] **BTEST-04**: Backtesting results stored in PostgreSQL `backtest_runs` and `backtest_results` tables -- queryable from admin dashboard, not ephemeral console output
-- [ ] **BTEST-05**: Look-ahead bias prevention: backtesting harness uses calibration weight snapshots from each evaluation window (not current weights) and excludes ChromaDB articles published after the prediction date
+- [x] **BTEST-01**: Walk-forward evaluation harness: train on [t₀,t₁], predict [t₁,t₂], slide window forward, producing MRR/Brier curves over time -- uses static model weights for v3.0 (full TKG retraining per window deferred)
+- [x] **BTEST-02**: Model comparison framework: run identical evaluation windows against TiRGN and RE-GCN checkpoints, producing side-by-side accuracy tables and delta charts
+- [x] **BTEST-03**: Calibration audit: reliability diagrams computed over sliding time windows showing how calibration quality evolves -- detects calibration drift before it degrades live predictions
+- [x] **BTEST-04**: Backtesting results stored in PostgreSQL `backtest_runs` and `backtest_results` tables -- queryable from admin dashboard, not ephemeral console output
+- [x] **BTEST-05**: Look-ahead bias prevention: backtesting harness uses calibration weight snapshots from each evaluation window (not current weights) and excludes ChromaDB articles published after the prediction date
 
 ### Global Seeding & Globe Layers
 
@@ -387,11 +387,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | POLY-03 | Phase 22 | Complete |
 | POLY-04 | Phase 22 | Complete |
 | POLY-05 | Phase 22 | Complete |
-| BTEST-01 | Phase 23 | Pending |
-| BTEST-02 | Phase 23 | Pending |
-| BTEST-03 | Phase 23 | Pending |
-| BTEST-04 | Phase 23 | Pending |
-| BTEST-05 | Phase 23 | Pending |
+| BTEST-01 | Phase 23 | Complete |
+| BTEST-02 | Phase 23 | Complete |
+| BTEST-03 | Phase 23 | Complete |
+| BTEST-04 | Phase 23 | Complete |
+| BTEST-05 | Phase 23 | Complete |
 | SEED-01 | Phase 24 | Pending |
 | SEED-02 | Phase 24 | Pending |
 | SEED-03 | Phase 24 | Pending |

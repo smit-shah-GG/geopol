@@ -383,8 +383,8 @@ Phases 21 and 22 are independent tracks after Phase 20 and can run in parallel.
 - [x] **Phase 19: Admin Dashboard Foundation** -- `/admin` route with auth gating, process table, manual triggers, config editor, log viewer, source management panel
 - [x] **Phase 20: Daemon Consolidation** -- APScheduler AsyncIOScheduler in FastAPI lifespan, all pollers registered as jobs, ProcessPoolExecutor for heavy jobs, admin API for job control, systemd retirement
 - [ ] **Phase 21: Source Expansion & Feed Management** -- UCDP poller, RSS feed management via admin, cross-source dedup layer, per-source health metrics, feed health auto-disable
-- [ ] **Phase 22: Polymarket Hardening** -- Fix created_at overwrite bug, cumulative Brier score tracking, head-to-head accuracy panel, resolution tracking, polling reliability
-- [ ] **Phase 23: Historical Backtesting** -- Walk-forward evaluation harness, model comparison (TiRGN vs RE-GCN), calibration audit (reliability diagrams over time), look-ahead bias prevention
+- [x] **Phase 22: Polymarket Hardening** -- Fix created_at overwrite bug, cumulative Brier score tracking, head-to-head accuracy panel, resolution tracking, polling reliability
+- [x] **Phase 23: Historical Backtesting** -- Walk-forward evaluation harness, model comparison (TiRGN vs RE-GCN), calibration audit (reliability diagrams over time), look-ahead bias prevention
 - [ ] **Phase 24: Global Seeding & Globe Layers** -- Baseline risk for all ~195 countries, heatmap/arcs/scenarios data wiring, advisory-level risk floors, active forecast override
 - [ ] **Phase 25: Frontend Finalization** -- Loading states, error boundaries, empty states, performance optimization, accessibility basics
 
@@ -474,9 +474,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 23-01-PLAN.md -- Backtesting engine: ORM models, Alembic migration, runner, evaluator, temporal index, weight snapshot, export
-- [ ] 23-02-PLAN.md -- API + scheduler integration: admin endpoints, heavy job wiring, checkpoint discovery
-- [ ] 23-03-PLAN.md -- BacktestingPanel frontend: run list, drill-down, d3 charts, export buttons
+- [x] 23-01-PLAN.md -- Backtesting engine: ORM models, Alembic migration, runner, evaluator, temporal index, weight snapshot, export
+- [x] 23-02-PLAN.md -- API + scheduler integration: admin endpoints, heavy job wiring, checkpoint discovery
+- [x] 23-03-PLAN.md -- BacktestingPanel frontend: run list, drill-down, d3 charts, export buttons
 
 
 ### Phase 24: Global Seeding & Globe Layers
@@ -542,8 +542,8 @@ Phase 19 -> Phase 20. Then parallel: Phase 21 + Phase 22. Then Phase 23 (after 2
 | 20. Daemon Consolidation | v3.0 | 3/3 | Complete | 2026-03-05 |
 | 21. Source Expansion & Feed Mgmt | v3.0 | 5/5 | Complete | 2026-03-06 |
 | 22. Polymarket Hardening | v3.0 | 3/3 | Complete | 2026-03-06 |
-| 23. Historical Backtesting | v3.0 | 0/TBD | Not started | - |
+| 23. Historical Backtesting | v3.0 | 3/3 | Complete | 2026-03-08 |
 | 24. Global Seeding & Globe Layers | v3.0 | 0/TBD | Not started | - |
 | 25. Frontend Finalization | v3.0 | 0/TBD | Not started | - |
 
-**Total:** 22 phases complete (v1.0 + v1.1 + v2.0 + v2.1 + v3.0 partial), 78 plans delivered. v3.0: 4/7 phases complete.
+**Total:** 23 phases complete (v1.0 + v1.1 + v2.0 + v2.1 + v3.0 partial), 81 plans delivered. v3.0: 5/7 phases complete.

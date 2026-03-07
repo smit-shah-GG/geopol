@@ -102,6 +102,9 @@ Key decisions affecting current work:
 - Backtesting: DB-based cancellation (not threading.Event) -- process-safe, polls status between windows (2026-03-07)
 - Backtesting: Python-side date filtering for temporal ChromaDB index (not $lte string comparison) (2026-03-07)
 - Backtesting: MRR = None in window results (TKG ranking data unavailable from re-prediction path) (2026-03-07)
+- Backtesting: fire-and-forget dispatch via asyncio.create_task(heavy_backtest(config_json)) (2026-03-08)
+- Backtesting: heavy_backtest() NOT registered as APScheduler job -- on-demand only via admin API (2026-03-08)
+- Backtesting: import-by-value bug fixed in run_polymarket_cycle (bare names -> module reference) (2026-03-08)
 - Backtesting admin panel: expandable d3 chart sections with lazy render, 10s refresh, scoped CSS injection (2026-03-08)
 
 ### Deferred Issues
@@ -128,4 +131,4 @@ Key decisions affecting current work:
 Last session: 2026-03-08
 Stopped at: Completed 23-03-PLAN.md (Backtesting Admin Panel) -- Phase 23 complete
 Resume file: None
-Next: Phase 24 (next phase in v3.0)
+Next: Phase 24 (Global Seeding & Globe Layers) -- depends on Phase 21 (UCDP data feeds baseline risk)
