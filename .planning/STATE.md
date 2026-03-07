@@ -10,20 +10,20 @@ See: .planning/PROJECT.md (updated 2026-03-04)
 ## Current Position
 
 Milestone: v3.0 Operational Command & Verification
-Phase: 22 of 25 (Polymarket Hardening) -- Complete
-Plan: 03 of 03
-Status: Phase complete
-Last activity: 2026-03-06 -- Completed Phase 22 (Polymarket Hardening)
+Phase: 23 of 25 (Historical Backtesting) -- In Progress
+Plan: 01 of 03
+Status: In progress
+Last activity: 2026-03-07 -- Completed 23-01-PLAN.md (Backtesting Engine Core)
 
-Progress: [########################################################] 100% (83/80+ plans lifetime)
-v3.0:    [#################   ] 72% (18/25 plans in v3.0 -- 4/7 phases)
+Progress: [########################################################] 100% (84/80+ plans lifetime)
+v3.0:    [##################  ] 76% (19/25 plans in v3.0 -- 4.3/7 phases)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 78
+- Total plans completed: 79
 - Average duration: 10 minutes
-- Total execution time: 12.4 hours
+- Total execution time: 12.6 hours
 
 **By Phase:**
 
@@ -51,6 +51,7 @@ v3.0:    [#################   ] 72% (18/25 plans in v3.0 -- 4/7 phases)
 | 20-daemon-consolidation | 3 | 25min | 8min |
 | 21-source-expansion-feed-mgmt | 5 | 34min | 7min |
 | 22-polymarket-hardening | 3 | 23min | 8min |
+| 23-historical-backtesting | 1 | 13min | 13min |
 
 ## Accumulated Context
 
@@ -98,6 +99,9 @@ Key decisions affecting current work:
 - Top-10 active set: volume threshold filter removed from auto_forecaster.run(), caller provides pre-filtered set (2026-03-06)
 - reforecast_active() scoped to top-10 event IDs; None parameter maintains backward compat (2026-03-06)
 - 429 handling: sleep(min(Retry-After, 60)) before raising for tenacity retry (2026-03-06)
+- Backtesting: DB-based cancellation (not threading.Event) -- process-safe, polls status between windows (2026-03-07)
+- Backtesting: Python-side date filtering for temporal ChromaDB index (not $lte string comparison) (2026-03-07)
+- Backtesting: MRR = None in window results (TKG ranking data unavailable from re-prediction path) (2026-03-07)
 
 ### Deferred Issues
 
@@ -120,7 +124,7 @@ Key decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-03-06
-Stopped at: Phase 22 complete
+Last session: 2026-03-07
+Stopped at: Completed 23-01-PLAN.md (Backtesting Engine Core)
 Resume file: None
-Next: Phase 23 (Historical Backtesting) -- depends on Phase 22 (clean resolution data)
+Next: 23-02-PLAN.md (API + scheduler wiring) or 23-03-PLAN.md (admin panel)
