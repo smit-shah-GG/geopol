@@ -1,19 +1,25 @@
 /**
- * Globe screen -- full-viewport deck.gl globe with contextual overlays.
+ * Globe screen -- full-viewport dual-renderer globe with contextual overlays.
  *
  * The globe fills the entire screen container. All UI elements are positioned
  * absolutely over the map:
- *   - GlobeHud: top-left stats (forecast count, countries, last update)
+ *   - GlobeHud: top-left stats (forecast count, countries, last update) + region presets
  *   - LayerPillBar: bottom-center toggle bar for 5 analytic layers
  *   - GlobeDrillDown: right-edge slide-in panel on country click
  *
- * deck.gl / maplibre-gl bundles are NOT loaded on the dashboard route.
+ * MapContainer holds BOTH GlobeMap (3D) and DeckGLMap (2D) alive simultaneously.
+ * 3D is the default for first-time visitors. Toggle swaps CSS display -- no
+ * destroy/recreate. Data is pushed to both renderers so toggle is instant.
+ *
+ * deck.gl / maplibre-gl / globe.gl bundles are NOT loaded on the dashboard route.
  * The dynamic import() ensures code-splitting at the route level.
  *
  * Event wiring:
  *   country-selected  -> flyToCountry + drillDown.open
  *   forecast-selected -> ScenarioExplorer.open (via modal)
  *   country-brief-requested -> CountryBriefPage.open
+ *   globe-view-toggle -> MapContainer.toggleMode (via CustomEvent)
+ *   globe-region-change -> MapContainer.flyToRegion (via CustomEvent)
  *
  * Refresh scheduling:
  *   countries  -> every 120s (risk scores + HUD + choropleth)
@@ -30,7 +36,8 @@ import { RefreshScheduler } from '@/app/refresh-scheduler';
 import { GlobeHud } from '@/components/GlobeHud';
 import { GlobeDrillDown } from '@/components/GlobeDrillDown';
 import type { GeoPolAppContext } from '@/app/app-context';
-import type { DeckGLMap, HexBinDatum, BilateralArcDatum, RiskDeltaDatum } from '@/components/DeckGLMap';
+import type { MapContainer } from '@/components/MapContainer';
+import type { HexBinDatum, BilateralArcDatum, RiskDeltaDatum } from '@/components/DeckGLMap';
 import type { CountryRiskSummary, ForecastResponse, HexbinData, ArcData, RiskDeltaData } from '@/types/api';
 
 // Lazy imports -- only resolved when needed
@@ -42,7 +49,7 @@ import type { LayerPillBar } from '@/components/LayerPillBar';
 // Module-scoped state (one instance per screen mount)
 // ---------------------------------------------------------------------------
 
-let deckMap: DeckGLMap | null = null;
+let mapContainer: MapContainer | null = null;
 let hud: GlobeHud | null = null;
 let pillBar: LayerPillBar | null = null;
 let drillDown: GlobeDrillDown | null = null;
@@ -66,29 +73,49 @@ export async function mountGlobe(
   // Full-viewport wrapper -- position: relative for absolutely-positioned overlays
   const wrapper = h('div', { className: 'globe-screen' });
 
-  // Map container fills the entire wrapper
-  const mapContainer = h('div', {
+  // Map element fills the entire wrapper (hosts both renderers via MapContainer)
+  const mapEl = h('div', {
     style: 'position:absolute;inset:0;',
   });
-  wrapper.appendChild(mapContainer);
+  wrapper.appendChild(mapEl);
   container.appendChild(wrapper);
 
   try {
-    // Dynamic import: deck.gl + maplibre chunks only load when globe screen mounts
+    // Dynamic import: deck.gl + maplibre + globe.gl chunks only load when globe screen mounts.
+    // MapContainer, DeckGLMap, and GlobeMap are all dynamically imported together.
     await countryGeometry.load();
-    const [{ DeckGLMap }, { LayerPillBar: LayerPillBarClass }, { ScenarioExplorer: ScenarioExplorerClass }, { CountryBriefPage: CountryBriefPageClass }] = await Promise.all([
+    const [
+      { MapContainer: MapContainerClass },
+      { DeckGLMap },
+      { GlobeMap },
+      { LayerPillBar: LayerPillBarClass },
+      { ScenarioExplorer: ScenarioExplorerClass },
+      { CountryBriefPage: CountryBriefPageClass },
+    ] = await Promise.all([
+      import('@/components/MapContainer'),
       import('@/components/DeckGLMap'),
+      import('@/components/GlobeMap'),
       import('@/components/LayerPillBar'),
       import('@/components/ScenarioExplorer'),
       import('@/components/CountryBriefPage'),
       import('maplibre-gl/dist/maplibre-gl.css'),
     ]);
 
-    // Construct map
-    deckMap = new DeckGLMap(mapContainer);
+    // Create sub-containers for each renderer inside mapEl.
+    // MapContainer toggles display on these to swap views.
+    const deckEl = h('div', { style: 'position:absolute;inset:0;' });
+    const globeEl = h('div', { style: 'position:absolute;inset:0;' });
+    mapEl.appendChild(deckEl);
+    mapEl.appendChild(globeEl);
+
+    // Construct both renderers, then wire them into MapContainer.
+    // MapContainer receives the sub-containers so it can toggle CSS display.
+    const deckMap = new DeckGLMap(deckEl);
+    const globeMap = new GlobeMap(globeEl);
+    mapContainer = new MapContainerClass(deckEl, globeEl, deckMap, globeMap);
 
     // All layers ON by default -- real data exists for all layers now
-    deckMap.setLayerDefaults({
+    mapContainer.setLayerDefaults({
       ForecastRiskChoropleth: true,
       ActiveForecastMarkers: true,
       KnowledgeGraphArcs: true,
@@ -98,7 +125,7 @@ export async function mountGlobe(
 
     // Construct overlay components
     hud = new GlobeHud();
-    pillBar = new LayerPillBarClass(deckMap);
+    pillBar = new LayerPillBarClass(mapContainer);
     drillDown = new GlobeDrillDown();
 
     // Append overlays to wrapper (order matters for z-index stacking)
@@ -159,8 +186,8 @@ export async function mountGlobe(
     ]);
   } catch (err) {
     console.error('[GlobeScreen] Failed to load:', err);
-    mapContainer.innerHTML = '';
-    mapContainer.appendChild(
+    mapEl.innerHTML = '';
+    mapEl.appendChild(
       h('div', { className: 'screen-placeholder' }, 'Globe failed to load'),
     );
   }
@@ -201,8 +228,8 @@ export function unmountGlobe(ctx: GeoPolAppContext): void {
   if (scenarioExplorer) { scenarioExplorer.destroy(); scenarioExplorer = null; }
   if (countryBriefPage) { countryBriefPage.destroy(); countryBriefPage = null; }
 
-  // Destroy map (last -- overlays reference it)
-  if (deckMap) { deckMap.destroy(); deckMap = null; }
+  // Destroy MapContainer (destroys both renderers internally)
+  if (mapContainer) { mapContainer.destroy(); mapContainer = null; }
 }
 
 // ---------------------------------------------------------------------------
@@ -213,9 +240,9 @@ function wireEvents(_ctx: GeoPolAppContext): void {
   // Country click: fly camera + open drill-down
   countrySelectedHandler = ((e: CustomEvent<{ iso: string }>) => {
     const { iso } = e.detail;
-    if (deckMap) {
-      deckMap.flyToCountry(iso);
-      deckMap.setSelectedCountry(iso);
+    if (mapContainer) {
+      mapContainer.flyToCountry(iso);
+      mapContainer.setSelectedCountry(iso);
     }
     if (drillDown) {
       void drillDown.open(iso);
@@ -228,8 +255,8 @@ function wireEvents(_ctx: GeoPolAppContext): void {
   // so we don't need to add another handler. But we register one for the
   // globe-specific behavior of updating selected forecast on the map.
   forecastSelectedHandler = ((e: CustomEvent<{ forecast: ForecastResponse }>) => {
-    if (deckMap) {
-      deckMap.setSelectedForecast(e.detail.forecast);
+    if (mapContainer) {
+      mapContainer.setSelectedForecast(e.detail.forecast);
     }
   }) as EventListener;
   window.addEventListener('forecast-selected', forecastSelectedHandler);
@@ -274,8 +301,8 @@ async function loadInitialData(): Promise<void> {
 }
 
 function pushCountries(countries: CountryRiskSummary[]): void {
-  if (deckMap) {
-    deckMap.updateRiskScores(countries);
+  if (mapContainer) {
+    mapContainer.updateRiskScores(countries);
   }
   if (hud) {
     hud.update(countries);
@@ -283,32 +310,32 @@ function pushCountries(countries: CountryRiskSummary[]): void {
 }
 
 function pushForecasts(forecasts: ForecastResponse[]): void {
-  if (deckMap) {
-    deckMap.updateForecasts(forecasts);
+  if (mapContainer) {
+    mapContainer.updateForecasts(forecasts);
   }
 }
 
 /**
- * Convert API HexbinData to DeckGLMap HexBinDatum and push.
+ * Convert API HexbinData to HexBinDatum and push to MapContainer.
  * Field names align 1:1 -- no mapping needed.
  */
 function pushHeatmap(data: HexbinData[]): void {
-  if (!deckMap) return;
+  if (!mapContainer) return;
   const mapped: HexBinDatum[] = data.map((d) => ({
     h3_index: d.h3_index,
     weight: d.weight,
     event_count: d.event_count,
   }));
-  deckMap.updateHeatmapData(mapped);
+  mapContainer.updateHeatmapData(mapped);
 }
 
 /**
- * Convert API ArcData to DeckGLMap BilateralArcDatum.
+ * Convert API ArcData to BilateralArcDatum and push to MapContainer.
  * Resolves country centroids via countryGeometry. Drops arcs where
  * either centroid is unavailable (unknown ISO code).
  */
 function pushArcs(data: ArcData[]): void {
-  if (!deckMap) return;
+  if (!mapContainer) return;
   const mapped: BilateralArcDatum[] = [];
   for (const d of data) {
     if (!d.source_iso || !d.target_iso) continue;
@@ -324,17 +351,17 @@ function pushArcs(data: ArcData[]): void {
       avgGoldstein: d.avg_goldstein,
     });
   }
-  deckMap.updateArcData(mapped);
+  mapContainer.updateArcData(mapped);
 }
 
 /**
- * Convert API RiskDeltaData to DeckGLMap RiskDeltaDatum and push.
+ * Convert API RiskDeltaData to RiskDeltaDatum and push to MapContainer.
  */
 function pushDeltas(data: RiskDeltaData[]): void {
-  if (!deckMap) return;
+  if (!mapContainer) return;
   const mapped: RiskDeltaDatum[] = data.map((d) => ({
     iso: d.country_iso.toUpperCase(),
     delta: d.delta,
   }));
-  deckMap.updateRiskDeltas(mapped);
+  mapContainer.updateRiskDeltas(mapped);
 }

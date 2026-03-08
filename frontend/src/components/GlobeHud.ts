@@ -1,18 +1,38 @@
 /**
- * GlobeHud -- Minimal stats overlay for the globe screen.
+ * GlobeHud -- Minimal stats overlay + region preset selector for the globe screen.
  *
  * Positioned in the top-left corner, shows 3 aggregate stats:
  *   - Total active forecasts (sum of forecast_count across countries)
  *   - Number of countries with forecasts
  *   - Last data update timestamp (relative)
  *
- * Pure DOM component. No event listeners, no timers, no external state.
+ * Below the stats, 8 region preset buttons dispatch `globe-region-change`
+ * CustomEvents. MapContainer handles the camera fly-to for both 3D and 2D views.
+ *
+ * Pure DOM component. No timers, no external state.
  * The globe screen pushes new data via update().
  */
 
 import { h } from '@/utils/dom-utils';
 import { relativeTime } from '@/components/expandable-card';
 import type { CountryRiskSummary } from '@/types/api';
+
+// ---------------------------------------------------------------------------
+// Region presets for the GlobeHud selector
+// ---------------------------------------------------------------------------
+
+const REGION_PRESETS: { id: string; label: string }[] = [
+  { id: 'global', label: 'Global' },
+  { id: 'america', label: 'Americas' },
+  { id: 'eu', label: 'Europe' },
+  { id: 'mena', label: 'MENA' },
+  { id: 'asia', label: 'Asia' },
+  { id: 'latam', label: 'LatAm' },
+  { id: 'africa', label: 'Africa' },
+  { id: 'oceania', label: 'Oceania' },
+];
+
+export { REGION_PRESETS };
 
 export class GlobeHud {
   private readonly element: HTMLElement;
@@ -25,23 +45,55 @@ export class GlobeHud {
     this.countriesEl = h('span', { className: 'hud-value' }, '0');
     this.updateEl = h('span', { className: 'hud-value' }, '--');
 
+    // Build region preset bar
+    const regionBar = h('div', {
+      className: 'hud-regions',
+      role: 'toolbar',
+      'aria-label': 'Region presets',
+    });
+
+    for (const { id, label } of REGION_PRESETS) {
+      const btn = h('button', {
+        className: `hud-region-btn${id === 'global' ? ' active' : ''}`,
+        dataset: { region: id },
+        'aria-label': `Fly to ${label}`,
+      }, label);
+
+      btn.addEventListener('click', () => {
+        window.dispatchEvent(
+          new CustomEvent('globe-region-change', {
+            detail: { region: id },
+          }),
+        );
+        // Update active state
+        regionBar.querySelectorAll('.hud-region-btn').forEach((b) =>
+          b.classList.toggle('active', b === btn),
+        );
+      });
+
+      regionBar.appendChild(btn);
+    }
+
     this.element = h('div', {
       className: 'globe-hud',
       role: 'status',
       'aria-live': 'polite',
     },
-      h('div', { className: 'hud-item' },
-        h('span', { className: 'hud-label' }, 'FORECASTS'),
-        this.countEl,
+      h('div', { className: 'hud-stats' },
+        h('div', { className: 'hud-item' },
+          h('span', { className: 'hud-label' }, 'FORECASTS'),
+          this.countEl,
+        ),
+        h('div', { className: 'hud-item' },
+          h('span', { className: 'hud-label' }, 'COUNTRIES'),
+          this.countriesEl,
+        ),
+        h('div', { className: 'hud-item' },
+          h('span', { className: 'hud-label' }, 'UPDATED'),
+          this.updateEl,
+        ),
       ),
-      h('div', { className: 'hud-item' },
-        h('span', { className: 'hud-label' }, 'COUNTRIES'),
-        this.countriesEl,
-      ),
-      h('div', { className: 'hud-item' },
-        h('span', { className: 'hud-label' }, 'UPDATED'),
-        this.updateEl,
-      ),
+      regionBar,
     );
   }
 
@@ -70,6 +122,6 @@ export class GlobeHud {
   }
 
   destroy(): void {
-    // Pure DOM, no listeners to clean up
+    // Pure DOM with inline listeners -- no external cleanup needed
   }
 }

@@ -18,7 +18,6 @@
  * Preference persisted in localStorage key 'geopol-globe-mode'.
  */
 
-import { h } from '@/utils/dom-utils';
 import type { DeckGLMap } from '@/components/DeckGLMap';
 import type { GlobeMap } from '@/components/GlobeMap';
 import type { LayerId, HexBinDatum, BilateralArcDatum, RiskDeltaDatum } from '@/components/DeckGLMap';
@@ -81,12 +80,14 @@ export class MapContainer {
   private readonly regionHandler: EventListener;
 
   /**
-   * @param container  Parent element to host both renderer sub-containers
-   * @param deckMap    Pre-constructed DeckGLMap instance (2D renderer)
-   * @param globeMap   Pre-constructed GlobeMap instance (3D renderer)
+   * @param deckContainer  DOM element hosting the DeckGLMap (toggled via display)
+   * @param globeContainer DOM element hosting the GlobeMap (toggled via display)
+   * @param deckMap        Pre-constructed DeckGLMap instance (2D renderer)
+   * @param globeMap       Pre-constructed GlobeMap instance (3D renderer)
    */
   constructor(
-    container: HTMLElement,
+    deckContainer: HTMLElement,
+    globeContainer: HTMLElement,
     deckMap: DeckGLMap,
     globeMap: GlobeMap,
   ) {
@@ -99,17 +100,9 @@ export class MapContainer {
     this.layerState3d = { ...DEFAULT_LAYER_STATE };
     this.layerState2d = { ...DEFAULT_LAYER_STATE };
 
-    // Create two sub-containers occupying the same space
-    this.deckContainer = h('div', {
-      className: 'map-container-deck',
-      style: 'position:absolute;inset:0;',
-    });
-    this.globeContainer = h('div', {
-      className: 'map-container-globe',
-      style: 'position:absolute;inset:0;',
-    });
-    container.appendChild(this.deckContainer);
-    container.appendChild(this.globeContainer);
+    // Store container references for CSS display toggling
+    this.deckContainer = deckContainer;
+    this.globeContainer = globeContainer;
 
     // Store pre-constructed renderer instances
     this.deckMap = deckMap;
