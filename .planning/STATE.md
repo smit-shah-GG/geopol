@@ -11,17 +11,17 @@ See: .planning/PROJECT.md (updated 2026-03-04)
 
 Milestone: v3.0 Operational Command & Verification
 Phase: 24 of 25 (Global Seeding & Globe Layers) -- In progress
-Plan: 02 of 06
+Plan: 03 of 06
 Status: In progress
-Last activity: 2026-03-08 -- Completed 24-01-PLAN.md (Seeding Package Foundation)
+Last activity: 2026-03-08 -- Completed 24-03-PLAN.md (FIPS-to-ISO Conversion + Advisory Persistence)
 
-Progress: [########################################################] 100% (85/80+ plans lifetime)
-v3.0:    [######################] 88% (22/25 plans in v3.0 -- 5/7 phases)
+Progress: [########################################################] 100% (86/80+ plans lifetime)
+v3.0:    [#######################] 92% (23/25 plans in v3.0 -- 5/7 phases)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 83
+- Total plans completed: 84
 - Average duration: 10 minutes
 - Total execution time: 12.9 hours
 
@@ -52,7 +52,7 @@ v3.0:    [######################] 88% (22/25 plans in v3.0 -- 5/7 phases)
 | 21-source-expansion-feed-mgmt | 5 | 34min | 7min |
 | 22-polymarket-hardening | 3 | 23min | 8min |
 | 23-historical-backtesting | 3 | 31min | 10min |
-| 24-global-seeding-globe-layers | 2 | 7min | 4min |
+| 24-global-seeding-globe-layers | 3 | 9min | 3min |
 
 ## Accumulated Context
 
@@ -111,6 +111,9 @@ Key decisions affecting current work:
 - HeatmapHexbin: String(20) for H3 index, all resolutions covered. Pre-computed layer data pattern (2026-03-08)
 - SQLite events lat/lon: nullable REAL columns for geocoding, backward-compatible with 1.43M existing events (2026-03-08)
 - FIPS CSV under src/seeding/data/ (not top-level data/) due to gitignore; negation rule added (2026-03-08)
+- fips_to_iso() called at GDELT ingestion boundary -- all stored country_iso values are now ISO alpha-2 (2026-03-08)
+- Retroactive _migrate_fips_to_iso() runs on every EventStorage startup, idempotent (2026-03-08)
+- Advisory dual-write: in-memory AdvisoryStore + PostgreSQL travel_advisories, DB write is non-critical (2026-03-08)
 
 ### Deferred Issues
 
@@ -134,6 +137,6 @@ Key decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-03-08
-Stopped at: Completed 24-01-PLAN.md (Seeding Package Foundation)
+Stopped at: Completed 24-03-PLAN.md (FIPS-to-ISO Conversion + Advisory Persistence)
 Resume file: None
-Next: 24-03-PLAN.md (FIPS-to-ISO conversion at ingestion + retroactive migration)
+Next: 24-04-PLAN.md (Seeding Engine)
