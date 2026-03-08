@@ -66,15 +66,44 @@ export interface ForecastResponse {
 
 // --- country.py ---
 
-/** Aggregate risk summary for a single country. */
+/** Aggregate risk summary for a single country (dual-score model). */
 export interface CountryRiskSummary {
   iso_code: string;
-  risk_score: number;
+  baseline_risk: number;
+  forecast_risk: number | null;
+  blended_risk: number;
+  risk_score: number;           // backward-compat alias for blended_risk
   forecast_count: number;
-  top_forecast: string;
-  top_probability: number;
+  top_forecast: string | null;
+  top_probability: number | null;
   trend: 'rising' | 'stable' | 'falling';
   last_updated: string;
+  disputed: boolean;
+}
+
+// --- globe layer data (Phase 24) ---
+
+/** Pre-computed H3 hexagonal bin for the event heatmap layer. */
+export interface HexbinData {
+  h3_index: string;
+  weight: number;
+  event_count: number;
+}
+
+/** Bilateral relationship arc between two countries. */
+export interface ArcData {
+  source_iso: string;
+  target_iso: string;
+  event_count: number;
+  avg_goldstein: number;
+}
+
+/** Risk score change for a country over the last 7 days. */
+export interface RiskDeltaData {
+  country_iso: string;
+  current_risk: number;
+  previous_risk: number;
+  delta: number;
 }
 
 // --- health.py ---

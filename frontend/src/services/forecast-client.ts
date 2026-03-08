@@ -12,6 +12,7 @@
 
 import type {
   AdvisoryDTO,
+  ArcData,
   ArticleDTO,
   ComparisonPanelResponse,
   ConfirmSubmissionResponse,
@@ -20,10 +21,12 @@ import type {
   ForecastRequestStatus,
   ForecastResponse,
   HealthResponse,
+  HexbinData,
   PaginatedResponse,
   ParsedQuestionResponse,
   PolymarketComparisonResponse,
   PolymarketTopResponse,
+  RiskDeltaData,
   SearchResponse,
   SnapshotResponse,
   SourceStatusDTO,
@@ -89,6 +92,9 @@ const EMPTY_EVENTS: PaginatedResponse<EventDTO> = { items: [], next_cursor: null
 const EMPTY_ARTICLES: PaginatedResponse<ArticleDTO> = { items: [], next_cursor: null, has_more: false };
 const EMPTY_SOURCES: SourceStatusDTO[] = [];
 const EMPTY_ADVISORIES: AdvisoryDTO[] = [];
+const EMPTY_HEXBINS: HexbinData[] = [];
+const EMPTY_ARCS: ArcData[] = [];
+const EMPTY_DELTAS: RiskDeltaData[] = [];
 const EMPTY_COMPARISONS: ComparisonPanelResponse = { comparisons: [], total: 0 };
 
 // ---------------------------------------------------------------------------
@@ -415,6 +421,43 @@ export class ForecastServiceClient {
         EMPTY_ADVISORIES,
       ),
     ) as Promise<AdvisoryDTO[]>;
+  }
+
+  // -----------------------------------------------------------------------
+  // Globe layer data (Phase 24)
+  // -----------------------------------------------------------------------
+
+  /** GET /globe/heatmap -- pre-computed H3 hexbin event density. */
+  async getHeatmapData(): Promise<HexbinData[]> {
+    const key = '/globe/heatmap';
+    return this.dedup(key, () =>
+      this.eventsBreaker.execute(
+        () => this.fetchJson<HexbinData[]>(key),
+        EMPTY_HEXBINS,
+      ),
+    ) as Promise<HexbinData[]>;
+  }
+
+  /** GET /globe/arcs -- top bilateral relationships with sentiment. */
+  async getArcData(): Promise<ArcData[]> {
+    const key = '/globe/arcs';
+    return this.dedup(key, () =>
+      this.eventsBreaker.execute(
+        () => this.fetchJson<ArcData[]>(key),
+        EMPTY_ARCS,
+      ),
+    ) as Promise<ArcData[]>;
+  }
+
+  /** GET /globe/deltas -- countries with significant risk score changes. */
+  async getRiskDeltas(): Promise<RiskDeltaData[]> {
+    const key = '/globe/deltas';
+    return this.dedup(key, () =>
+      this.eventsBreaker.execute(
+        () => this.fetchJson<RiskDeltaData[]>(key),
+        EMPTY_DELTAS,
+      ),
+    ) as Promise<RiskDeltaData[]>;
   }
 
   // -----------------------------------------------------------------------
