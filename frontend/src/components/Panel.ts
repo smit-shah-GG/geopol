@@ -1,4 +1,5 @@
 import { h, replaceChildren, safeHtml } from '@/utils/dom-utils';
+import { buildSkeleton, PANEL_SKELETON_MAP } from '@/utils/skeleton';
 
 export interface PanelOptions {
   id: string;
@@ -57,6 +58,7 @@ export class Panel {
   private readonly contentDebounceMs = 150;
   private pendingContentHtml: string | null = null;
   private contentDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+  private toastDismissTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(options: PanelOptions) {
     this.panelId = options.id;
@@ -134,7 +136,7 @@ export class Panel {
       setSpanClass(this.element, savedSpan);
     }
 
-    this.showLoading();
+    this.showSkeleton();
   }
 
   private setupResizeHandlers(): void {
@@ -281,6 +283,57 @@ export class Panel {
     );
   }
 
+  public showSkeleton(): void {
+    const shape = PANEL_SKELETON_MAP[this.panelId] ?? 'text-block';
+    replaceChildren(this.content, buildSkeleton(shape));
+  }
+
+  public showErrorWithRetry(message: string, retryFn: () => void | Promise<void>): void {
+    const icon = h('div', { className: 'panel-error-icon' }, '\u26A0');
+    const msg = h('div', { className: 'panel-error-message' }, message);
+    const btn = h('button', { className: 'panel-retry-btn' }, 'Retry');
+    btn.addEventListener('click', () => { retryFn(); });
+    replaceChildren(this.content,
+      h('div', { className: 'panel-error-block' }, icon, msg, btn),
+    );
+  }
+
+  public showRefreshToast(message: string, severity: 'amber' | 'red' = 'amber'): void {
+    // Remove any existing toast first
+    this.dismissToast();
+
+    const dismiss = h('button', { className: 'toast-dismiss' }, '\u00D7');
+    const toast = h('div', { className: `panel-refresh-toast toast-${severity}` },
+      h('span', null, message),
+      dismiss,
+    );
+
+    dismiss.addEventListener('click', () => { this.dismissToast(); });
+
+    // Auto-dismiss after 10 seconds
+    this.toastDismissTimer = setTimeout(() => {
+      this.dismissToast();
+    }, 10_000);
+
+    // Insert at top of content without replacing existing data
+    if (this.content.firstChild) {
+      this.content.insertBefore(toast, this.content.firstChild);
+    } else {
+      this.content.appendChild(toast);
+    }
+  }
+
+  public dismissToast(): void {
+    if (this.toastDismissTimer) {
+      clearTimeout(this.toastDismissTimer);
+      this.toastDismissTimer = null;
+    }
+    const existing = this.content.querySelector('.panel-refresh-toast');
+    if (existing) {
+      existing.remove();
+    }
+  }
+
   public setCount(count: number): void {
     if (this.countEl) {
       this.countEl.textContent = count.toString();
@@ -362,6 +415,10 @@ export class Panel {
     if (this.contentDebounceTimer) {
       clearTimeout(this.contentDebounceTimer);
       this.contentDebounceTimer = null;
+    }
+    if (this.toastDismissTimer) {
+      clearTimeout(this.toastDismissTimer);
+      this.toastDismissTimer = null;
     }
     this.pendingContentHtml = null;
 

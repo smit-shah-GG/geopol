@@ -19,22 +19,22 @@
 
   --border: #1e2a3a;
   --border-subtle: #151d2a;
-  --border-focus: #3a7bd5;
+  --border-focus: #4080dd;
 
   --text-primary: #d0d8e0;
   --text-secondary: #8090a4;
-  --text-muted: #506070;
+  --text-muted: #6a7a8c;
   --text-inverse: #0a0e14;
 
-  --accent: #3a7bd5;
-  --accent-hover: #4a8be5;
-  --accent-muted: rgba(58, 123, 213, 0.15);
+  --accent: #4080dd;
+  --accent-hover: #5090ed;
+  --accent-muted: rgba(64, 128, 221, 0.15);
 
   /* Semantic severity (intelligence grading) */
   --semantic-critical: #e63946;
   --semantic-warning: #e6a23c;
   --semantic-success: #2ecc71;
-  --semantic-info: #3a7bd5;
+  --semantic-info: #4080dd;
   --semantic-neutral: #8090a4;
 
   /* Probability heat ramp (0.0 -> 1.0) */
@@ -1273,4 +1273,26 @@ body.has-breaking-alert .dashboard-columns {
   text-align: center;
   color: var(--text-muted);
   font-size: var(--font-size-sm);
+}
+
+/* ========================================================================
+   Accessibility: Reduced Motion
+   ======================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .panel-skeleton .skeleton-line,
+  .panel-skeleton .skeleton-bar,
+  .panel-skeleton .skeleton-card,
+  .panel-skeleton .skeleton-row,
+  .panel-skeleton .skeleton-article,
+  .panel-skeleton .skeleton-bar-pair,
+  .panel-skeleton .skeleton-timeline-item {
+    animation: none !important;
+    background: var(--bg-surface) !important;
+  }
+  .view-transition-fade,
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation-duration: 0.01ms !important;
+  }
 }
