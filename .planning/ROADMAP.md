@@ -6,7 +6,7 @@
 - v1.1 Tech Debt Remediation -- Phases 6-8 (shipped 2026-01-30)
 - v2.0 Operationalization & Forecast Quality -- Phases 9-13 (shipped 2026-03-02)
 - v2.1 Production UX & Live Data Integration -- Phases 14-18 (shipped 2026-03-04)
-- v3.0 Operational Command & Verification -- Phases 19-25 (in progress)
+- v3.0 Operational Command & Verification -- Phases 19-27 (in progress)
 
 ## Phases
 
@@ -535,19 +535,20 @@ Plans:
 - [x] 26-03-PLAN.md -- Scenario tree overhaul: root node content, multi-line text, alternating sides, pan/zoom
 
 ### Phase 27: 3D Globe
-**Goal**: Add a globe.gl-based 3D globe view (Three.js sphere, atmosphere shader, starfield, PBR materials) as the default globe view, with the existing deck.gl flat map retained as a toggleable alternative. All 5 analytic layers (choropleth, markers, arcs, heatmap, scenarios) render on both views.
+**Goal**: Add a globe.gl-based 3D globe view (Three.js sphere, atmosphere glow, PBR materials) as the default globe view, with the existing deck.gl flat map retained as a toggleable alternative. All 5 analytic layers (choropleth, markers, arcs, heatmap, scenarios) render on both views.
 **Depends on**: Phase 26 (operational fixes) -- pollers running, data flowing
-**Requirements**: TBD (run /gsd:plan-phase 27)
+**Requirements**: GLOBE-3D-01 through GLOBE-3D-05
 **Success Criteria** (what must be TRUE):
-  1. /globe defaults to 3D spherical globe with atmosphere glow, orbital camera, and starfield backdrop
+  1. /globe defaults to 3D spherical globe with atmosphere glow, orbital camera
   2. User can toggle between 3D globe and 2D flat map -- both views are available, preference persisted in localStorage
   3. All 5 analytic layers (risk choropleth, forecast markers, arcs, heatmap hexagons, scenario zones) render correctly on the 3D globe
   4. Country click on 3D globe opens the same GlobeDrillDown panel as the 2D map
-  5. Performance: 3D globe maintains 30+ FPS on desktop with all layers enabled; render quality scaling adapts to device capability
-**Plans**: 0 plans
+  5. Performance: 3D globe maintains 30+ FPS on desktop with all layers enabled
+**Plans**: 2 plans
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 27 to break down)
+- [ ] 27-01-PLAN.md -- GlobeMap.ts core renderer (globe.gl + Three.js, 13-method API, atmosphere glow, 5 layer channels, debounced flush)
+- [ ] 27-02-PLAN.md -- MapContainer wrapper, globe-screen rewire, NavBar toggle, GlobeHud region presets, LayerPillBar refactor
 
 
 ## Progress
@@ -584,6 +585,6 @@ Phase 19 -> Phase 20. Then parallel: Phase 21 + Phase 22. Then Phase 23 (after 2
 | 25. Frontend Finalization | v3.0 | 3/3 | Complete | 2026-03-08 |
 
 | 26. Operational Fixes & UX Polish | v3.0 | 3/3 | Complete | 2026-03-09 |
-| 27. 3D Globe | v3.0 | 0/0 | Planned | - |
+| 27. 3D Globe | v3.0 | 0/2 | Planned | - |
 
 **Total:** 26 phases complete (v1.0 + v1.1 + v2.0 + v2.1 + v3.0 partial), 93 plans delivered. v3.0: 8/9 phases complete.
