@@ -76,6 +76,25 @@ Return ONLY JSON."""
 # ---------------------------------------------------------------------------
 
 
+def is_binary_market(event: dict) -> bool:
+    """Check if a Polymarket event contains only binary (Yes/No) markets.
+
+    Returns True only when every market in event["markets"] has exactly
+    outcomes == ["Yes", "No"] (case-sensitive, matching Gamma API convention).
+    Returns False if the markets list is empty or missing.
+    """
+    markets = event.get("markets", [])
+    if not markets:
+        return False
+
+    for market in markets:
+        outcomes = market.get("outcomes")
+        if outcomes != ["Yes", "No"]:
+            return False
+
+    return True
+
+
 def compute_horizon_days(end_date_str: str | None) -> int | None:
     """Compute forecast horizon from Polymarket event endDate.
 
@@ -325,6 +344,16 @@ class PolymarketAutoForecaster:
 
                 # Already has a prediction (dedup)
                 if event_id in existing_event_ids:
+                    continue
+
+                # Skip non-binary markets (multi-outcome produces nonsensical forecasts)
+                if not is_binary_market(event):
+                    title = event.get("title", "")
+                    logger.info(
+                        "Skipping non-binary market: %s (event=%s)",
+                        title[:60],
+                        event_id,
+                    )
                     continue
 
                 # Valid horizon
@@ -629,3 +658,79 @@ class PolymarketAutoForecaster:
             await session.commit()
 
         return result
+
+
+# ---------------------------------------------------------------------------
+# One-time DB cleanup utility
+# ---------------------------------------------------------------------------
+
+
+async def exclude_nonbinary_comparisons(
+    session_factory: Callable[..., Any],
+) -> int:
+    """Mark active PolymarketComparison rows as 'excluded' if their event is non-binary.
+
+    One-time utility for cleaning up existing non-binary comparisons that were
+    created before the is_binary_market filter was added.
+
+    For each active comparison, fetches the event from Gamma API to check
+    whether all markets have ["Yes", "No"] outcomes. Sets status='excluded'
+    for non-binary ones.
+
+    Args:
+        session_factory: Async session factory (same as PolymarketAutoForecaster uses).
+
+    Returns:
+        Count of comparisons excluded.
+    """
+    import httpx
+
+    excluded_count = 0
+
+    async with session_factory() as session:
+        stmt = select(PolymarketComparison).where(
+            PolymarketComparison.status == "active"
+        )
+        result = await session.execute(stmt)
+        comparisons = list(result.scalars().all())
+
+        if not comparisons:
+            logger.info("No active comparisons to check for non-binary markets")
+            return 0
+
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            for comp in comparisons:
+                try:
+                    resp = await client.get(
+                        f"https://gamma-api.polymarket.com/events/{comp.polymarket_event_id}"
+                    )
+                    if resp.status_code != 200:
+                        logger.warning(
+                            "Gamma API returned %d for event %s, skipping",
+                            resp.status_code,
+                            comp.polymarket_event_id,
+                        )
+                        continue
+
+                    event_data = resp.json()
+                    if not is_binary_market(event_data):
+                        comp.status = "excluded"
+                        excluded_count += 1
+                        logger.info(
+                            "Excluding non-binary comparison %d: %s (event=%s)",
+                            comp.id,
+                            comp.polymarket_title[:60],
+                            comp.polymarket_event_id,
+                        )
+
+                except Exception as exc:
+                    logger.warning(
+                        "Failed to check event %s: %s",
+                        comp.polymarket_event_id,
+                        exc,
+                    )
+
+        await session.commit()
+
+    logger.info("Excluded %d non-binary comparisons", excluded_count)
+    return excluded_count
