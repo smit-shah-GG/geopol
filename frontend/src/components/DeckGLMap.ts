@@ -178,6 +178,7 @@ export class DeckGLMap {
 
   // Event listener references for cleanup
   private readonly onThemeChanged: (e: Event) => void;
+  private resizeObserver: ResizeObserver | null = null;
 
   constructor(container: HTMLElement) {
     this.container = container;
@@ -190,6 +191,13 @@ export class DeckGLMap {
 
     this.setupDOM();
     this.initMap();
+
+    // ResizeObserver: recalculate map viewport when container changes size
+    // (flex layout may settle after construction, and window resizes need handling)
+    this.resizeObserver = new ResizeObserver(() => {
+      this.map?.resize();
+    });
+    this.resizeObserver.observe(this.container);
 
     window.addEventListener('theme-changed', this.onThemeChanged);
   }
@@ -368,6 +376,8 @@ export class DeckGLMap {
   /** Clean up map + overlay + event listeners. */
   destroy(): void {
     window.removeEventListener('theme-changed', this.onThemeChanged);
+    this.resizeObserver?.disconnect();
+    this.resizeObserver = null;
 
     if (this.overlay && this.map) {
       this.map.removeControl(this.overlay as unknown as maplibregl.IControl);
@@ -433,8 +443,8 @@ export class DeckGLMap {
     this.map = new maplibregl.Map({
       container: basemapContainer,
       style: DARK_STYLE,
-      center: [30, 20],
-      zoom: 1.8,
+      center: [20, 35],
+      zoom: 1.6,
       renderWorldCopies: false,
       attributionControl: false,
     });
