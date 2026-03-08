@@ -229,12 +229,12 @@ Scope areas:
 
 ### Global Seeding & Globe Layers
 
-- [ ] **SEED-01**: Baseline risk computation for all ~195 countries using composite score: GDELT event density + ACLED conflict intensity + UCDP fatality signal + government travel advisory levels, with configurable weights and exponential time decay
-- [ ] **SEED-02**: `baseline_country_risk` table in PostgreSQL storing per-country composite scores, updated daily -- API merges with active forecast risk via `COALESCE` (forecast risk overrides baseline when available)
-- [ ] **SEED-03**: Globe choropleth renders all ~195 countries with color intensity from merged risk scores -- no more empty/neutral countries with zero data
-- [ ] **GLYR-01**: Heatmap layer populated with real GDELT event locations -- requires adding `lat`/`lon` columns to SQLite events schema (currently discarded during ingestion) and a new `/api/v1/events/geo` endpoint returning geocoded events
-- [ ] **GLYR-02**: Arcs layer showing bilateral country relationships from knowledge graph edges -- new `/api/v1/countries/relations` endpoint returning top-N country pairs by edge weight
-- [ ] **GLYR-03**: Scenarios layer showing geographic zones for active scenario branches -- polygon generation from country ISO codes of scenario-relevant entities
+- [x] **SEED-01**: Baseline risk computation for all ~195 countries using composite score: GDELT event density + ACLED conflict intensity + Goldstein severity + government travel advisory levels, with configurable weights and exponential time decay (UCDP deferred to v3.1+, Goldstein severity substituted as 4th signal)
+- [x] **SEED-02**: `baseline_country_risk` table in PostgreSQL storing per-country composite scores, updated hourly via APScheduler heavy job -- API merges with active forecast risk via blended score (70% forecast / 30% baseline when both exist)
+- [x] **SEED-03**: Globe choropleth renders all ~195 countries with color intensity from merged risk scores -- no more empty/neutral countries with zero data
+- [x] **GLYR-01**: Heatmap layer populated with real GDELT event locations via H3 hex binning -- requires adding `lat`/`lon` columns to SQLite events schema (currently discarded during ingestion) and `/api/v1/globe/heatmap` endpoint returning pre-computed H3 hexbins
+- [x] **GLYR-02**: Arcs layer showing bilateral country relationships from event pairs (KG empty, fallback to actor country codes) -- `/api/v1/globe/arcs` endpoint returning top-N country pairs by event volume with sentiment coloring
+- [x] **GLYR-03**: Risk delta visualization (repurposed from scenario zones) -- colors regions where risk score changed significantly (>10 points) in last 7 days, red shift = deteriorating, green shift = improving
 
 ### Frontend Finalization
 

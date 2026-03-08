@@ -385,7 +385,7 @@ Phases 21, 22, and 24 are independent tracks after Phase 20 and can run in paral
 - [ ] **Phase 21: Source Expansion & Feed Management** -- UCDP poller, RSS feed management via admin, cross-source dedup layer, per-source health metrics, feed health auto-disable
 - [x] **Phase 22: Polymarket Hardening** -- Fix created_at overwrite bug, cumulative Brier score tracking, head-to-head accuracy panel, resolution tracking, polling reliability
 - [x] **Phase 23: Historical Backtesting** -- Walk-forward evaluation harness, model comparison (TiRGN vs RE-GCN), calibration audit (reliability diagrams over time), look-ahead bias prevention
-- [ ] **Phase 24: Global Seeding & Globe Layers** -- Baseline risk for all ~195 countries, heatmap/arcs/scenarios data wiring, advisory-level risk floors, active forecast override
+- [x] **Phase 24: Global Seeding & Globe Layers** -- Baseline risk for all ~195 countries, heatmap/arcs/scenarios data wiring, advisory-level risk floors, active forecast override
 - [ ] **Phase 25: Frontend Finalization** -- Loading states, error boundaries, empty states, performance optimization, accessibility basics
 
 ## Phase Details
@@ -488,16 +488,16 @@ Plans:
   2. `GET /api/v1/countries` returns merged risk scores: active forecast risk overrides baseline when available (`COALESCE(forecast_risk, baseline_risk)`), so countries with forecasts show prediction-derived risk while countries without forecasts still show meaningful baseline risk
   3. The globe choropleth colors all ~195 countries with intensity proportional to their merged risk scores -- no more empty/neutral countries with zero data; high-risk conflict zones visually stand out
   4. The heatmap layer displays real GDELT event locations on the globe -- events include `lat`/`lon` coordinates (added to SQLite schema), served via `/api/v1/globe/heatmap` with server-side H3 hex binning for performance
-  5. The arcs layer renders bilateral country relationships from knowledge graph edges via `/api/v1/countries/relations` -- showing top-N country pairs by edge weight as great-circle arcs on the globe
+  5. The arcs layer renders bilateral country relationships from event pairs via `/api/v1/globe/arcs` -- showing top-N country pairs by event volume as great-circle arcs on the globe with sentiment coloring
 **Plans**: 6 plans
 
 Plans:
-- [ ] 24-01-PLAN.md — Seeding package: FIPS CSV data file, fips.py, population.py, baseline_risk.py, pip deps
-- [ ] 24-02-PLAN.md — Database layer: 5 PostgreSQL ORM models, Alembic migration 010, SQLite lat/lon, Event dataclass
-- [ ] 24-03-PLAN.md — Ingestion fixes: GDELT FIPS-to-ISO conversion + lat/lon extraction, advisory DB persistence
-- [ ] 24-04-PLAN.md — Seeding engine: heatmap binner, arc builder, risk delta, compute_all orchestrator, APScheduler heavy job
-- [ ] 24-05-PLAN.md — API layer: dual-score countries endpoint, globe layer endpoints (heatmap, arcs, deltas)
-- [ ] 24-06-PLAN.md — Frontend: H3HexagonLayer, data-push methods, globe-screen layer wiring, TypeScript types
+- [x] 24-01-PLAN.md — Seeding package: FIPS CSV data file, fips.py, population.py, baseline_risk.py, pip deps
+- [x] 24-02-PLAN.md — Database layer: 5 PostgreSQL ORM models, Alembic migration 010, SQLite lat/lon, Event dataclass
+- [x] 24-03-PLAN.md — Ingestion fixes: GDELT FIPS-to-ISO conversion + lat/lon extraction, advisory DB persistence
+- [x] 24-04-PLAN.md — Seeding engine: heatmap binner, arc builder, risk delta, compute_all orchestrator, APScheduler heavy job
+- [x] 24-05-PLAN.md — API layer: dual-score countries endpoint, globe layer endpoints (heatmap, arcs, deltas)
+- [x] 24-06-PLAN.md — Frontend: H3HexagonLayer, data-push methods, globe-screen layer wiring, TypeScript types
 
 ### Phase 25: Frontend Finalization
 **Goal**: Every screen and panel handles loading, error, and empty states gracefully. Heavy components lazy-load. Interactive elements are keyboard-accessible. The frontend is ready for external users who encounter edge cases, slow connections, and assistive technology.
@@ -546,7 +546,7 @@ Phase 19 -> Phase 20. Then parallel: Phase 21 + Phase 22. Then Phase 23 (after 2
 | 21. Source Expansion & Feed Mgmt | v3.0 | 5/5 | Complete | 2026-03-06 |
 | 22. Polymarket Hardening | v3.0 | 3/3 | Complete | 2026-03-06 |
 | 23. Historical Backtesting | v3.0 | 3/3 | Complete | 2026-03-08 |
-| 24. Global Seeding & Globe Layers | v3.0 | 0/5 | Not started | - |
+| 24. Global Seeding & Globe Layers | v3.0 | 6/6 | Complete | 2026-03-08 |
 | 25. Frontend Finalization | v3.0 | 0/TBD | Not started | - |
 
-**Total:** 23 phases complete (v1.0 + v1.1 + v2.0 + v2.1 + v3.0 partial), 81 plans delivered. v3.0: 5/7 phases complete.
+**Total:** 24 phases complete (v1.0 + v1.1 + v2.0 + v2.1 + v3.0 partial), 87 plans delivered. v3.0: 6/7 phases complete.
