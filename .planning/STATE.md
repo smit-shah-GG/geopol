@@ -5,25 +5,25 @@
 See: .planning/PROJECT.md (updated 2026-03-04)
 
 **Core value:** Explainability -- every forecast must provide clear, traceable reasoning paths
-**Current focus:** v3.0 Operational Command & Verification -- Phase 24 Global Seeding & Globe Layers
+**Current focus:** v3.0 Operational Command & Verification -- Phase 25 Frontend Finalization
 
 ## Current Position
 
 Milestone: v3.0 Operational Command & Verification
-Phase: 24 of 25 (Global Seeding & Globe Layers) -- COMPLETE
-Plan: 06 of 06
-Status: Phase complete
-Last activity: 2026-03-08 -- Completed 24-06-PLAN.md (Frontend Globe Layer Wiring)
+Phase: 25 of 25 (Frontend Finalization) -- In progress
+Plan: 01 of 03
+Status: In progress
+Last activity: 2026-03-08 -- Completed 25-01-PLAN.md (Shared Infrastructure & Skeleton Builder)
 
-Progress: [########################################################] 100% (89/80+ plans lifetime)
-v3.0:    [##########################] 100% (26/26 plans in v3.0 -- 6/7 phases)
+Progress: [########################################################] 100% (90/80+ plans lifetime)
+v3.0:    [###########################-] 96% (27/28 plans in v3.0 -- 7/7 phases)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 87
+- Total plans completed: 88
 - Average duration: 10 minutes
-- Total execution time: 13.2 hours
+- Total execution time: 13.3 hours
 
 **By Phase:**
 
@@ -53,6 +53,7 @@ v3.0:    [##########################] 100% (26/26 plans in v3.0 -- 6/7 phases)
 | 22-polymarket-hardening | 3 | 23min | 8min |
 | 23-historical-backtesting | 3 | 31min | 10min |
 | 24-global-seeding-globe-layers | 6 | 23min | 4min |
+| 25-frontend-finalization | 1/3 | 3min | 3min |
 
 ## Accumulated Context
 
@@ -122,6 +123,10 @@ Key decisions affecting current work:
 - GET /countries/{iso} no longer 404 for baseline-only countries (returns baseline risk with forecast_risk=None) (2026-03-08)
 - DeckGLMap layers 3/4/5 are dual-mode: global bilateral arcs vs per-country, H3HexagonLayer vs HeatmapLayer, risk deltas vs scenario highlights (2026-03-08)
 - Globe screen all 5 layers default ON, 5-minute refresh cycle for layer data (2026-03-08)
+- WCAG AA contrast: --text-muted #6a7a8c, --accent #4080dd (was #506070, #3a7bd5) (2026-03-08)
+- Panel constructor calls showSkeleton() instead of showLoading() -- shimmer replaces radar sweep (2026-03-08)
+- Skeleton builder: 7 shapes, PANEL_SKELETON_MAP for 10 panel IDs, role=status + aria-busy a11y (2026-03-08)
+- prefers-reduced-motion: skeleton shimmer disabled (static bg), view transitions near-instant (2026-03-08)
 - buildLayers() return type changed to Layer[] (deck.gl base class) for polymorphic layer container (2026-03-08)
 
 ### Deferred Issues
@@ -146,6 +151,6 @@ Key decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-03-08
-Stopped at: Completed 24-06-PLAN.md (Frontend Globe Layer Wiring) -- Phase 24 COMPLETE
+Stopped at: Completed 25-01-PLAN.md (Shared Infrastructure & Skeleton Builder)
 Resume file: None
-Next: Phase 25 (final v3.0 phase)
+Next: 25-02-PLAN.md (Per-Panel UX Overhaul -- ForecastPanel, RiskIndex, NewsFeed, SystemHealth)
