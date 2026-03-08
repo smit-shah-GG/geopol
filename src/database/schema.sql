@@ -41,6 +41,10 @@ CREATE TABLE IF NOT EXISTS events (
     country_iso TEXT,               -- ISO 3166-1 alpha-2 country code (event location)
     source TEXT NOT NULL DEFAULT 'gdelt',  -- Discriminator: 'gdelt' or 'acled'
 
+    -- Geocoding (nullable -- existing events lack coordinates)
+    lat REAL,                       -- Latitude of event location
+    lon REAL,                       -- Longitude of event location
+
     -- Indexes for efficient queries
     CHECK (quad_class IN (1, 2, 3, 4) OR quad_class IS NULL)
 );
@@ -72,6 +76,9 @@ CREATE INDEX IF NOT EXISTS idx_events_country_date_id ON events(country_iso, eve
 
 -- Index for source filtering (gdelt vs acled)
 CREATE INDEX IF NOT EXISTS idx_events_source ON events(source);
+
+-- Index for geocoded event queries (heatmap hex binning)
+CREATE INDEX IF NOT EXISTS idx_events_lat_lon ON events(lat, lon);
 
 -- View for high-confidence conflict events
 CREATE VIEW IF NOT EXISTS conflict_events AS

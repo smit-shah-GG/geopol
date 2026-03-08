@@ -43,6 +43,10 @@ class Event:
     country_iso: Optional[str] = None  # ISO 3166-1 alpha-2 (event location)
     source: str = "gdelt"  # Discriminator: 'gdelt' or 'acled'
 
+    # Geocoding (nullable -- existing events lack coordinates)
+    lat: Optional[float] = None  # Latitude of event location
+    lon: Optional[float] = None  # Longitude of event location
+
     # Metadata
     raw_json: Optional[str] = None
     created_at: Optional[str] = field(default_factory=lambda: datetime.utcnow().isoformat())
