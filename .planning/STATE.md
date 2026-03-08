@@ -10,20 +10,20 @@ See: .planning/PROJECT.md (updated 2026-03-04)
 ## Current Position
 
 Milestone: v3.0 Operational Command & Verification
-Phase: 27 of 27 (3D Globe)
-Plan: 01 of 02 (Core GlobeMap 3D Renderer)
-Status: In progress
-Last activity: 2026-03-09 -- Completed 27-01-PLAN.md
+Phase: 27 of 27 (3D Globe) -- COMPLETE
+Plan: 02 of 02 (MapContainer + Integration) -- COMPLETE
+Status: Phase 27 complete. v3.0 complete.
+Last activity: 2026-03-09 -- Completed 27-02-PLAN.md
 
-Progress: [#########################################################] 100% (94 plans lifetime)
-v3.0:    [#####################################] ~94% (33 plans in v3.0 -- 8/9 phases, plan 1/2 of phase 27)
+Progress: [##########################################################] 100% (95 plans lifetime)
+v3.0:    [######################################] 100% (34 plans in v3.0 -- 9/9 phases complete)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 94
+- Total plans completed: 95
 - Average duration: 10 minutes
-- Total execution time: 14.0 hours
+- Total execution time: 14.1 hours
 
 **By Phase:**
 
@@ -55,7 +55,7 @@ v3.0:    [#####################################] ~94% (33 plans in v3.0 -- 8/9 p
 | 24-global-seeding-globe-layers | 6 | 23min | 4min |
 | 25-frontend-finalization | 3/3 | 23min | 8min |
 | 26-operational-fixes-ux-polish | 3/3 | 18min | 6min |
-| 27-3d-globe | 1/2 | 5min | 5min |
+| 27-3d-globe | 2/2 | 13min | 7min |
 
 ## Accumulated Context
 
@@ -155,6 +155,13 @@ Key decisions affecting current work:
 - GlobeMap: GeoJSON ring reversal cached per feature ISO code (Natural Earth CW -> Three.js CCW) (2026-03-09)
 - GlobeMap: Layers 1+5 share single polygonsData channel with altitude discrimination (0.002 vs 0.004) (2026-03-09)
 - GlobeMap: Three.js dynamic import inside applyAtmosphereGlow() only -- avoids 600KB parse-time load (2026-03-09)
+- MapContainer: accepts pre-constructed sub-containers + renderer instances -- no internal DOM creation (2026-03-09)
+- LayerPillBar: duck-typed LayerController interface replaces DeckGLMap concrete dependency (2026-03-09)
+- MapContainer: CSS display swap for view toggle (both WebGL contexts alive, no destroy/recreate) (2026-03-09)
+- Independent layer state per view: layerState3d and layerState2d Records, synced on toggle (2026-03-09)
+- VIEW_POVS duplicated in MapContainer for 2D flyTo approximation (avoids breaking code-split) (2026-03-09)
+- globe-mode-changed CustomEvent confirms toggle from MapContainer to NavBar (2026-03-09)
+- GlobeMap: pauseAnimation/resumeAnimation for GPU savings when 3D view hidden (2026-03-09)
 
 ### Deferred Issues
 
@@ -178,6 +185,6 @@ Key decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-03-09
-Stopped at: Completed 27-01-PLAN.md (core GlobeMap 3D renderer)
+Stopped at: Completed 27-02-PLAN.md (MapContainer wrapper + globe-screen integration)
 Resume file: None
-Next: 27-02-PLAN.md (MapContainer wrapper + globe-screen integration)
+Next: Phase 27 complete. v3.0 milestone complete.
