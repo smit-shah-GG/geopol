@@ -512,9 +512,10 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 20-01-PLAN.md -- Scheduler package: APScheduler core, dependency container, 9 job wrappers, failure tracking
-- [ ] 20-02-PLAN.md -- FastAPI integration: lifespan mount, admin API rewire, graceful shutdown
-- [ ] 20-03-PLAN.md -- Frontend ProcessTable update with pause/resume controls + verification
+- [ ] 25-01-PLAN.md -- Infrastructure: skeleton utility, focus-trap, timing utils, Panel base class extensions, CSS (shimmer, error, toast, a11y)
+- [ ] 25-02-PLAN.md -- Panel integration: skeleton/error/empty states on all 18 panels, sparkline wiring, CAMEO stub fix, lazy-load CountryBriefPage
+- [ ] 25-03-PLAN.md -- Accessibility: focus trapping in modals, ARIA labels, keyboard navigation, globe resize fix, visual verification
+
 
 ## Progress
 
@@ -547,6 +548,6 @@ Phase 19 -> Phase 20. Then parallel: Phase 21 + Phase 22. Then Phase 23 (after 2
 | 22. Polymarket Hardening | v3.0 | 3/3 | Complete | 2026-03-06 |
 | 23. Historical Backtesting | v3.0 | 3/3 | Complete | 2026-03-08 |
 | 24. Global Seeding & Globe Layers | v3.0 | 6/6 | Complete | 2026-03-08 |
-| 25. Frontend Finalization | v3.0 | 0/TBD | Not started | - |
+| 25. Frontend Finalization | v3.0 | 0/3 | Planned | - |
 
 **Total:** 24 phases complete (v1.0 + v1.1 + v2.0 + v2.1 + v3.0 partial), 87 plans delivered. v3.0: 6/7 phases complete.
