@@ -55,6 +55,8 @@ interface TreeDatum {
   children: TreeDatum[];
   /** Indicates children were pruned at MAX_DEPTH. */
   pruned_count: number;
+  /** Which side of the tree this node sits on (set after layout). */
+  side?: 'left' | 'right';
 }
 
 type TreeNode = d3.HierarchyPointNode<TreeDatum>;
@@ -246,14 +248,33 @@ export class ScenarioExplorer {
     const treeData = this.buildTreeData(forecast);
     const root = d3.hierarchy(treeData);
 
-    // Layout: vertical top-down, nodeSize controls spacing
-    const treeLayout = d3.tree<TreeDatum>().nodeSize([200, 100]);
+    // Layout: vertical top-down with wider spacing for multi-line text
+    const treeLayout = d3.tree<TreeDatum>()
+      .nodeSize([250, 140])
+      .separation((a, b) => {
+        // Wider separation for nodes with long text to prevent overlap
+        return a.parent === b.parent ? 1.2 : 1.5;
+      });
     treeLayout(root);
 
     const nodes = root.descendants() as TreeNode[];
     const links = root.links() as d3.HierarchyPointLink<TreeDatum>[];
 
-    // Compute bounding box
+    // Post-process: determine side for alternating text layout
+    const rootX = (root as TreeNode).x;
+    for (const node of nodes) {
+      if (node === root) continue; // root has no side assignment
+      // Walk up to find which direct child of root this belongs to
+      let ancestor: TreeNode = node;
+      while (ancestor.parent && ancestor.parent !== root) {
+        ancestor = ancestor.parent as TreeNode;
+      }
+      node.data.side = ancestor.x < rootX ? 'left'
+        : ancestor.x > rootX ? 'right'
+        : 'right'; // tie-break: right
+    }
+
+    // Compute bounding box with extra padding for foreignObject text blocks
     let minX = Infinity, maxX = -Infinity;
     let minY = Infinity, maxY = -Infinity;
     for (const node of nodes) {
@@ -263,7 +284,8 @@ export class ScenarioExplorer {
       if (node.y > maxY) maxY = node.y;
     }
 
-    const pad = 80;
+    const TEXT_BLOCK_W = 160;
+    const pad = 80 + TEXT_BLOCK_W; // extra padding for text extending from edge nodes
     const width = maxX - minX + pad * 2;
     const height = maxY - minY + pad * 2;
 
@@ -287,7 +309,10 @@ export class ScenarioExplorer {
     `;
     svg.appendChild(defs);
 
-    // Draw links
+    // Inner group for pan/zoom transforms
+    const svgGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+
+    // Draw links with enhanced bezier visibility
     const linkGen = d3.linkVertical<d3.HierarchyPointLink<TreeDatum>, d3.HierarchyPointNode<TreeDatum>>()
       .x(d => d.x)
       .y(d => d.y);
@@ -298,12 +323,15 @@ export class ScenarioExplorer {
       if (pathD) path.setAttribute('d', pathD);
       path.setAttribute('fill', 'none');
       path.setAttribute('stroke', 'var(--border)');
-      path.setAttribute('stroke-width', '1.5');
-      path.setAttribute('opacity', '0.6');
-      svg.appendChild(path);
+      path.setAttribute('stroke-width', '2');
+      path.setAttribute('opacity', '0.7');
+      svgGroup.appendChild(path);
     }
 
-    // Draw nodes
+    // Draw nodes with foreignObject text blocks
+    const TEXT_BLOCK_H = 60;
+    const RADIUS_GAP = 8;
+
     for (const node of nodes) {
       const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
       g.setAttribute('transform', `translate(${node.x},${node.y})`);
@@ -332,20 +360,33 @@ export class ScenarioExplorer {
       probText.textContent = pctLabel(node.data.probability);
       g.appendChild(probText);
 
-      // Description label below
-      const descText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      descText.setAttribute('y', String(radius + 16));
-      descText.setAttribute('text-anchor', 'middle');
-      descText.setAttribute('fill', 'var(--text-secondary)');
-      descText.setAttribute('font-size', '11');
-      descText.setAttribute('font-family', 'var(--font-mono)');
-      descText.textContent = truncate(node.data.name, 40);
-      g.appendChild(descText);
+      // Multi-line text block via foreignObject (replaces truncated SVG <text>)
+      const isRoot = !node.data.scenario;
+      if (!isRoot) {
+        const side = node.data.side ?? 'right';
+        const fo = document.createElementNS('http://www.w3.org/2000/svg', 'foreignObject');
+        fo.setAttribute('width', String(TEXT_BLOCK_W));
+        fo.setAttribute('height', String(TEXT_BLOCK_H));
+
+        if (side === 'left') {
+          fo.setAttribute('x', String(-(TEXT_BLOCK_W + radius + RADIUS_GAP)));
+        } else {
+          fo.setAttribute('x', String(radius + RADIUS_GAP));
+        }
+        // Vertically center the text block on the node
+        fo.setAttribute('y', String(-TEXT_BLOCK_H / 2));
+
+        const textDiv = document.createElement('div');
+        textDiv.className = `scenario-node-text ${side}-side`;
+        textDiv.textContent = node.data.name.slice(0, 120);
+        fo.appendChild(textDiv);
+        g.appendChild(fo);
+      }
 
       // Pruned indicator
       if (node.data.pruned_count > 0) {
         const pruneText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-        pruneText.setAttribute('y', String(radius + 30));
+        pruneText.setAttribute('y', String(radius + 20));
         pruneText.setAttribute('text-anchor', 'middle');
         pruneText.setAttribute('fill', 'var(--text-muted)');
         pruneText.setAttribute('font-size', '9');
@@ -354,16 +395,18 @@ export class ScenarioExplorer {
         g.appendChild(pruneText);
       }
 
-      // Tooltip on hover -- shows full scenario description
-      g.addEventListener('mouseenter', (e: MouseEvent) => {
-        this.showTooltip(node.data.name, e.pageX, e.pageY);
-      });
-      g.addEventListener('mousemove', (e: MouseEvent) => {
-        this.positionTooltip(e.pageX, e.pageY);
-      });
-      g.addEventListener('mouseleave', () => {
-        this.hideTooltip();
-      });
+      // Tooltip on hover -- shows full description when text exceeds 120 chars
+      if (node.data.name.length > 120) {
+        g.addEventListener('mouseenter', (e: MouseEvent) => {
+          this.showTooltip(node.data.name, e.pageX, e.pageY);
+        });
+        g.addEventListener('mousemove', (e: MouseEvent) => {
+          this.positionTooltip(e.pageX, e.pageY);
+        });
+        g.addEventListener('mouseleave', () => {
+          this.hideTooltip();
+        });
+      }
 
       // Click handler -> populate sidebar
       g.addEventListener('click', (e: MouseEvent) => {
@@ -371,8 +414,27 @@ export class ScenarioExplorer {
         this.selectNode(node, svg);
       });
 
-      svg.appendChild(g);
+      svgGroup.appendChild(g);
     }
+
+    svg.appendChild(svgGroup);
+
+    // Pan/zoom via d3.zoom -- only captures wheel on trees with 5+ nodes
+    const nodeCount = nodes.length;
+    const zoomBehavior = d3.zoom<SVGSVGElement, unknown>()
+      .scaleExtent([0.3, 3])
+      .filter((event: Event) => {
+        // Disable wheel-zoom on small trees so modal body scrolls normally
+        if (event.type === 'wheel') {
+          return nodeCount >= 5;
+        }
+        return true;
+      })
+      .on('zoom', (event: d3.D3ZoomEvent<SVGSVGElement, unknown>) => {
+        svgGroup.setAttribute('transform', event.transform.toString());
+      });
+
+    d3.select(svg).call(zoomBehavior);
 
     this.treeContainer.appendChild(svg);
   }

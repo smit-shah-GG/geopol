@@ -927,6 +927,25 @@
   filter: url(#node-glow);
 }
 
+/* ---- foreignObject multi-line text blocks ---- */
+
+.scenario-node-text {
+  font-size: 12px;
+  line-height: 1.3;
+  color: var(--text-secondary);
+  word-wrap: break-word;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.scenario-node-text.left-side {
+  text-align: right;
+}
+
+.scenario-node-text.right-side {
+  text-align: left;
+}
+
 /* ---- Responsive ---- */
 
 @media (max-width: 768px) {
