@@ -382,6 +382,51 @@ export class GlobeMap {
   }
 
   /**
+   * Pause auto-rotate and animation frame to reduce GPU usage when hidden.
+   * Called by MapContainer when the 2D view becomes active.
+   */
+  pauseAnimation(): void {
+    if (this.controls) this.controls.autoRotate = false;
+    if (this.autoRotateTimer) {
+      clearTimeout(this.autoRotateTimer);
+      this.autoRotateTimer = null;
+    }
+    if (this.extrasAnimFrameId != null) {
+      cancelAnimationFrame(this.extrasAnimFrameId);
+      this.extrasAnimFrameId = null;
+    }
+  }
+
+  /**
+   * Resume auto-rotate and atmosphere glow animation when made visible again.
+   * Called by MapContainer when the 3D view becomes active.
+   */
+  resumeAnimation(): void {
+    if (this.destroyed) return;
+    // Restart glow rotation animation
+    if (this.outerGlow && this.extrasAnimFrameId == null) {
+      const animateGlow = (): void => {
+        if (this.destroyed) return;
+        if (this.outerGlow) this.outerGlow.rotation.y += 0.0003;
+        this.extrasAnimFrameId = requestAnimationFrame(animateGlow);
+      };
+      animateGlow();
+    }
+    // Re-enable auto-rotate (will start after idle timeout)
+    if (this.controls) this.controls.autoRotate = true;
+  }
+
+  /**
+   * Fly to a named region preset. Used by MapContainer for GlobeHud region dispatch.
+   * @param region Key into VIEW_POVS (e.g. 'global', 'eu', 'mena')
+   */
+  flyToRegion(region: string): void {
+    const pov = VIEW_POVS[region];
+    if (!pov || !this.globe) return;
+    this.globe.pointOfView(pov, 1200);
+  }
+
+  /**
    * Clean up globe, Three.js objects, timers, and observers.
    */
   destroy(): void {

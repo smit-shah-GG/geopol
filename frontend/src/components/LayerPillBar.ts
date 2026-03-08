@@ -1,19 +1,26 @@
 /**
- * LayerPillBar -- Floating horizontal pill bar for toggling deck.gl layers.
+ * LayerPillBar -- Floating horizontal pill bar for toggling map layers.
  *
- * 5 pills matching the 5 analytic layers in DeckGLMap:
+ * 5 pills matching the 5 analytic layers:
  *   1. Risk       (ForecastRiskChoropleth)  -- default ON
  *   2. Markers    (ActiveForecastMarkers)   -- default ON
  *   3. Arcs       (KnowledgeGraphArcs)      -- default OFF
  *   4. Heatmap    (GDELTEventHeatmap)       -- default OFF
  *   5. Scenarios  (ScenarioZones)           -- default OFF
  *
- * Reads initial state from deckMap.getLayerVisible() and mutates via
- * deckMap.setLayerVisible(). Purely UI -- no data fetching, no timers.
+ * Accepts any renderer implementing LayerController (DeckGLMap, GlobeMap,
+ * or MapContainer). Reads initial state via getLayerVisible() and mutates
+ * via setLayerVisible(). Purely UI -- no data fetching, no timers.
  */
 
 import { h } from '@/utils/dom-utils';
-import type { DeckGLMap, LayerId } from '@/components/DeckGLMap';
+import type { LayerId } from '@/components/DeckGLMap';
+
+/** Any renderer that supports layer visibility control. */
+export interface LayerController {
+  getLayerVisible(layerId: LayerId): boolean;
+  setLayerVisible(layerId: LayerId, visible: boolean): void;
+}
 
 /** Display config: [layerId, short label for pill] */
 const LAYER_PILLS: [LayerId, string][] = [
@@ -25,17 +32,17 @@ const LAYER_PILLS: [LayerId, string][] = [
 ];
 
 export class LayerPillBar {
-  private readonly map: DeckGLMap;
+  private readonly controller: LayerController;
   private readonly bar: HTMLElement;
   private readonly states: Record<LayerId, boolean>;
 
-  constructor(deckMap: DeckGLMap) {
-    this.map = deckMap;
+  constructor(controller: LayerController) {
+    this.controller = controller;
 
-    // Snapshot current layer visibility from the map
+    // Snapshot current layer visibility from the controller
     this.states = {} as Record<LayerId, boolean>;
     for (const [id] of LAYER_PILLS) {
-      this.states[id] = deckMap.getLayerVisible(id);
+      this.states[id] = controller.getLayerVisible(id);
     }
 
     this.bar = this.buildBar();
@@ -75,8 +82,8 @@ export class LayerPillBar {
       pill.setAttribute('aria-pressed', String(newState));
     }
 
-    // Push to DeckGLMap
-    this.map.setLayerVisible(layerId, newState);
+    // Push to active renderer via controller
+    this.controller.setLayerVisible(layerId, newState);
   }
 
   getElement(): HTMLElement {
