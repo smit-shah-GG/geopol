@@ -10,20 +10,20 @@ See: .planning/PROJECT.md (updated 2026-03-04)
 ## Current Position
 
 Milestone: v3.0 Operational Command & Verification
-Phase: 24 of 25 (Global Seeding & Globe Layers) -- In progress
-Plan: 05 of 06
-Status: In progress
-Last activity: 2026-03-08 -- Completed 24-05-PLAN.md (API Endpoints: Dual-Score Countries + Globe Layers)
+Phase: 24 of 25 (Global Seeding & Globe Layers) -- COMPLETE
+Plan: 06 of 06
+Status: Phase complete
+Last activity: 2026-03-08 -- Completed 24-06-PLAN.md (Frontend Globe Layer Wiring)
 
-Progress: [########################################################] 100% (88/80+ plans lifetime)
-v3.0:    [#########################] 96% (25/25 plans in v3.0 -- 5/7 phases)
+Progress: [########################################################] 100% (89/80+ plans lifetime)
+v3.0:    [##########################] 100% (26/26 plans in v3.0 -- 6/7 phases)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 86
+- Total plans completed: 87
 - Average duration: 10 minutes
-- Total execution time: 13.1 hours
+- Total execution time: 13.2 hours
 
 **By Phase:**
 
@@ -52,7 +52,7 @@ v3.0:    [#########################] 96% (25/25 plans in v3.0 -- 5/7 phases)
 | 21-source-expansion-feed-mgmt | 5 | 34min | 7min |
 | 22-polymarket-hardening | 3 | 23min | 8min |
 | 23-historical-backtesting | 3 | 31min | 10min |
-| 24-global-seeding-globe-layers | 5 | 17min | 3min |
+| 24-global-seeding-globe-layers | 6 | 23min | 4min |
 
 ## Accumulated Context
 
@@ -120,6 +120,9 @@ Key decisions affecting current work:
 - Two-query Python-side merge: baseline table scan + forecast CTE for countries endpoint (2026-03-08)
 - Layer endpoints return envelope objects with computed_at for staleness display (2026-03-08)
 - GET /countries/{iso} no longer 404 for baseline-only countries (returns baseline risk with forecast_risk=None) (2026-03-08)
+- DeckGLMap layers 3/4/5 are dual-mode: global bilateral arcs vs per-country, H3HexagonLayer vs HeatmapLayer, risk deltas vs scenario highlights (2026-03-08)
+- Globe screen all 5 layers default ON, 5-minute refresh cycle for layer data (2026-03-08)
+- buildLayers() return type changed to Layer[] (deck.gl base class) for polymorphic layer container (2026-03-08)
 
 ### Deferred Issues
 
@@ -143,6 +146,6 @@ Key decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-03-08
-Stopped at: Completed 24-05-PLAN.md (API Endpoints: Dual-Score Countries + Globe Layers)
+Stopped at: Completed 24-06-PLAN.md (Frontend Globe Layer Wiring) -- Phase 24 COMPLETE
 Resume file: None
-Next: 24-06-PLAN.md (Frontend Globe Layer Wiring)
+Next: Phase 25 (final v3.0 phase)
