@@ -13,6 +13,12 @@ import { h, replaceChildren } from '@/utils/dom-utils';
 import { forecastClient } from '@/services/forecast-client';
 import type { SourceStatusDTO } from '@/types/api';
 
+/** Transient errors get an amber toast; persistent errors get red. */
+function isTransientError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message.toLowerCase() : String(err).toLowerCase();
+  return /timeout|503|502|504|econnrefused|network|fetch/.test(msg);
+}
+
 /** Staleness thresholds in milliseconds. */
 const STALE_WARN_MS = 30 * 60_000;    // 30 minutes
 const STALE_CRIT_MS = 2 * 60 * 60_000; // 2 hours
@@ -39,6 +45,9 @@ function stalenessClass(iso: string | null): string {
 }
 
 export class SourcesPanel extends Panel {
+  /** Whether real content has been rendered at least once. */
+  private hasData = false;
+
   constructor() {
     super({ id: 'sources', title: 'DATA SOURCES', showCount: false });
   }
@@ -48,21 +57,34 @@ export class SourcesPanel extends Panel {
    * Fetches auto-discovered source health from /sources.
    */
   public async refresh(): Promise<void> {
+    if (!this.hasData) {
+      this.showSkeleton();
+    }
     try {
       const sources = await forecastClient.getSources();
+      this.hasData = true;
+      this.dismissToast();
       this.renderSources(sources);
     } catch (err: unknown) {
       if (this.isAbortError(err)) return;
       console.error('[SourcesPanel] refresh failed:', err);
-      this.showError('Failed to load source data');
+      if (this.hasData) {
+        const severity = isTransientError(err) ? 'amber' : 'red';
+        this.showRefreshToast('Failed to refresh -- showing cached data', severity);
+      } else {
+        this.showErrorWithRetry('Unable to load source data', () => { void this.refresh(); });
+      }
     }
   }
 
   private renderSources(sources: SourceStatusDTO[]): void {
     if (sources.length === 0) {
       replaceChildren(this.content,
-        h('div', { className: 'empty-state' },
-          'No source data available'),
+        h('div', { className: 'empty-state-enhanced' },
+          h('div', { className: 'empty-state-icon' }, '\u{1F5C4}'),
+          h('div', { className: 'empty-state-title' }, 'No Sources'),
+          h('div', { className: 'empty-state-desc' }, 'Data source health information will appear once the API is reachable.'),
+        ),
       );
       return;
     }

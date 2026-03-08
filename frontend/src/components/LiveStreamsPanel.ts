@@ -185,7 +185,7 @@ export class LiveStreamsPanel extends Panel {
     this.buildRegionPopover();
     this.element.insertBefore(this.regionPopover, this.content);
 
-    // Clear base class loading state before building player UI
+    // Clear base class skeleton before building player UI
     replaceChildren(this.content);
 
     // Player area (single stream)
@@ -341,7 +341,7 @@ export class LiveStreamsPanel extends Panel {
       this.createPlayer(this.activeChannel);
     } catch (err) {
       console.error('[LiveStreamsPanel] YouTube API load failed:', err);
-      this.showError('Failed to load YouTube player API');
+      this.showErrorWithRetry('Failed to load YouTube player API', () => { void this.initPlayer(); });
     }
   }
 

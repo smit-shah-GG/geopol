@@ -22,6 +22,12 @@ import {
 } from '@/components/expandable-card';
 import type { ForecastRequestStatus, ForecastResponse } from '@/types/api';
 
+/** Transient errors get an amber toast; persistent errors get red. */
+function isTransientError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message.toLowerCase() : String(err).toLowerCase();
+  return /timeout|503|502|504|econnrefused|network|fetch/.test(msg);
+}
+
 /** CSS class for a given request status. */
 function statusCssClass(status: ForecastRequestStatus['status']): string {
   switch (status) {
@@ -38,19 +44,32 @@ export class MyForecastsPanel extends Panel {
   private readonly expandedIds = new Set<string>();
   private readonly forecastCache = new Map<string, ForecastResponse>();
 
+  /** Whether real content has been rendered at least once. */
+  private hasData = false;
+
   constructor() {
     super({ id: 'my-forecasts', title: 'MY FORECASTS', showCount: true });
   }
 
   /** Self-fetch via forecastClient. Used by RefreshScheduler. */
   public async refresh(): Promise<void> {
+    if (!this.hasData) {
+      this.showSkeleton();
+    }
     try {
       const requests = await forecastClient.getRequests();
+      this.hasData = true;
+      this.dismissToast();
       this.renderRequests(requests);
     } catch (err: unknown) {
       if (this.isAbortError(err)) return;
       console.error('[MyForecastsPanel] refresh failed:', err);
-      this.showError('Failed to load submissions');
+      if (this.hasData) {
+        const severity = isTransientError(err) ? 'amber' : 'red';
+        this.showRefreshToast('Failed to refresh -- showing cached data', severity);
+      } else {
+        this.showErrorWithRetry('Unable to load submissions', () => { void this.refresh(); });
+      }
     }
   }
 
@@ -69,8 +88,18 @@ export class MyForecastsPanel extends Panel {
     this.setCount(requests.length);
 
     if (requests.length === 0) {
+      const submitBtn = h('button', { className: 'empty-state-cta' }, 'Submit a Forecast');
+      submitBtn.addEventListener('click', () => {
+        window.history.pushState({}, '', '/forecasts');
+        window.dispatchEvent(new PopStateEvent('popstate'));
+      });
       replaceChildren(this.content,
-        h('div', { className: 'empty-state' }, 'No submitted forecasts yet'),
+        h('div', { className: 'empty-state-enhanced' },
+          h('div', { className: 'empty-state-icon' }, '\u{1F4E5}'),
+          h('div', { className: 'empty-state-title' }, 'No Submitted Forecasts'),
+          h('div', { className: 'empty-state-desc' }, 'Questions you submit will appear here with their processing status.'),
+          submitBtn,
+        ),
       );
       return;
     }

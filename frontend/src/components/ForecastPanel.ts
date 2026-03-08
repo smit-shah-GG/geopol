@@ -29,6 +29,16 @@ import {
 } from './expandable-card';
 
 // ---------------------------------------------------------------------------
+// Error classification
+// ---------------------------------------------------------------------------
+
+/** Transient errors get an amber toast; persistent errors get red. */
+function isTransientError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message.toLowerCase() : String(err).toLowerCase();
+  return /timeout|503|502|504|econnrefused|network|fetch/.test(msg);
+}
+
+// ---------------------------------------------------------------------------
 // ForecastPanel
 // ---------------------------------------------------------------------------
 
@@ -44,6 +54,9 @@ export class ForecastPanel extends Panel {
 
   /** Whether we're showing search results (vs. full list). */
   private isSearchActive = false;
+
+  /** Whether real content has been rendered at least once. */
+  private hasData = false;
 
   private readonly onSearchResults: EventListener;
   private readonly onSearchCleared: EventListener;
@@ -69,15 +82,24 @@ export class ForecastPanel extends Panel {
 
   /** Self-fetch via forecastClient. Used by RefreshScheduler. */
   public async refresh(): Promise<void> {
-    this.showLoading();
+    if (!this.hasData) {
+      this.showSkeleton();
+    }
     try {
       const forecasts = await forecastClient.getTopForecasts(10);
+      this.hasData = true;
+      this.dismissToast();
       this.applyBreakerBadge('forecast');
       this.update(forecasts);
     } catch (err: unknown) {
       if (this.isAbortError(err)) return;
       console.error('[ForecastPanel] refresh failed:', err);
-      this.showError('Failed to load forecasts');
+      if (this.hasData) {
+        const severity = isTransientError(err) ? 'amber' : 'red';
+        this.showRefreshToast('Failed to refresh -- showing cached data', severity);
+      } else {
+        this.showErrorWithRetry('Unable to load forecasts', () => { void this.refresh(); });
+      }
     }
   }
 
@@ -122,11 +144,23 @@ export class ForecastPanel extends Panel {
 
     if (sorted.length === 0) {
       this.cardElements.clear();
-      replaceChildren(this.content,
-        h('div', { className: 'empty-state' },
-          this.isSearchActive ? 'No forecasts match your search' : 'No active forecasts',
-        ),
-      );
+      if (this.isSearchActive) {
+        replaceChildren(this.content,
+          h('div', { className: 'empty-state-enhanced' },
+            h('div', { className: 'empty-state-icon' }, '\u{1F50D}'),
+            h('div', { className: 'empty-state-title' }, 'No Results'),
+            h('div', { className: 'empty-state-desc' }, 'No forecasts match your search criteria.'),
+          ),
+        );
+      } else {
+        replaceChildren(this.content,
+          h('div', { className: 'empty-state-enhanced' },
+            h('div', { className: 'empty-state-icon' }, '\u{1F4CA}'),
+            h('div', { className: 'empty-state-title' }, 'No Active Forecasts'),
+            h('div', { className: 'empty-state-desc' }, 'Forecasts appear here when the daily pipeline generates predictions from GDELT events.'),
+          ),
+        );
+      }
       return;
     }
 

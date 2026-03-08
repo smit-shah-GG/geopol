@@ -20,6 +20,12 @@ function truncate(text: string, maxLen: number): string {
   return text.length > maxLen ? text.slice(0, maxLen - 1) + '\u2026' : text;
 }
 
+/** Transient errors get an amber toast; persistent errors get red. */
+function isTransientError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message.toLowerCase() : String(err).toLowerCase();
+  return /timeout|503|502|504|econnrefused|network|fetch/.test(msg);
+}
+
 /** Divergence CSS class based on absolute magnitude. */
 function divClass(divergence: number | null): string {
   if (divergence === null) return 'div-low';
@@ -30,17 +36,36 @@ function divClass(divergence: number | null): string {
 }
 
 export class ComparisonPanel extends Panel {
+  /** Whether real content has been rendered at least once. */
+  private hasData = false;
+
   constructor() {
     super({ id: 'comparisons', title: 'POLYMARKET COMPARISONS', showCount: true });
-    this.showEmpty();
   }
 
   public async refresh(): Promise<void> {
-    const data = await forecastClient.getComparisons();
-    this.update(data);
+    if (!this.hasData) {
+      this.showSkeleton();
+    }
+    try {
+      const data = await forecastClient.getComparisons();
+      this.hasData = true;
+      this.dismissToast();
+      this.update(data);
+    } catch (err: unknown) {
+      if (this.isAbortError(err)) return;
+      console.error('[ComparisonPanel] refresh failed:', err);
+      if (this.hasData) {
+        const severity = isTransientError(err) ? 'amber' : 'red';
+        this.showRefreshToast('Failed to refresh -- showing cached data', severity);
+      } else {
+        this.showErrorWithRetry('Unable to load comparisons', () => { void this.refresh(); });
+      }
+    }
   }
 
   public update(data: ComparisonPanelResponse): void {
+    this.hasData = true;
     this.setCount(data.total);
 
     if (data.comparisons.length === 0) {
@@ -54,8 +79,10 @@ export class ComparisonPanel extends Panel {
 
   private showEmpty(): void {
     replaceChildren(this.content,
-      h('div', { className: 'empty-state' },
-        'No Polymarket comparisons yet. Forecasts matching active prediction markets will appear here.',
+      h('div', { className: 'empty-state-enhanced' },
+        h('div', { className: 'empty-state-icon' }, '\u2696'),
+        h('div', { className: 'empty-state-title' }, 'No Comparisons Yet'),
+        h('div', { className: 'empty-state-desc' }, 'Polymarket comparisons appear automatically when active prediction markets match Geopol forecasts.'),
       ),
     );
   }

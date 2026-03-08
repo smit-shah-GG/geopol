@@ -10,26 +10,9 @@
  */
 
 import { h } from '@/utils/dom-utils';
+import { debounce } from '@/utils/timing';
 import { forecastClient } from '@/services/forecast-client';
 import type { CountryRiskSummary, SearchResponse } from '@/types/api';
-
-// ---------------------------------------------------------------------------
-// Debounce utility
-// ---------------------------------------------------------------------------
-
-function debounce<T extends (...args: unknown[]) => void>(
-  fn: T,
-  delayMs: number,
-): (...args: Parameters<T>) => void {
-  let timer: ReturnType<typeof setTimeout> | null = null;
-  return (...args: Parameters<T>) => {
-    if (timer !== null) clearTimeout(timer);
-    timer = setTimeout(() => {
-      timer = null;
-      fn(...args);
-    }, delayMs);
-  };
-}
 
 // ---------------------------------------------------------------------------
 // Category options (matches CAMEO quadrants from geopol.md)

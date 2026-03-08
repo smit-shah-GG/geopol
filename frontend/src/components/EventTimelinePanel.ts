@@ -70,18 +70,28 @@ function truncateText(text: string, maxLen: number): string {
 }
 
 // ---------------------------------------------------------------------------
+// Error classification
+// ---------------------------------------------------------------------------
+
+/** Transient errors get an amber toast; persistent errors get red. */
+function isTransientError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message.toLowerCase() : String(err).toLowerCase();
+  return /timeout|503|502|504|econnrefused|network|fetch/.test(msg);
+}
+
+// ---------------------------------------------------------------------------
 // EventTimelinePanel
 // ---------------------------------------------------------------------------
 
 export class EventTimelinePanel extends Panel {
-  /** Currently displayed events (for diff comparison). */
-  private currentEvents: EventDTO[] = [];
-
   /** Map of event.id -> DOM element for diff-based updates. */
   private eventElements = new Map<number, HTMLElement>();
 
   /** Currently expanded event ID (only one at a time). */
   private expandedId: number | null = null;
+
+  /** Whether real content has been rendered at least once. */
+  private hasData = false;
 
   constructor() {
     super({ id: 'event-timeline', title: 'EVENT FEED', showCount: true });
@@ -92,17 +102,24 @@ export class EventTimelinePanel extends Panel {
    * Fetches live events from /events API, then diff-updates the DOM.
    */
   public async refresh(): Promise<void> {
+    if (!this.hasData) {
+      this.showSkeleton();
+    }
     try {
       const result = await forecastClient.getEvents({ limit: 50 });
+      this.hasData = true;
+      this.dismissToast();
       const state = forecastClient.getDataState('events');
       this.setDataBadge(state.mode);
       this.updateEvents(result.items);
     } catch (err: unknown) {
       if (this.isAbortError(err)) return;
       console.error('[EventTimelinePanel] refresh failed:', err);
-      // Only show error if we have no data at all
-      if (this.currentEvents.length === 0) {
-        this.showError('Failed to load events');
+      if (this.hasData) {
+        const severity = isTransientError(err) ? 'amber' : 'red';
+        this.showRefreshToast('Failed to refresh -- showing cached data', severity);
+      } else {
+        this.showErrorWithRetry('Unable to load events', () => { void this.refresh(); });
       }
     }
   }
@@ -117,15 +134,18 @@ export class EventTimelinePanel extends Panel {
       (a, b) => new Date(b.event_date).getTime() - new Date(a.event_date).getTime(),
     );
 
-    this.currentEvents = sorted;
+
     this.setCount(sorted.length);
 
     if (sorted.length === 0) {
       this.eventElements.clear();
       this.expandedId = null;
       replaceChildren(this.content,
-        h('div', { className: 'empty-state' },
-          'No events in the last 30 days'),
+        h('div', { className: 'empty-state-enhanced' },
+          h('div', { className: 'empty-state-icon' }, '\u{1F4C5}'),
+          h('div', { className: 'empty-state-title' }, 'No Events'),
+          h('div', { className: 'empty-state-desc' }, 'GDELT event data will appear here once ingestion runs.'),
+        ),
       );
       return;
     }

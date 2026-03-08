@@ -34,6 +34,12 @@ function trendArrow(trend: CountryRiskSummary['trend']): HTMLElement {
   }
 }
 
+/** Transient errors get an amber toast; persistent errors get red. */
+function isTransientError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message.toLowerCase() : String(err).toLowerCase();
+  return /timeout|503|502|504|econnrefused|network|fetch/.test(msg);
+}
+
 /**
  * RiskIndexPanel -- per-country aggregate risk scores with trend indicators.
  *
@@ -41,22 +47,34 @@ function trendArrow(trend: CountryRiskSummary['trend']): HTMLElement {
  * Dispatches 'country-selected' CustomEvent on row click.
  */
 export class RiskIndexPanel extends Panel {
+  /** Whether real content has been rendered at least once. */
+  private hasData = false;
+
   constructor() {
     super({ id: 'risk-index', title: 'RISK INDEX', showCount: true });
   }
 
   /** Self-fetch via forecastClient. Used by RefreshScheduler. */
   public async refresh(): Promise<void> {
-    this.showLoading();
+    if (!this.hasData) {
+      this.showSkeleton();
+    }
     try {
       const countries = await forecastClient.getCountries();
+      this.hasData = true;
+      this.dismissToast();
       const state = forecastClient.getDataState('country');
       this.setDataBadge(state.mode);
       this.renderCountries(countries);
     } catch (err: unknown) {
       if (this.isAbortError(err)) return;
       console.error('[RiskIndexPanel] refresh failed:', err);
-      this.showError('Failed to load risk data');
+      if (this.hasData) {
+        const severity = isTransientError(err) ? 'amber' : 'red';
+        this.showRefreshToast('Failed to refresh -- showing cached data', severity);
+      } else {
+        this.showErrorWithRetry('Unable to load risk data', () => { void this.refresh(); });
+      }
     }
   }
 
@@ -70,7 +88,11 @@ export class RiskIndexPanel extends Panel {
 
     if (countries.length === 0) {
       replaceChildren(this.content,
-        h('div', { className: 'empty-state' }, 'No country risk data available'),
+        h('div', { className: 'empty-state-enhanced' },
+          h('div', { className: 'empty-state-icon' }, '\u{1F310}'),
+          h('div', { className: 'empty-state-title' }, 'No Risk Data'),
+          h('div', { className: 'empty-state-desc' }, 'Country risk scores appear here once forecasts are generated and baseline risk is computed.'),
+        ),
       );
       return;
     }

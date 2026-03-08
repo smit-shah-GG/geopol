@@ -345,6 +345,16 @@ async function fetchSourceHealth(): Promise<SourceHealthStatus[]> {
 }
 
 // ---------------------------------------------------------------------------
+// Error classification
+// ---------------------------------------------------------------------------
+
+/** Transient errors get an amber toast; persistent errors get red. */
+function isTransientError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message.toLowerCase() : String(err).toLowerCase();
+  return /timeout|503|502|504|econnrefused|network|fetch/.test(msg);
+}
+
+// ---------------------------------------------------------------------------
 // NewsFeedPanel
 // ---------------------------------------------------------------------------
 
@@ -357,6 +367,8 @@ export class NewsFeedPanel extends Panel {
   private rawArticles: ArticleDTO[] = [];
   private clusters: ArticleCluster[] = [];
   private disabledSources: Set<string> = getDisabledSources();
+  /** Whether real content has been rendered at least once. */
+  private hasData = false;
   private readonly onSourcesChanged = () => {
     this.disabledSources = getDisabledSources();
     this.renderArticles();
@@ -416,6 +428,9 @@ export class NewsFeedPanel extends Panel {
   // -----------------------------------------------------------------------
 
   public async refresh(): Promise<void> {
+    if (!this.hasData) {
+      this.showSkeleton();
+    }
     try {
       // Fetch articles and source health in parallel
       const [articles, sourceHealth] = await Promise.all([
@@ -424,6 +439,8 @@ export class NewsFeedPanel extends Panel {
       ]);
 
       this.rawArticles = articles;
+      this.hasData = true;
+      this.dismissToast();
       // Enrich with source intelligence
       for (const art of this.rawArticles) {
         art.source_tier = getSourceTier(art.source_feed);
@@ -439,8 +456,11 @@ export class NewsFeedPanel extends Panel {
     } catch (err: unknown) {
       if (this.isAbortError(err)) return;
       console.error('[NewsFeedPanel] refresh failed:', err);
-      if (this.rawArticles.length === 0) {
-        this.showError('Failed to load news');
+      if (this.hasData) {
+        const severity = isTransientError(err) ? 'amber' : 'red';
+        this.showRefreshToast('Failed to refresh -- showing cached data', severity);
+      } else {
+        this.showErrorWithRetry('Unable to load news', () => { void this.refresh(); });
       }
     }
   }
@@ -483,10 +503,25 @@ export class NewsFeedPanel extends Panel {
     this.setCount(this.clusters.length);
 
     if (this.clusters.length === 0) {
-      replaceChildren(
-        this.listContainer,
-        h('div', { className: 'empty-state' }, 'No articles match this filter'),
-      );
+      if (this.categoryFilter !== 'all' || this.disabledSources.size > 0) {
+        replaceChildren(
+          this.listContainer,
+          h('div', { className: 'empty-state-enhanced' },
+            h('div', { className: 'empty-state-icon' }, '\u{1F50D}'),
+            h('div', { className: 'empty-state-title' }, 'No Articles Match'),
+            h('div', { className: 'empty-state-desc' }, 'No articles match the current filter. Try a different category.'),
+          ),
+        );
+      } else {
+        replaceChildren(
+          this.listContainer,
+          h('div', { className: 'empty-state-enhanced' },
+            h('div', { className: 'empty-state-icon' }, '\u{1F4F0}'),
+            h('div', { className: 'empty-state-title' }, 'No Articles'),
+            h('div', { className: 'empty-state-desc' }, 'News articles from curated RSS sources will appear here.'),
+          ),
+        );
+      }
       return;
     }
 

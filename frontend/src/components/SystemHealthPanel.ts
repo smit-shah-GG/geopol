@@ -24,6 +24,12 @@ function statusBadgeClass(status: HealthResponse['status']): string {
   }
 }
 
+/** Transient errors get an amber toast; persistent errors get red. */
+function isTransientError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message.toLowerCase() : String(err).toLowerCase();
+  return /timeout|503|502|504|econnrefused|network|fetch/.test(msg);
+}
+
 /**
  * SystemHealthPanel -- subsystem health status display.
  *
@@ -31,22 +37,34 @@ function statusBadgeClass(status: HealthResponse['status']): string {
  * Health endpoint is public (no API key).
  */
 export class SystemHealthPanel extends Panel {
+  /** Whether real content has been rendered at least once. */
+  private hasData = false;
+
   constructor() {
     super({ id: 'system-health', title: 'SYSTEM HEALTH' });
   }
 
   /** Self-fetch via forecastClient. Used by RefreshScheduler. */
   public async refresh(): Promise<void> {
-    this.showLoading();
+    if (!this.hasData) {
+      this.showSkeleton();
+    }
     try {
       const health = await forecastClient.getHealth();
+      this.hasData = true;
+      this.dismissToast();
       const state = forecastClient.getDataState('health');
       this.setDataBadge(state.mode);
       this.renderHealth(health);
     } catch (err: unknown) {
       if (this.isAbortError(err)) return;
       console.error('[SystemHealthPanel] refresh failed:', err);
-      this.showError('Failed to load health status');
+      if (this.hasData) {
+        const severity = isTransientError(err) ? 'amber' : 'red';
+        this.showRefreshToast('Failed to refresh -- showing cached data', severity);
+      } else {
+        this.showErrorWithRetry('Unable to load health status', () => { void this.refresh(); });
+      }
     }
   }
 

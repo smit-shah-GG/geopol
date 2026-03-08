@@ -23,7 +23,6 @@ function formatVolume(vol: number): string {
 export class PolymarketPanel extends Panel {
   constructor() {
     super({ id: 'polymarket', title: 'POLYMARKET', showCount: true });
-    this.showPlaceholder();
   }
 
   /** No-op. Data arrives via update(). */
@@ -54,8 +53,10 @@ export class PolymarketPanel extends Panel {
 
   private showPlaceholder(): void {
     replaceChildren(this.content,
-      h('div', { className: 'empty-state' },
-        'Polymarket data loading\u2026',
+      h('div', { className: 'empty-state-enhanced' },
+        h('div', { className: 'empty-state-icon' }, '\u{1F4C8}'),
+        h('div', { className: 'empty-state-title' }, 'No Polymarket Data'),
+        h('div', { className: 'empty-state-desc' }, 'Active Polymarket geopolitical questions will appear here when the poller runs.'),
       ),
     );
   }
