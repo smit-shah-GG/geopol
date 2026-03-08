@@ -111,10 +111,14 @@ async def get_heatmap(
     db: AsyncSession = Depends(get_db),
 ) -> HeatmapEnvelope:
     """Return all H3 hexbin data for the heatmap layer."""
-    result = await db.execute(
-        select(HeatmapHexbin).order_by(HeatmapHexbin.weight.desc())
-    )
-    rows = result.scalars().all()
+    try:
+        result = await db.execute(
+            select(HeatmapHexbin).order_by(HeatmapHexbin.weight.desc())
+        )
+        rows = result.scalars().all()
+    except Exception:
+        await db.rollback()
+        rows = []
 
     if not rows:
         return HeatmapEnvelope(computed_at=None, hexbins=[])
@@ -149,10 +153,14 @@ async def get_arcs(
     db: AsyncSession = Depends(get_db),
 ) -> ArcsEnvelope:
     """Return all bilateral arcs for the globe arc layer."""
-    result = await db.execute(
-        select(CountryArc).order_by(CountryArc.event_count.desc())
-    )
-    rows = result.scalars().all()
+    try:
+        result = await db.execute(
+            select(CountryArc).order_by(CountryArc.event_count.desc())
+        )
+        rows = result.scalars().all()
+    except Exception:
+        await db.rollback()
+        rows = []
 
     if not rows:
         return ArcsEnvelope(computed_at=None, arcs=[])
@@ -188,10 +196,14 @@ async def get_deltas(
     db: AsyncSession = Depends(get_db),
 ) -> DeltasEnvelope:
     """Return countries with significant risk deltas."""
-    result = await db.execute(
-        select(RiskDelta).order_by(RiskDelta.delta.desc())
-    )
-    rows = result.scalars().all()
+    try:
+        result = await db.execute(
+            select(RiskDelta).order_by(RiskDelta.delta.desc())
+        )
+        rows = result.scalars().all()
+    except Exception:
+        await db.rollback()
+        rows = []
 
     if not rows:
         return DeltasEnvelope(computed_at=None, deltas=[])

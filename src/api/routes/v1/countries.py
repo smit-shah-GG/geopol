@@ -318,13 +318,18 @@ async def list_countries(
         return [CountryRiskSummary(**item) for item in cached]
 
     # 2. Query baseline_country_risk (all ~195 countries)
-    baseline_result = await db.execute(
-        select(BaselineCountryRisk).order_by(BaselineCountryRisk.baseline_risk.desc())
-    )
-    baseline_rows = baseline_result.scalars().all()
+    # Table may not exist if migration 010 hasn't been applied yet
+    try:
+        baseline_result = await db.execute(
+            select(BaselineCountryRisk).order_by(BaselineCountryRisk.baseline_risk.desc())
+        )
+        baseline_rows = baseline_result.scalars().all()
+    except Exception:
+        await db.rollback()
+        baseline_rows = []
 
     if not baseline_rows:
-        # No baseline data yet (first run hasn't happened) -- try fixtures
+        # No baseline data yet (first run hasn't happened or table missing) -- try fixtures
         settings = get_settings()
         if settings.use_fixtures:
             fixture_cache = _get_fixture_cache()
@@ -396,12 +401,17 @@ async def get_country_risk(
         return CountryRiskSummary(**cached)
 
     # 2. Query baseline_country_risk for this country
-    baseline_result = await db.execute(
-        select(BaselineCountryRisk).where(
-            BaselineCountryRisk.country_iso == iso_upper
+    # Table may not exist if migration 010 hasn't been applied yet
+    try:
+        baseline_result = await db.execute(
+            select(BaselineCountryRisk).where(
+                BaselineCountryRisk.country_iso == iso_upper
+            )
         )
-    )
-    baseline_row = baseline_result.scalar_one_or_none()
+        baseline_row = baseline_result.scalar_one_or_none()
+    except Exception:
+        await db.rollback()
+        baseline_row = None
 
     if baseline_row is not None:
         # 3. Check for active forecast data
