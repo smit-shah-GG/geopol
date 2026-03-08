@@ -38,7 +38,7 @@ import { SearchBar } from '@/components/SearchBar';
 
 // Modals
 import { ScenarioExplorer } from '@/components/ScenarioExplorer';
-import { CountryBriefPage } from '@/components/CountryBriefPage';
+import type { CountryBriefPage } from '@/components/CountryBriefPage';
 import { SettingsModal } from '@/components/SettingsModal';
 
 // ---------------------------------------------------------------------------
@@ -48,6 +48,7 @@ import { SettingsModal } from '@/components/SettingsModal';
 let scheduler: RefreshScheduler | null = null;
 let forecastSelectedHandler: EventListener | null = null;
 let countrySelectedHandler: EventListener | null = null;
+let countryBriefHandler: EventListener | null = null;
 
 // Search bar reference -- must be destroyed on unmount
 let searchBar: SearchBar | null = null;
@@ -187,7 +188,21 @@ export function mountDashboard(container: HTMLElement, ctx: GeoPolAppContext): v
 
   // -- Modals (attach global event listeners in constructor) --
   scenarioExplorer = new ScenarioExplorer();
-  countryBriefPage = new CountryBriefPage();
+
+  // CountryBriefPage is lazy-loaded on first country click (1594 lines, only
+  // needed when user drills into a country from the globe or risk index).
+  countryBriefHandler = ((e: Event) => {
+    const iso = (e as CustomEvent<{ iso: string }>).detail.iso;
+    const load = async (): Promise<void> => {
+      if (!countryBriefPage) {
+        const { CountryBriefPage: CBP } = await import('@/components/CountryBriefPage');
+        countryBriefPage = new CBP();
+      }
+      countryBriefPage.open(iso);
+    };
+    void load();
+  }) as EventListener;
+  window.addEventListener('country-brief-requested', countryBriefHandler);
 
   // -- Breaking news banner (standalone overlay on document.body) --
   breakingNewsBanner = new BreakingNewsBanner();
@@ -308,6 +323,10 @@ export function unmountDashboard(ctx: GeoPolAppContext): void {
   if (countrySelectedHandler) {
     window.removeEventListener('country-selected', countrySelectedHandler);
     countrySelectedHandler = null;
+  }
+  if (countryBriefHandler) {
+    window.removeEventListener('country-brief-requested', countryBriefHandler);
+    countryBriefHandler = null;
   }
 
   // Destroy scheduler

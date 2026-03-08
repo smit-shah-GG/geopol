@@ -875,7 +875,6 @@ export class CountryBriefPage {
       h('span', { className: 'cameo-cell cameo-cell-name' }, 'CATEGORY'),
       h('span', { className: 'cameo-cell cameo-cell-freq' }, 'FREQ'),
       h('span', { className: 'cameo-cell cameo-cell-goldstein' }, 'GOLDSTEIN'),
-      h('span', { className: 'cameo-cell cameo-cell-trend' }, 'TREND'),
     ));
 
     // Sort: non-zero counts first (desc by count), then zero counts
@@ -893,10 +892,6 @@ export class CountryBriefPage {
       const gBarWidth = Math.abs(cat.goldsteinBase) * 10; // 0-100% scale
       const gSign = cat.goldsteinBase > 0 ? '+' : '';
 
-      // Trend: stub (rising/stable/falling) -- would need historical data
-      const trend = count > 2 ? 'rising' : count > 0 ? 'stable' : 'stable';
-      const trendCls = `trend-${trend}`;
-
       table.appendChild(h('div', {
         className: `cameo-category-row ${i % 2 === 0 ? 'even' : 'odd'}`,
       },
@@ -912,8 +907,6 @@ export class CountryBriefPage {
           ),
           h('span', { style: `color: ${gColor}` }, `${gSign}${cat.goldsteinBase.toFixed(1)}`),
         ),
-        h('span', { className: `cameo-cell cameo-cell-trend ${trendCls}` },
-          trendArrow(trend as 'rising' | 'stable' | 'falling')),
       ));
     }
 

@@ -5,7 +5,7 @@
  *   - Country name + flag + risk score with trend arrow
  *   - Paginated forecast list with expandable cards (same progressive disclosure
  *     as dashboard ForecastPanel and forecasts screen)
- *   - GDELT event sparkline placeholder (Phase 17 data)
+ *   - GDELT event sparkline (SVG polyline of daily event counts over 30 days)
  *   - "View Details" link to open CountryBriefPage modal
  *
  * Race condition prevention: requestToken increments on each open().
@@ -22,7 +22,7 @@ import {
   isoToFlag,
   severityClass,
 } from '@/components/expandable-card';
-import type { ForecastResponse, CountryRiskSummary, PaginatedResponse } from '@/types/api';
+import type { EventDTO, ForecastResponse, CountryRiskSummary, PaginatedResponse } from '@/types/api';
 
 // ---------------------------------------------------------------------------
 // Trend arrow display
@@ -86,12 +86,10 @@ export class GlobeDrillDown {
     // Scrollable content area
     this.content = h('div', { className: 'drilldown-content' });
 
-    // Sparkline placeholder (Phase 17)
+    // GDELT event sparkline section (populated on open)
     this.sparklineSection = h('div', { className: 'drilldown-sparkline' },
       h('div', { className: 'drilldown-section-label' }, 'GDELT EVENTS'),
-      h('div', { className: 'drilldown-sparkline-placeholder' },
-        'Event data available in Phase 17',
-      ),
+      h('div', { className: 'drilldown-sparkline-chart' }),
     );
 
     this.panel = h('div', { className: 'globe-drilldown' },
@@ -131,14 +129,20 @@ export class GlobeDrillDown {
       );
     }
 
-    // Fetch data in parallel
+    // Fetch data in parallel (forecasts, risk, events for sparkline)
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 86_400_000).toISOString().split('T')[0]!;
     let forecasts: PaginatedResponse<ForecastResponse>;
     let risk: CountryRiskSummary | null;
+    let events: EventDTO[];
     try {
-      [forecasts, risk] = await Promise.all([
+      const [fResult, rResult, eResult] = await Promise.all([
         forecastClient.getForecastsByCountry(upperIso, undefined, 20),
         forecastClient.getCountryRisk(upperIso),
+        forecastClient.getEvents({ country: upperIso, start_date: thirtyDaysAgo, limit: 500 }),
       ]);
+      forecasts = fResult;
+      risk = rResult;
+      events = eResult.items;
     } catch (err) {
       // If this request was superseded, silently discard
       if (token !== this.requestToken) return;
@@ -157,7 +161,7 @@ export class GlobeDrillDown {
     // circuit breaker cache returning wrong type) never leaves the panel
     // stuck on "Loading forecasts..."
     try {
-      this.renderData(countryName, upperIso, forecasts, risk);
+      this.renderData(countryName, upperIso, forecasts, risk, events);
     } catch (err) {
       console.error('[GlobeDrillDown] Render failed:', err);
       clearChildren(this.content);
@@ -173,6 +177,7 @@ export class GlobeDrillDown {
     iso: string,
     forecasts: PaginatedResponse<ForecastResponse>,
     risk: CountryRiskSummary | null,
+    events: EventDTO[],
   ): void {
     // Render risk score with component breakdown
     if (risk && typeof risk.risk_score === 'number') {
@@ -251,6 +256,86 @@ export class GlobeDrillDown {
       );
     });
     this.content.appendChild(viewDetailsLink);
+
+    // Render GDELT event sparkline
+    this.renderSparkline(countryName, events);
+  }
+
+  /**
+   * Build an inline SVG sparkline showing daily GDELT event counts for the
+   * last 30 days. Renders into the sparklineSection element.
+   */
+  private renderSparkline(countryName: string, events: EventDTO[]): void {
+    const chartContainer = this.sparklineSection.querySelector('.drilldown-sparkline-chart');
+    if (!chartContainer) return;
+
+    const label = this.sparklineSection.querySelector('.drilldown-section-label');
+
+    if (events.length === 0) {
+      if (label) label.textContent = 'GDELT EVENTS (0)';
+      clearChildren(chartContainer as HTMLElement);
+      (chartContainer as HTMLElement).appendChild(
+        h('div', { className: 'empty-state-enhanced' },
+          h('div', { className: 'empty-state-icon' }, '\u{1F4CA}'),
+          h('div', { className: 'empty-state-title' }, 'No Recent Events'),
+          h('div', { className: 'empty-state-desc' }, `No recent GDELT events for ${countryName}`),
+        ),
+      );
+      return;
+    }
+
+    // Group events by date (YYYY-MM-DD) into 30 daily buckets
+    const now = new Date();
+    const dailyCounts: number[] = new Array(30).fill(0) as number[];
+
+    for (const evt of events) {
+      const evtDate = new Date(evt.event_date);
+      const daysDiff = Math.floor((now.getTime() - evtDate.getTime()) / 86_400_000);
+      if (daysDiff >= 0 && daysDiff < 30) {
+        dailyCounts[29 - daysDiff]!++;
+      }
+    }
+
+    const totalCount = dailyCounts.reduce((sum, c) => sum + c, 0);
+    if (label) label.textContent = `GDELT EVENTS (${totalCount})`;
+
+    // Build SVG sparkline
+    const maxCount = Math.max(...dailyCounts, 1);
+    const svgWidth = 240;
+    const svgHeight = 40;
+    const stepX = svgWidth / 29; // 30 points, 29 gaps
+
+    const points = dailyCounts.map((count, i) => {
+      const x = i * stepX;
+      const y = svgHeight - (count / maxCount) * (svgHeight - 4) - 2;
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    }).join(' ');
+
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', `0 0 ${svgWidth} ${svgHeight}`);
+    svg.setAttribute('class', 'drilldown-sparkline-svg');
+    svg.setAttribute('preserveAspectRatio', 'none');
+
+    const polyline = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+    polyline.setAttribute('points', points);
+    polyline.setAttribute('fill', 'none');
+    polyline.setAttribute('stroke', 'var(--accent)');
+    polyline.setAttribute('stroke-width', '1.5');
+    polyline.setAttribute('stroke-linejoin', 'round');
+    polyline.setAttribute('stroke-linecap', 'round');
+
+    // Filled area below the line
+    const areaPoints = `0,${svgHeight} ${points} ${svgWidth},${svgHeight}`;
+    const area = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+    area.setAttribute('points', areaPoints);
+    area.setAttribute('fill', 'var(--accent)');
+    area.setAttribute('opacity', '0.1');
+
+    svg.appendChild(area);
+    svg.appendChild(polyline);
+
+    clearChildren(chartContainer as HTMLElement);
+    (chartContainer as HTMLElement).appendChild(svg);
   }
 
   close(): void {

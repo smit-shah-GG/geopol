@@ -18,8 +18,9 @@ import { h } from '@/utils/dom-utils';
 import { RefreshScheduler } from '@/app/refresh-scheduler';
 import { SubmissionForm } from '@/components/SubmissionForm';
 import { SubmissionQueue } from '@/components/SubmissionQueue';
-import { ScenarioExplorer } from '@/components/ScenarioExplorer';
+import type { ScenarioExplorer } from '@/components/ScenarioExplorer';
 import type { GeoPolAppContext } from '@/app/app-context';
+import type { ForecastResponse } from '@/types/api';
 
 // ---------------------------------------------------------------------------
 // Module-scoped state for screen lifecycle
@@ -28,6 +29,7 @@ import type { GeoPolAppContext } from '@/app/app-context';
 let submissionForm: SubmissionForm | null = null;
 let submissionQueue: SubmissionQueue | null = null;
 let scenarioExplorer: ScenarioExplorer | null = null;
+let scenarioHandler: EventListener | null = null;
 let scheduler: RefreshScheduler | null = null;
 
 // ---------------------------------------------------------------------------
@@ -54,8 +56,26 @@ export function mountForecasts(container: HTMLElement, ctx: GeoPolAppContext): v
   wrapper.append(leftCol, rightCol);
   container.appendChild(wrapper);
 
-  // -- ScenarioExplorer modal (listens for forecast-selected on window) --
-  scenarioExplorer = new ScenarioExplorer();
+  // -- ScenarioExplorer: lazy-loaded on first "View Full Analysis" click.
+  // After construction, ScenarioExplorer registers its own forecast-selected
+  // listener, so we remove this proxy and let the instance handle future events.
+  scenarioHandler = ((e: Event) => {
+    const detail = (e as CustomEvent<{ forecast: ForecastResponse }>).detail;
+    const load = async (): Promise<void> => {
+      if (!scenarioExplorer) {
+        const { ScenarioExplorer: SE } = await import('@/components/ScenarioExplorer');
+        scenarioExplorer = new SE();
+        // Remove proxy -- ScenarioExplorer's own listener now handles events
+        if (scenarioHandler) {
+          window.removeEventListener('forecast-selected', scenarioHandler);
+        }
+      }
+      // Open with the forecast from the event that triggered the lazy load
+      scenarioExplorer.open(detail.forecast);
+    };
+    void load();
+  }) as EventListener;
+  window.addEventListener('forecast-selected', scenarioHandler);
 
   // -- Initial data load --
   submissionQueue.refresh().catch((err: unknown) => {
@@ -83,6 +103,12 @@ export function unmountForecasts(_ctx: GeoPolAppContext): void {
   if (scheduler) {
     scheduler.destroy();
     scheduler = null;
+  }
+
+  // Remove lazy-load proxy (may have been removed already after first load)
+  if (scenarioHandler) {
+    window.removeEventListener('forecast-selected', scenarioHandler);
+    scenarioHandler = null;
   }
 
   // Destroy modal
