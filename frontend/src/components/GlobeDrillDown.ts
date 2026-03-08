@@ -138,7 +138,7 @@ export class GlobeDrillDown {
       const [fResult, rResult, eResult] = await Promise.all([
         forecastClient.getForecastsByCountry(upperIso, undefined, 20),
         forecastClient.getCountryRisk(upperIso),
-        forecastClient.getEvents({ country: upperIso, start_date: thirtyDaysAgo, limit: 500 }),
+        forecastClient.getEvents({ country: upperIso, start_date: thirtyDaysAgo, limit: 200 }),
       ]);
       forecasts = fResult;
       risk = rResult;
