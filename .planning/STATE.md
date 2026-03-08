@@ -11,19 +11,19 @@ See: .planning/PROJECT.md (updated 2026-03-04)
 
 Milestone: v3.0 Operational Command & Verification
 Phase: 25 of 25 (Frontend Finalization) -- In progress
-Plan: 01 of 03
+Plan: 02 of 03
 Status: In progress
-Last activity: 2026-03-08 -- Completed 25-01-PLAN.md (Shared Infrastructure & Skeleton Builder)
+Last activity: 2026-03-08 -- Completed 25-02-PLAN.md (Per-Panel UX Overhaul)
 
-Progress: [########################################################] 100% (90/80+ plans lifetime)
-v3.0:    [###########################-] 96% (27/28 plans in v3.0 -- 7/7 phases)
+Progress: [########################################################] 100% (91/80+ plans lifetime)
+v3.0:    [############################] 97% (28/29 plans in v3.0 -- 7/7 phases)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 88
+- Total plans completed: 89
 - Average duration: 10 minutes
-- Total execution time: 13.3 hours
+- Total execution time: 13.5 hours
 
 **By Phase:**
 
@@ -53,7 +53,7 @@ v3.0:    [###########################-] 96% (27/28 plans in v3.0 -- 7/7 phases)
 | 22-polymarket-hardening | 3 | 23min | 8min |
 | 23-historical-backtesting | 3 | 31min | 10min |
 | 24-global-seeding-globe-layers | 6 | 23min | 4min |
-| 25-frontend-finalization | 1/3 | 3min | 3min |
+| 25-frontend-finalization | 2/3 | 15min | 8min |
 
 ## Accumulated Context
 
@@ -128,6 +128,13 @@ Key decisions affecting current work:
 - Skeleton builder: 7 shapes, PANEL_SKELETON_MAP for 10 panel IDs, role=status + aria-busy a11y (2026-03-08)
 - prefers-reduced-motion: skeleton shimmer disabled (static bg), view transitions near-instant (2026-03-08)
 - buildLayers() return type changed to Layer[] (deck.gl base class) for polymorphic layer container (2026-03-08)
+- Panel hasData pattern: private hasData = false; skeleton on !hasData, toast on hasData+error, errorWithRetry on !hasData+error (2026-03-08)
+- isTransientError regex: timeout|503|502|504|econnrefused|network|fetch -> amber toast, else red (2026-03-08)
+- CountryBriefPage CAMEO trend removed entirely (no historical data for real trends) (2026-03-08)
+- CountryBriefPage lazy-loaded on dashboard via dynamic import (30.6 kB separate chunk) (2026-03-08)
+- ScenarioExplorer: statically imported on dashboard (core interaction), lazy on forecasts + globe screens (2026-03-08)
+- GlobeDrillDown sparkline: 500 events, 30-day window, SVG polyline + filled polygon area (2026-03-08)
+- Lazy modal pattern: proxy event listener -> dynamic import -> cache instance -> remove proxy (2026-03-08)
 
 ### Deferred Issues
 
@@ -151,6 +158,6 @@ Key decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-03-08
-Stopped at: Completed 25-01-PLAN.md (Shared Infrastructure & Skeleton Builder)
+Stopped at: Completed 25-02-PLAN.md (Per-Panel UX Overhaul)
 Resume file: None
-Next: 25-02-PLAN.md (Per-Panel UX Overhaul -- ForecastPanel, RiskIndex, NewsFeed, SystemHealth)
+Next: 25-03-PLAN.md (Final CSS polish, animation, a11y pass)
