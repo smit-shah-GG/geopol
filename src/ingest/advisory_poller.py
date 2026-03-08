@@ -670,6 +670,9 @@ class AdvisoryPoller:
         # Push to shared in-memory cache
         AdvisoryStore.update(all_advisories)
 
+        # Persist to PostgreSQL for cross-process access (e.g. baseline risk heavy job)
+        await self._persist_advisories_to_db(all_advisories)
+
         logger.info(
             "Advisory poll complete: state_dept=%d, fcdo=%d, total=%d",
             len(state_dept), len(fcdo), len(all_advisories),
@@ -683,6 +686,46 @@ class AdvisoryPoller:
             events_new=len(all_advisories),
             events_duplicate=0,
         )
+
+    async def _persist_advisories_to_db(self, advisories: list[dict]) -> None:
+        """UPSERT advisories to PostgreSQL travel_advisories table.
+
+        Non-critical: if DB write fails, log warning and continue.
+        The in-memory AdvisoryStore still serves the API endpoint regardless.
+        """
+        from sqlalchemy.dialects.postgresql import insert as pg_insert
+
+        from src.db.models import TravelAdvisory
+
+        # Filter to advisories with valid country_iso (some may be None if unmapped)
+        valid = [a for a in advisories if a.get("country_iso")]
+        if not valid:
+            return
+
+        try:
+            async for session in get_async_session():
+                for adv in valid:
+                    stmt = pg_insert(TravelAdvisory).values(
+                        country_iso=adv["country_iso"],
+                        source=adv["source"],
+                        level=adv["level"],
+                        updated_at=datetime.now(timezone.utc),
+                    )
+                    stmt = stmt.on_conflict_do_update(
+                        constraint="uq_travel_advisory_country_source",
+                        set_={
+                            "level": stmt.excluded.level,
+                            "updated_at": stmt.excluded.updated_at,
+                        },
+                    )
+                    await session.execute(stmt)
+
+                logger.info(
+                    "Persisted %d advisories to travel_advisories table", len(valid),
+                )
+        except Exception as exc:
+            # Advisory DB persistence is non-critical -- in-memory store still works
+            logger.warning("Failed to persist advisories to PostgreSQL: %s", exc)
 
     async def _record_run(
         self,
