@@ -6,7 +6,7 @@
 - v1.1 Tech Debt Remediation -- Phases 6-8 (shipped 2026-01-30)
 - v2.0 Operationalization & Forecast Quality -- Phases 9-13 (shipped 2026-03-02)
 - v2.1 Production UX & Live Data Integration -- Phases 14-18 (shipped 2026-03-04)
-- v3.0 Operational Command & Verification -- Phases 19-27 (in progress)
+- v3.0 Operational Command & Verification -- Phases 19-27 (shipped 2026-03-09)
 
 ## Phases
 
@@ -547,8 +547,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 27-01-PLAN.md -- GlobeMap.ts core renderer (globe.gl + Three.js, 13-method API, atmosphere glow, 5 layer channels, debounced flush)
-- [ ] 27-02-PLAN.md -- MapContainer wrapper, globe-screen rewire, NavBar toggle, GlobeHud region presets, LayerPillBar refactor
+- [x] 27-01-PLAN.md -- GlobeMap.ts core renderer (globe.gl + Three.js, 13-method API, atmosphere glow, 5 layer channels, debounced flush)
+- [x] 27-02-PLAN.md -- MapContainer wrapper, globe-screen rewire, NavBar toggle, GlobeHud region presets, LayerPillBar refactor
 
 
 ## Progress
@@ -585,6 +585,6 @@ Phase 19 -> Phase 20. Then parallel: Phase 21 + Phase 22. Then Phase 23 (after 2
 | 25. Frontend Finalization | v3.0 | 3/3 | Complete | 2026-03-08 |
 
 | 26. Operational Fixes & UX Polish | v3.0 | 3/3 | Complete | 2026-03-09 |
-| 27. 3D Globe | v3.0 | 0/2 | Planned | - |
+| 27. 3D Globe | v3.0 | 2/2 | Complete | 2026-03-09 |
 
-**Total:** 26 phases complete (v1.0 + v1.1 + v2.0 + v2.1 + v3.0 partial), 93 plans delivered. v3.0: 8/9 phases complete.
+**Total:** 27 phases complete (v1.0 + v1.1 + v2.0 + v2.1 + v3.0), 95 plans delivered. v3.0: 9/9 phases complete.
