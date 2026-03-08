@@ -5,25 +5,25 @@
 See: .planning/PROJECT.md (updated 2026-03-04)
 
 **Core value:** Explainability -- every forecast must provide clear, traceable reasoning paths
-**Current focus:** v3.0 Operational Command & Verification -- Phase 23 Historical Backtesting
+**Current focus:** v3.0 Operational Command & Verification -- Phase 24 Global Seeding & Globe Layers
 
 ## Current Position
 
 Milestone: v3.0 Operational Command & Verification
-Phase: 23 of 25 (Historical Backtesting) -- Complete
-Plan: 03 of 03
-Status: Phase complete
-Last activity: 2026-03-08 -- Completed 23-03-PLAN.md (Backtesting Admin Panel)
+Phase: 24 of 25 (Global Seeding & Globe Layers) -- In progress
+Plan: 02 of 06
+Status: In progress
+Last activity: 2026-03-08 -- Completed 24-02-PLAN.md (Database Schema for Globe Seeding)
 
-Progress: [########################################################] 100% (84/80+ plans lifetime)
-v3.0:    [####################] 84% (21/25 plans in v3.0 -- 5/7 phases)
+Progress: [########################################################] 100% (85/80+ plans lifetime)
+v3.0:    [######################] 88% (22/25 plans in v3.0 -- 5/7 phases)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 81
+- Total plans completed: 82
 - Average duration: 10 minutes
-- Total execution time: 12.7 hours
+- Total execution time: 12.8 hours
 
 **By Phase:**
 
@@ -52,6 +52,7 @@ v3.0:    [####################] 84% (21/25 plans in v3.0 -- 5/7 phases)
 | 21-source-expansion-feed-mgmt | 5 | 34min | 7min |
 | 22-polymarket-hardening | 3 | 23min | 8min |
 | 23-historical-backtesting | 3 | 31min | 10min |
+| 24-global-seeding-globe-layers | 1 | 3min | 3min |
 
 ## Accumulated Context
 
@@ -106,6 +107,9 @@ Key decisions affecting current work:
 - Backtesting: heavy_backtest() NOT registered as APScheduler job -- on-demand only via admin API (2026-03-08)
 - Backtesting: import-by-value bug fixed in run_polymarket_cycle (bare names -> module reference) (2026-03-08)
 - Backtesting admin panel: expandable d3 chart sections with lazy render, 10s refresh, scoped CSS injection (2026-03-08)
+- TravelAdvisory: UniqueConstraint on (country_iso, source) for UPSERT semantics -- cross-process advisory persistence (2026-03-08)
+- HeatmapHexbin: String(20) for H3 index, all resolutions covered. Pre-computed layer data pattern (2026-03-08)
+- SQLite events lat/lon: nullable REAL columns for geocoding, backward-compatible with 1.43M existing events (2026-03-08)
 
 ### Deferred Issues
 
@@ -129,6 +133,6 @@ Key decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-03-08
-Stopped at: Completed 23-03-PLAN.md (Backtesting Admin Panel) -- Phase 23 complete
+Stopped at: Completed 24-02-PLAN.md (Database Schema for Globe Seeding)
 Resume file: None
-Next: Phase 24 (Global Seeding & Globe Layers) -- depends on Phase 21 (UCDP data feeds baseline risk)
+Next: 24-03-PLAN.md (FIPS-to-ISO CSV + conversion)
