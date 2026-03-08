@@ -16,6 +16,7 @@ from src.api.routes.v1.countries import router as countries_router
 from src.api.routes.v1.events import router as events_router
 from src.api.routes.v1.forecasts import router as forecasts_router
 from src.api.routes.v1.health import router as health_router
+from src.api.routes.v1.layers import router as layers_router
 from src.api.routes.v1.sources import router as sources_router
 from src.api.routes.v1.submissions import router as submissions_router
 
@@ -49,6 +50,9 @@ v1_router.include_router(sources_router, prefix="/sources", tags=["sources"])
 
 # Government travel advisories (auth required)
 v1_router.include_router(advisories_router, prefix="/advisories", tags=["advisories"])
+
+# Globe layer data (heatmap hexbins, arcs, risk deltas — auth required)
+v1_router.include_router(layers_router, prefix="/globe", tags=["globe-layers"])
 
 # Admin dashboard (X-Admin-Key auth, separate from X-API-Key)
 v1_router.include_router(admin_router, prefix="/admin", tags=["admin"])
