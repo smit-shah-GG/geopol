@@ -191,15 +191,21 @@ export class ForecastServiceClient {
     }
   }
 
-  /** GET /forecasts/{id} -- returns null on 404 */
+  /**
+   * GET /forecasts/{id} -- returns null on 404.
+   *
+   * Does NOT use forecastBreaker.execute() — the shared breaker caches by
+   * breaker (not by URL), so getTopForecasts() would poison this response
+   * with a ForecastResponse[] instead of a single ForecastResponse.
+   */
   async getForecastById(id: string): Promise<ForecastResponse | null> {
     const path = `/forecasts/${encodeURIComponent(id)}`;
-    return this.dedup(path, () =>
-      this.forecastBreaker.execute(
-        () => this.fetchJsonNullable<ForecastResponse>(path),
-        null as unknown as ForecastResponse,
-      ),
-    ) as Promise<ForecastResponse | null>;
+    try {
+      return await this.fetchJsonNullable<ForecastResponse>(path);
+    } catch (e: unknown) {
+      console.warn('[forecast-client] getForecastById failed:', e);
+      return null;
+    }
   }
 
   /** GET /countries */
