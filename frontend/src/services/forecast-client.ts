@@ -135,6 +135,22 @@ export class ForecastServiceClient {
   private readonly inFlight = new Map<string, Promise<unknown>>();
 
   // -----------------------------------------------------------------------
+  // Cache management
+  // -----------------------------------------------------------------------
+
+  /**
+   * Invalidate all circuit breaker caches and clear in-flight dedup map.
+   * Called on every navigation to force fresh data fetches -- equivalent to Ctrl+R.
+   */
+  bustAllCaches(): void {
+    this.forecastBreaker.invalidateCache();
+    this.countryBreaker.invalidateCache();
+    this.healthBreaker.invalidateCache();
+    this.eventsBreaker.invalidateCache();
+    this.inFlight.clear();
+  }
+
+  // -----------------------------------------------------------------------
   // Public API methods
   // -----------------------------------------------------------------------
 

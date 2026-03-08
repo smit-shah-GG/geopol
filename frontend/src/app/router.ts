@@ -6,7 +6,12 @@
  *
  * The router owns a single container element. On each transition it unmounts
  * the previous screen and mounts the new one into that container.
+ *
+ * Every navigation (including same-route clicks) triggers full unmount/remount
+ * with cache invalidation -- panels always show fresh data via skeleton loading.
  */
+
+import { forecastClient } from '@/services/forecast-client';
 
 export interface Route {
   path: string;
@@ -39,10 +44,14 @@ export class Router {
     this.routes.push(route);
   }
 
-  /** Programmatic navigation. Pushes history state and resolves. */
+  /** Programmatic navigation. Always resolves, even for same-route clicks. */
   navigate(path: string): void {
-    if (window.location.pathname === path) return;
-    window.history.pushState(null, '', path);
+    if (window.location.pathname === path) {
+      // Same route: replaceState to avoid history pollution
+      window.history.replaceState(null, '', path);
+    } else {
+      window.history.pushState(null, '', path);
+    }
     void this.resolve();
   }
 
@@ -53,17 +62,16 @@ export class Router {
       ?? this.routes.find((r) => r.path === '/dashboard')
       ?? this.routes[0];
 
-    if (!route || route === this.currentRoute) {
-      window.dispatchEvent(new CustomEvent('route-changed', { detail: { path } }));
-      return;
-    }
+    if (!route) return;
 
     // Set currentRoute eagerly BEFORE the async swap. This prevents a
     // re-entrant resolve() (triggered by rapid navigation or popstate during
-    // an in-flight startViewTransition callback) from seeing stale state and
-    // short-circuiting via the `route === this.currentRoute` guard above.
+    // an in-flight startViewTransition callback) from firing a concurrent swap.
     const prevRoute = this.currentRoute;
     this.currentRoute = route;
+
+    // Bust all caches on every navigation -- ctrl+r equivalent
+    forecastClient.bustAllCaches();
 
     const doSwap = async (): Promise<void> => {
       try {

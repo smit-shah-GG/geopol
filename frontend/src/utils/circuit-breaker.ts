@@ -113,6 +113,15 @@ export class CircuitBreaker<T> {
   }
 
   /**
+   * Invalidate all cached data and reset data state to unavailable.
+   * Called on navigation to force fresh fetches on panel mount.
+   */
+  invalidateCache(): void {
+    this.cache = null;
+    this.lastDataState = { mode: 'unavailable', timestamp: null };
+  }
+
+  /**
    * Execute a fetch through the circuit breaker.
    *
    * Flow:

@@ -42,6 +42,7 @@ export class SubmissionForm {
     clearChildren(this.container);
     this.parsedResponse = null;
     this.errorMessage = null;
+    // Draft intentionally preserved in sessionStorage across destroy/remount
   }
 
   // ---------------------------------------------------------------------------
@@ -89,10 +90,20 @@ export class SubmissionForm {
       rows: '4',
     }) as HTMLTextAreaElement;
 
-    // Pre-fill with original question if returning from Edit
+    // Restore draft from sessionStorage (survives same-route remount)
+    const savedDraft = sessionStorage.getItem('geopol-submission-draft');
     if (this.originalQuestion) {
+      // Pre-fill with original question if returning from Edit
       textarea.value = this.originalQuestion;
+    } else if (savedDraft) {
+      textarea.value = savedDraft;
+      this.originalQuestion = savedDraft;
     }
+
+    // Persist draft on every keystroke for cross-remount survival
+    textarea.addEventListener('input', () => {
+      sessionStorage.setItem('geopol-submission-draft', textarea.value);
+    });
 
     const submitBtn = h('button', {
       className: 'submission-analyze-btn',
@@ -238,9 +249,10 @@ export class SubmissionForm {
     this.errorMessage = null;
     try {
       await forecastClient.confirmSubmission(this.parsedResponse.request_id);
-      // Reset form to input state
+      // Reset form to input state and clear saved draft
       this.parsedResponse = null;
       this.originalQuestion = '';
+      sessionStorage.removeItem('geopol-submission-draft');
       this.setState('input');
       // Notify queue to refresh
       window.dispatchEvent(new CustomEvent('submission-confirmed'));
