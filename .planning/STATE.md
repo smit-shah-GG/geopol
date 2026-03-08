@@ -11,19 +11,19 @@ See: .planning/PROJECT.md (updated 2026-03-04)
 
 Milestone: v3.0 Operational Command & Verification
 Phase: 24 of 25 (Global Seeding & Globe Layers) -- In progress
-Plan: 03 of 06
+Plan: 04 of 06
 Status: In progress
-Last activity: 2026-03-08 -- Completed 24-03-PLAN.md (FIPS-to-ISO Conversion + Advisory Persistence)
+Last activity: 2026-03-08 -- Completed 24-04-PLAN.md (Seeding Computation Engine + APScheduler Wiring)
 
-Progress: [########################################################] 100% (86/80+ plans lifetime)
-v3.0:    [#######################] 92% (23/25 plans in v3.0 -- 5/7 phases)
+Progress: [########################################################] 100% (87/80+ plans lifetime)
+v3.0:    [########################] 96% (24/25 plans in v3.0 -- 5/7 phases)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 84
+- Total plans completed: 85
 - Average duration: 10 minutes
-- Total execution time: 12.9 hours
+- Total execution time: 13.0 hours
 
 **By Phase:**
 
@@ -52,7 +52,7 @@ v3.0:    [#######################] 92% (23/25 plans in v3.0 -- 5/7 phases)
 | 21-source-expansion-feed-mgmt | 5 | 34min | 7min |
 | 22-polymarket-hardening | 3 | 23min | 8min |
 | 23-historical-backtesting | 3 | 31min | 10min |
-| 24-global-seeding-globe-layers | 3 | 9min | 3min |
+| 24-global-seeding-globe-layers | 4 | 13min | 3min |
 
 ## Accumulated Context
 
@@ -114,6 +114,9 @@ Key decisions affecting current work:
 - fips_to_iso() called at GDELT ingestion boundary -- all stored country_iso values are now ISO alpha-2 (2026-03-08)
 - Retroactive _migrate_fips_to_iso() runs on every EventStorage startup, idempotent (2026-03-08)
 - Advisory dual-write: in-memory AdvisoryStore + PostgreSQL travel_advisories, DB write is non-critical (2026-03-08)
+- heavy_baseline_risk uses skip-if-locked (not queue) -- silently skips when heavy_job_lock is held, retries next hour (2026-03-08)
+- compute_all_layers: full table replace (DELETE all + INSERT new) in single transaction -- simpler than UPSERT (2026-03-08)
+- Heatmap uses 30-day window (vs 90-day for baseline risk) -- shows recent hotspots, not historical spread (2026-03-08)
 
 ### Deferred Issues
 
@@ -137,6 +140,6 @@ Key decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-03-08
-Stopped at: Completed 24-03-PLAN.md (FIPS-to-ISO Conversion + Advisory Persistence)
+Stopped at: Completed 24-04-PLAN.md (Seeding Computation Engine + APScheduler Wiring)
 Resume file: None
-Next: 24-04-PLAN.md (Seeding Engine)
+Next: 24-05-PLAN.md (API Endpoints)
