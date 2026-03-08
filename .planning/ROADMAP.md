@@ -489,14 +489,15 @@ Plans:
   3. The globe choropleth colors all ~195 countries with intensity proportional to their merged risk scores -- no more empty/neutral countries with zero data; high-risk conflict zones visually stand out
   4. The heatmap layer displays real GDELT event locations on the globe -- events include `lat`/`lon` coordinates (added to SQLite schema), served via `/api/v1/globe/heatmap` with server-side H3 hex binning for performance
   5. The arcs layer renders bilateral country relationships from knowledge graph edges via `/api/v1/countries/relations` -- showing top-N country pairs by edge weight as great-circle arcs on the globe
-**Plans**: 5 plans
+**Plans**: 6 plans
 
 Plans:
-- [ ] 24-01-PLAN.md -- FIPS-to-ISO mapping + lat/lon schema + Event dataclass + poller modifications
-- [ ] 24-02-PLAN.md -- PostgreSQL ORM models (5 tables) + Alembic migration 010 + CountryRiskSummary schema
-- [ ] 24-03-PLAN.md -- Seeding computation engine (baseline risk + heatmap binner + arc builder + risk delta)
-- [ ] 24-04-PLAN.md -- Heavy job wiring + countries API rewrite + globe layer endpoints
-- [ ] 24-05-PLAN.md -- Frontend DeckGLMap data push + H3HexagonLayer + globe-screen wiring
+- [ ] 24-01-PLAN.md — Seeding package: FIPS CSV data file, fips.py, population.py, baseline_risk.py, pip deps
+- [ ] 24-02-PLAN.md — Database layer: 5 PostgreSQL ORM models, Alembic migration 010, SQLite lat/lon, Event dataclass
+- [ ] 24-03-PLAN.md — Ingestion fixes: GDELT FIPS-to-ISO conversion + lat/lon extraction, advisory DB persistence
+- [ ] 24-04-PLAN.md — Seeding engine: heatmap binner, arc builder, risk delta, compute_all orchestrator, APScheduler heavy job
+- [ ] 24-05-PLAN.md — API layer: dual-score countries endpoint, globe layer endpoints (heatmap, arcs, deltas)
+- [ ] 24-06-PLAN.md — Frontend: H3HexagonLayer, data-push methods, globe-screen layer wiring, TypeScript types
 
 ### Phase 25: Frontend Finalization
 **Goal**: Every screen and panel handles loading, error, and empty states gracefully. Heavy components lazy-load. Interactive elements are keyboard-accessible. The frontend is ready for external users who encounter edge cases, slow connections, and assistive technology.
