@@ -32,6 +32,7 @@ from src.database.storage import EventStorage
 from src.db.models import IngestRun
 from src.db.postgres import get_async_session, init_db
 from src.knowledge_graph.graph_builder import TemporalKnowledgeGraph
+from src.seeding.fips import fips_to_iso
 from src.settings import get_settings
 
 logger = logging.getLogger(__name__)
@@ -188,15 +189,30 @@ def _gdelt_row_to_event(row: pd.Series) -> Event:
             pass
 
     # Extract country code -- prefer ActionGeo (where it happened) over Actor1 (who did it)
+    # GDELT uses FIPS 10-4 codes (142 of 251 differ from ISO), so convert at ingestion time.
     country_iso: Optional[str] = None
     if pd.notna(row.get("ActionGeo_CountryCode")):
         raw_cc = str(row["ActionGeo_CountryCode"]).strip()
         if raw_cc:
-            country_iso = raw_cc
+            country_iso = fips_to_iso(raw_cc)
     if country_iso is None and pd.notna(row.get("Actor1CountryCode")):
         raw_cc = str(row["Actor1CountryCode"]).strip()
         if raw_cc:
-            country_iso = raw_cc
+            country_iso = fips_to_iso(raw_cc)
+
+    # Extract lat/lon from ActionGeo (event location coordinates)
+    lat: Optional[float] = None
+    lon: Optional[float] = None
+    if pd.notna(row.get("ActionGeo_Lat")):
+        try:
+            lat = float(row["ActionGeo_Lat"])
+        except (ValueError, TypeError):
+            pass
+    if pd.notna(row.get("ActionGeo_Long")):
+        try:
+            lon = float(row["ActionGeo_Long"])
+        except (ValueError, TypeError):
+            pass
 
     return Event(
         gdelt_id=gdelt_id,
@@ -214,6 +230,8 @@ def _gdelt_row_to_event(row: pd.Series) -> Event:
         url=str(row.get("SOURCEURL", "")) if pd.notna(row.get("SOURCEURL")) else None,
         country_iso=country_iso,
         source="gdelt",
+        lat=lat,
+        lon=lon,
     )
 
 

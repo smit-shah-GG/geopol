@@ -45,7 +45,7 @@ class EventStorage:
         self._migrate_columns()
 
     def _migrate_columns(self) -> None:
-        """Add country_iso and source columns if missing, backfill country_iso from raw_json."""
+        """Add country_iso, source, lat, lon columns if missing; backfill country_iso from raw_json."""
         with self.db.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("PRAGMA table_info(events)")
@@ -93,6 +93,86 @@ class EventStorage:
                 cursor.execute("ALTER TABLE events ADD COLUMN source TEXT NOT NULL DEFAULT 'gdelt'")
                 cursor.execute("CREATE INDEX IF NOT EXISTS idx_events_source ON events(source)")
                 logger.info("Migration: added source column to events table")
+
+            # lat/lon columns for geocoding (Phase 24)
+            if "lat" not in existing_cols:
+                cursor.execute("ALTER TABLE events ADD COLUMN lat REAL")
+                logger.info("Migration: added lat column to events table")
+            if "lon" not in existing_cols:
+                cursor.execute("ALTER TABLE events ADD COLUMN lon REAL")
+                cursor.execute("CREATE INDEX IF NOT EXISTS idx_events_lat_lon ON events(lat, lon)")
+                logger.info("Migration: added lon column to events table")
+
+        # Retroactive FIPS-to-ISO conversion (idempotent -- safe to run on every startup)
+        self._migrate_fips_to_iso()
+
+    def _migrate_fips_to_iso(self) -> int:
+        """Retroactively convert FIPS 10-4 country codes to ISO 3166-1 alpha-2.
+
+        GDELT uses FIPS codes where 142 of 251 differ from ISO (e.g. FIPS IS = Israel,
+        ISO IS = Iceland). This method also handles 3-letter ISO alpha-3 codes that
+        exist in the database by converting them to alpha-2 via pycountry.
+
+        Idempotent: already-converted rows won't match FIPS codes on re-run.
+
+        Returns:
+            Total number of rows updated.
+        """
+        from src.seeding.fips import FIPS_TO_ISO
+
+        total_updated = 0
+
+        with self.db.get_connection() as conn:
+            cursor = conn.cursor()
+
+            # Phase 1: Convert 2-letter FIPS codes to ISO where they differ
+            for fips_code, iso_code in FIPS_TO_ISO.items():
+                if fips_code == iso_code:
+                    continue  # No conversion needed
+                cursor.execute(
+                    "UPDATE events SET country_iso = ? WHERE country_iso = ?",
+                    (iso_code, fips_code),
+                )
+                if cursor.rowcount > 0:
+                    total_updated += cursor.rowcount
+
+            # Phase 2: Convert 3-letter ISO alpha-3 codes to alpha-2
+            # Find distinct 3-letter codes in the database
+            cursor.execute(
+                "SELECT DISTINCT country_iso FROM events "
+                "WHERE country_iso IS NOT NULL AND LENGTH(country_iso) = 3"
+            )
+            alpha3_codes = [row["country_iso"] for row in cursor.fetchall()]
+
+            if alpha3_codes:
+                try:
+                    import pycountry
+
+                    for a3 in alpha3_codes:
+                        country = pycountry.countries.get(alpha_3=a3.upper())
+                        if country is not None:
+                            cursor.execute(
+                                "UPDATE events SET country_iso = ? WHERE country_iso = ?",
+                                (country.alpha_2, a3),
+                            )
+                            if cursor.rowcount > 0:
+                                total_updated += cursor.rowcount
+                except ImportError:
+                    logger.warning(
+                        "pycountry not available -- skipping alpha-3 conversion for %d codes",
+                        len(alpha3_codes),
+                    )
+
+            conn.commit()
+
+        if total_updated > 0:
+            logger.info(
+                "FIPS-to-ISO migration: updated %d event rows", total_updated,
+            )
+        else:
+            logger.debug("FIPS-to-ISO migration: no rows needed conversion")
+
+        return total_updated
 
     def insert_events(self, events: List[Event], batch_size: int = 1000) -> int:
         """
