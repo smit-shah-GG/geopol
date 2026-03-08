@@ -27,6 +27,10 @@ dependencies = [
     "networkx>=3.0",
     "wandb>=0.25.0",
     "apscheduler==3.11.2",
+    # Seeding: global baseline risk computation
+    "h3>=4.0",
+    "pycountry>=24.0",
+    "pypopulation>=2020.0",
 ]
 
 [project.optional-dependencies]

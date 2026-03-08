@@ -44,6 +44,7 @@ ENV/
 # Data & Database (runtime data -- NOT frontend static assets)
 data/
 !frontend/public/data/
+!src/seeding/data/
 *.db
 *.sqlite
 *.sqlite3
