@@ -82,6 +82,12 @@ models/
 runs/
 wandb/
 
+# Obsidian
+.obsidian/
+
+# Docs (generated)
+docs/
+
 # Node.js (frontend)
 node_modules/
 frontend/dist/
