@@ -1495,6 +1495,13 @@
   font-family: var(--font-mono);
 }
 
+.overview-card-breakdown {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  margin-top: 4px;
+}
+
 .overview-card-empty {
   font-size: var(--font-size-sm);
   color: var(--text-muted);
@@ -2626,6 +2633,14 @@
 
 .drilldown-trend.trend-stable {
   color: var(--text-muted);
+}
+
+.drilldown-risk-breakdown {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  margin-top: 2px;
+  white-space: nowrap;
 }
 
 .drilldown-close {

@@ -457,9 +457,17 @@ export class CountryBriefPage {
 
     const grid = h('div', { className: 'overview-grid' });
 
-    // Card 1: Risk Score
+    // Card 1: Risk Score with component breakdown
     const riskScore = this.countryRisk?.risk_score ?? 0;
     const trend = this.countryRisk?.trend ?? 'stable';
+    const forecastRisk = this.countryRisk?.forecast_risk;
+    const baselineRisk = this.countryRisk?.baseline_risk ?? 0;
+    const breakdownParts: string[] = [];
+    if (forecastRisk !== null && forecastRisk !== undefined) {
+      breakdownParts.push(`Forecast: ${forecastRisk.toFixed(0)}`);
+    }
+    breakdownParts.push(`Baseline: ${baselineRisk.toFixed(0)}`);
+
     grid.appendChild(h('div', { className: 'overview-card' },
       h('div', { className: 'overview-card-label' }, 'RISK SCORE'),
       h('div', { className: `overview-card-value ${severityClass(riskScore / 100)}` },
@@ -468,6 +476,7 @@ export class CountryBriefPage {
         h('span', { className: `trend-${trend}` }, `${trendArrow(trend)} ${trend}`),
         ' -- last 7 days',
       ),
+      h('div', { className: 'overview-card-breakdown' }, breakdownParts.join(' | ')),
     ));
 
     // Card 2: Top Forecast

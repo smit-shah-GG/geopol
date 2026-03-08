@@ -174,7 +174,7 @@ export class GlobeDrillDown {
     forecasts: PaginatedResponse<ForecastResponse>,
     risk: CountryRiskSummary | null,
   ): void {
-    // Render risk score
+    // Render risk score with component breakdown
     if (risk && typeof risk.risk_score === 'number') {
       const scorePct = risk.risk_score.toFixed(1);
       const sev = severityClass(risk.risk_score / 100);
@@ -187,6 +187,16 @@ export class GlobeDrillDown {
       );
       this.headerRisk.appendChild(
         h('span', { className: `drilldown-trend ${tc}` }, arrow),
+      );
+
+      // Component score breakdown
+      const parts: string[] = [];
+      if (risk.forecast_risk !== null) {
+        parts.push(`Forecast ${risk.forecast_risk.toFixed(0)}`);
+      }
+      parts.push(`Baseline ${risk.baseline_risk.toFixed(0)}`);
+      this.headerRisk.appendChild(
+        h('div', { className: 'drilldown-risk-breakdown' }, parts.join(' | ')),
       );
     }
 
