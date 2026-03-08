@@ -360,21 +360,21 @@ Plans:
 
 **Phase Numbering:** Starts at 19 (v2.1 ended at Phase 18).
 
-**Execution Model:** Phase 19 (admin) establishes the observation layer. Phase 20 (daemon consolidation) is the critical path -- everything after it registers APScheduler jobs. Phases 21 and 22 are independent parallel tracks after Phase 20. Phase 23 depends on Phase 22 (clean resolution data). Phase 24 depends on Phase 21 (UCDP data feeds baseline risk). Phase 25 depends on Phases 23 and 24 (all features exist to polish).
+**Execution Model:** Phase 19 (admin) establishes the observation layer. Phase 20 (daemon consolidation) is the critical path -- everything after it registers APScheduler jobs. Phases 21 and 22 are independent parallel tracks after Phase 20. Phase 23 depends on Phase 22 (clean resolution data). Phase 24 depends on Phase 20 (APScheduler framework; UCDP deferred). Phase 25 depends on Phases 23 and 24 (all features exist to polish).
 
 ```
 Phase 19 (Admin Dashboard) --- observability layer first
     |
     +---> Phase 20 (Daemon Consolidation) --- critical path
               |
-              |---> Phase 21 (Source Expansion) ---> Phase 24 (Global Seeding + Globe Layers)
+              |---> Phase 21 (Source Expansion)
+              |
+              |---> Phase 22 (Polymarket Hardening) ---> Phase 23 (Backtesting)
               |                                                  |
-              +---> Phase 22 (Polymarket Hardening) ---> Phase 23 (Backtesting)
-                                                                 |
-                                                                 +---> Phase 25 (Frontend Polish)
+              +---> Phase 24 (Global Seeding + Globe Layers) ----+---> Phase 25 (Frontend Polish)
 ```
 
-Phases 21 and 22 are independent tracks after Phase 20 and can run in parallel.
+Phases 21, 22, and 24 are independent tracks after Phase 20 and can run in parallel.
 
 **Hard constraint:** `uvicorn --workers 1` -- APScheduler in-process is not safe with multiple workers (each worker creates its own scheduler, running every job N times).
 
@@ -481,20 +481,22 @@ Plans:
 
 ### Phase 24: Global Seeding & Globe Layers
 **Goal**: The globe choropleth renders meaningful risk data for all ~195 countries (not just those with active forecasts), and the three currently-empty globe layers (heatmap, arcs, scenarios) display real data from the event store and knowledge graph.
-**Depends on**: Phase 21 (UCDP data feeds baseline risk computation; can start with GDELT+ACLED only but UCDP improves signal)
+**Depends on**: Phase 20 (APScheduler framework; UCDP deferred to v3.1+, baseline risk uses GDELT+ACLED+advisories+Goldstein)
 **Requirements**: SEED-01, SEED-02, SEED-03, GLYR-01, GLYR-02, GLYR-03
 **Success Criteria** (what must be TRUE):
-  1. The `baseline_country_risk` table contains composite risk scores for all ~195 countries, computed from GDELT event density + ACLED conflict intensity + UCDP fatality signal + government travel advisory levels with configurable weights and exponential time decay -- updated every 6 hours via APScheduler job
+  1. The `baseline_country_risk` table contains composite risk scores for all ~195 countries, computed from GDELT event density + ACLED conflict intensity + Goldstein severity + government travel advisory levels with configurable weights and exponential time decay -- updated hourly via APScheduler heavy job (UCDP deferred to v3.1+, Goldstein severity substituted as 4th signal)
   2. `GET /api/v1/countries` returns merged risk scores: active forecast risk overrides baseline when available (`COALESCE(forecast_risk, baseline_risk)`), so countries with forecasts show prediction-derived risk while countries without forecasts still show meaningful baseline risk
   3. The globe choropleth colors all ~195 countries with intensity proportional to their merged risk scores -- no more empty/neutral countries with zero data; high-risk conflict zones visually stand out
-  4. The heatmap layer displays real GDELT event locations on the globe -- events include `lat`/`lon` coordinates (added to SQLite schema), served via `/api/v1/events/geo` with server-side 0.5-degree grid aggregation for performance
+  4. The heatmap layer displays real GDELT event locations on the globe -- events include `lat`/`lon` coordinates (added to SQLite schema), served via `/api/v1/globe/heatmap` with server-side H3 hex binning for performance
   5. The arcs layer renders bilateral country relationships from knowledge graph edges via `/api/v1/countries/relations` -- showing top-N country pairs by edge weight as great-circle arcs on the globe
-**Plans**: 3 plans
+**Plans**: 5 plans
 
 Plans:
-- [ ] 20-01-PLAN.md -- Scheduler package: APScheduler core, dependency container, 9 job wrappers, failure tracking
-- [ ] 20-02-PLAN.md -- FastAPI integration: lifespan mount, admin API rewire, graceful shutdown
-- [ ] 20-03-PLAN.md -- Frontend ProcessTable update with pause/resume controls + verification
+- [ ] 24-01-PLAN.md -- FIPS-to-ISO mapping + lat/lon schema + Event dataclass + poller modifications
+- [ ] 24-02-PLAN.md -- PostgreSQL ORM models (5 tables) + Alembic migration 010 + CountryRiskSummary schema
+- [ ] 24-03-PLAN.md -- Seeding computation engine (baseline risk + heatmap binner + arc builder + risk delta)
+- [ ] 24-04-PLAN.md -- Heavy job wiring + countries API rewrite + globe layer endpoints
+- [ ] 24-05-PLAN.md -- Frontend DeckGLMap data push + H3HexagonLayer + globe-screen wiring
 
 ### Phase 25: Frontend Finalization
 **Goal**: Every screen and panel handles loading, error, and empty states gracefully. Heavy components lazy-load. Interactive elements are keyboard-accessible. The frontend is ready for external users who encounter edge cases, slow connections, and assistive technology.
@@ -543,7 +545,7 @@ Phase 19 -> Phase 20. Then parallel: Phase 21 + Phase 22. Then Phase 23 (after 2
 | 21. Source Expansion & Feed Mgmt | v3.0 | 5/5 | Complete | 2026-03-06 |
 | 22. Polymarket Hardening | v3.0 | 3/3 | Complete | 2026-03-06 |
 | 23. Historical Backtesting | v3.0 | 3/3 | Complete | 2026-03-08 |
-| 24. Global Seeding & Globe Layers | v3.0 | 0/TBD | Not started | - |
+| 24. Global Seeding & Globe Layers | v3.0 | 0/5 | Not started | - |
 | 25. Frontend Finalization | v3.0 | 0/TBD | Not started | - |
 
 **Total:** 23 phases complete (v1.0 + v1.1 + v2.0 + v2.1 + v3.0 partial), 81 plans delivered. v3.0: 5/7 phases complete.
