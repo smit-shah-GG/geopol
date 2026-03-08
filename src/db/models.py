@@ -16,6 +16,11 @@ Tables:
     rss_feeds                  -- Admin-managed RSS feed registry with health metrics
     backtest_runs              -- Walk-forward evaluation run metadata and lifecycle
     backtest_results           -- Per-window evaluation metrics for a backtest run
+    baseline_country_risk      -- Pre-computed baseline risk scores for all countries
+    heatmap_hexbins            -- H3 hex-binned event density for globe heatmap layer
+    country_arcs               -- Bilateral country relationship arcs for globe layer
+    risk_deltas                -- 7-day risk change deltas for scenario/change overlay
+    travel_advisories          -- Persisted travel advisory levels for cross-process access
 """
 
 from __future__ import annotations
@@ -35,6 +40,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import JSON, TSVECTOR
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
@@ -695,4 +701,160 @@ class BacktestResult(Base):
             f"<BacktestResult(id={self.id}, run_id={self.run_id!r}, "
             f"checkpoint={self.checkpoint_name!r}, "
             f"brier={self.brier_score}, n={self.num_predictions})>"
+        )
+
+
+class BaselineCountryRisk(Base):
+    """Pre-computed baseline risk score for a country.
+
+    Scores are recomputed hourly by the seeding heavy job from 4 inputs:
+    GDELT event density (per-capita), ACLED conflict intensity, travel
+    advisory level, and Goldstein severity. UPSERT semantics on country_iso
+    -- each recompute overwrites the previous row.
+    """
+
+    __tablename__ = "baseline_country_risk"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    country_iso: Mapped[str] = mapped_column(
+        String(2), unique=True, nullable=False, index=True
+    )
+    baseline_risk: Mapped[float] = mapped_column(Float, nullable=False)
+    gdelt_score: Mapped[float] = mapped_column(Float, nullable=False)
+    acled_score: Mapped[float] = mapped_column(Float, nullable=False)
+    advisory_score: Mapped[float] = mapped_column(Float, nullable=False)
+    goldstein_score: Mapped[float] = mapped_column(Float, nullable=False)
+    advisory_level: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=1
+    )
+    gdelt_event_count: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0
+    )
+    acled_event_count: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0
+    )
+    disputed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    computed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+
+    def __repr__(self) -> str:
+        return (
+            f"<BaselineCountryRisk(iso={self.country_iso!r}, "
+            f"risk={self.baseline_risk:.1f}, advisory_level={self.advisory_level})>"
+        )
+
+
+class HeatmapHexbin(Base):
+    """Pre-computed H3 hex bin for the globe heatmap layer.
+
+    Each row represents an H3 cell with aggregated, time-decayed event
+    weight. Recomputed hourly by the seeding heavy job.
+    """
+
+    __tablename__ = "heatmap_hexbins"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    h3_index: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
+    weight: Mapped[float] = mapped_column(Float, nullable=False)
+    event_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    computed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+
+    __table_args__ = (
+        Index("ix_heatmap_hexbins_computed_at", "computed_at"),
+    )
+
+    def __repr__(self) -> str:
+        return (
+            f"<HeatmapHexbin(h3={self.h3_index!r}, "
+            f"weight={self.weight:.3f}, events={self.event_count})>"
+        )
+
+
+class CountryArc(Base):
+    """Pre-computed bilateral country relationship for the globe arc layer.
+
+    Derived from event actor pairs grouped by country ISO. Sentiment
+    encoded via avg_goldstein (negative = conflictual, positive = cooperative).
+    Recomputed hourly by the seeding heavy job.
+    """
+
+    __tablename__ = "country_arcs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    source_iso: Mapped[str] = mapped_column(String(2), nullable=False)
+    target_iso: Mapped[str] = mapped_column(String(2), nullable=False)
+    event_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    avg_goldstein: Mapped[float] = mapped_column(Float, nullable=False)
+    computed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+
+    __table_args__ = (
+        Index("ix_country_arcs_pair", "source_iso", "target_iso"),
+    )
+
+    def __repr__(self) -> str:
+        return (
+            f"<CountryArc(src={self.source_iso!r}, tgt={self.target_iso!r}, "
+            f"events={self.event_count}, goldstein={self.avg_goldstein:.2f})>"
+        )
+
+
+class RiskDelta(Base):
+    """7-day risk change delta for a country.
+
+    Shows where risk is increasing (positive delta) or decreasing
+    (negative delta). Used by the scenario/risk-change globe overlay.
+    Recomputed hourly by the seeding heavy job.
+    """
+
+    __tablename__ = "risk_deltas"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    country_iso: Mapped[str] = mapped_column(String(2), nullable=False, index=True)
+    current_risk: Mapped[float] = mapped_column(Float, nullable=False)
+    previous_risk: Mapped[float] = mapped_column(Float, nullable=False)
+    delta: Mapped[float] = mapped_column(Float, nullable=False)
+    computed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+
+    def __repr__(self) -> str:
+        return (
+            f"<RiskDelta(iso={self.country_iso!r}, "
+            f"current={self.current_risk:.1f}, prev={self.previous_risk:.1f}, "
+            f"delta={self.delta:+.1f})>"
+        )
+
+
+class TravelAdvisory(Base):
+    """Persisted travel advisory for cross-process access.
+
+    The advisory poller writes here AND to the in-memory AdvisoryStore.
+    The baseline risk heavy job (in ProcessPoolExecutor) reads from this
+    table since it cannot access main process memory.
+    UPSERT on (country_iso, source) -- latest advisory level wins.
+    """
+
+    __tablename__ = "travel_advisories"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    country_iso: Mapped[str] = mapped_column(String(2), nullable=False, index=True)
+    source: Mapped[str] = mapped_column(String(20), nullable=False)
+    level: Mapped[int] = mapped_column(Integer, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+
+    __table_args__ = (
+        UniqueConstraint("country_iso", "source", name="uq_travel_advisory_country_source"),
+    )
+
+    def __repr__(self) -> str:
+        return (
+            f"<TravelAdvisory(iso={self.country_iso!r}, "
+            f"source={self.source!r}, level={self.level})>"
         )
