@@ -11,19 +11,19 @@ See: .planning/PROJECT.md (updated 2026-03-04)
 
 Milestone: v3.0 Operational Command & Verification
 Phase: 26 of 27 (Operational Fixes & UX Polish)
-Plan: 01 of 03 (Backend Fixes: Binary Filter + Narrative Summary) -- also 02 done
-Status: In progress
-Last activity: 2026-03-09 -- Completed 26-01-PLAN.md
+Plan: 03 of 03 (Scenario Tree Overhaul) -- PHASE COMPLETE
+Status: Phase 26 complete
+Last activity: 2026-03-09 -- Completed 26-03-PLAN.md
 
-Progress: [########################################################] 100% (93 plans lifetime)
-v3.0:    [################################] ~86% (32 plans in v3.0 -- 7/9 phases + 3 plans)
+Progress: [########################################################] 100% (95 plans lifetime)
+v3.0:    [####################################] ~89% (34 plans in v3.0 -- 8/9 phases complete)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 93
+- Total plans completed: 95
 - Average duration: 10 minutes
-- Total execution time: 13.9 hours
+- Total execution time: 14.0 hours
 
 **By Phase:**
 
@@ -54,7 +54,7 @@ v3.0:    [################################] ~86% (32 plans in v3.0 -- 7/9 phases
 | 23-historical-backtesting | 3 | 31min | 10min |
 | 24-global-seeding-globe-layers | 6 | 23min | 4min |
 | 25-frontend-finalization | 3/3 | 23min | 8min |
-| 26-operational-fixes-ux-polish | 3/3 | 15min | 5min |
+| 26-operational-fixes-ux-polish | 3/3 | 18min | 6min |
 
 ## Accumulated Context
 
@@ -146,6 +146,10 @@ Key decisions affecting current work:
 - ComparisonPanel: custom dual-bar collapsed view preserved, buildExpandedContent for expanded section (2026-03-08)
 - ComparisonPanel: expandedIds as Set<number> (comp.id PK), forecastCache as Map<string, ForecastResponse> (2026-03-08)
 - SubmissionForm: sessionStorage key 'geopol-submission-draft' persists textarea across remounts, cleared on confirm (2026-03-08)
+- ScenarioExplorer: foreignObject multi-line text (120 chars, word-wrap) replaces truncated SVG <text> (40 chars) (2026-03-09)
+- ScenarioExplorer: alternating sides layout -- left subtree text left, right subtree text right, determined by ancestor's x relative to root (2026-03-09)
+- ScenarioExplorer: d3.zoom wheel filter gates on nodeCount >= 5, preserving modal scroll on small trees (2026-03-09)
+- ScenarioExplorer: root node sidebar shows narrative_summary + semantic search articles (cached per modal session) (2026-03-09)
 
 ### Deferred Issues
 
@@ -169,6 +173,6 @@ Key decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-03-09
-Stopped at: Completed 26-01-PLAN.md (binary filter + narrative summary)
+Stopped at: Completed 26-03-PLAN.md (scenario tree overhaul) -- Phase 26 complete
 Resume file: None
-Next: /gsd:execute-phase 26-03
+Next: Phase 27 (3D Globe)
