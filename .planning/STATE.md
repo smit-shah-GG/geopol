@@ -11,19 +11,19 @@ See: .planning/PROJECT.md (updated 2026-03-04)
 
 Milestone: v3.0 Operational Command & Verification
 Phase: 26 of 27 (Operational Fixes & UX Polish)
-Plan: 02 of 03 (Route Refresh + ComparisonPanel Expandable Cards)
+Plan: 01 of 03 (Backend Fixes: Binary Filter + Narrative Summary) -- also 02 done
 Status: In progress
-Last activity: 2026-03-08 -- Completed 26-02-PLAN.md
+Last activity: 2026-03-09 -- Completed 26-01-PLAN.md
 
-Progress: [########################################################] 100% (92 plans lifetime)
-v3.0:    [##############################] ~84% (31 plans in v3.0 -- 7/9 phases + 2 plans)
+Progress: [########################################################] 100% (93 plans lifetime)
+v3.0:    [################################] ~86% (32 plans in v3.0 -- 7/9 phases + 3 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 92
+- Total plans completed: 93
 - Average duration: 10 minutes
-- Total execution time: 13.8 hours
+- Total execution time: 13.9 hours
 
 **By Phase:**
 
@@ -54,7 +54,7 @@ v3.0:    [##############################] ~84% (31 plans in v3.0 -- 7/9 phases +
 | 23-historical-backtesting | 3 | 31min | 10min |
 | 24-global-seeding-globe-layers | 6 | 23min | 4min |
 | 25-frontend-finalization | 3/3 | 23min | 8min |
-| 26-operational-fixes-ux-polish | 2/3 | 8min | 4min |
+| 26-operational-fixes-ux-polish | 3/3 | 15min | 5min |
 
 ## Accumulated Context
 
@@ -136,6 +136,10 @@ Key decisions affecting current work:
 - ScenarioExplorer: statically imported on dashboard (core interaction), lazy on forecasts + globe screens (2026-03-08)
 - GlobeDrillDown sparkline: 500 events, 30-day window, SVG polyline + filled polygon area (2026-03-08)
 - Lazy modal pattern: proxy event listener -> dynamic import -> cache instance -> remove proxy (2026-03-08)
+- is_binary_market: checks ALL markets for exact ["Yes","No"] outcomes -- single non-binary market disqualifies entire event (2026-03-09)
+- exclude_nonbinary_comparisons: standalone module-level async function (not class method) for one-time cleanup (2026-03-09)
+- Narrative generation: fresh GeminiClient per call, best-effort try/except -> None fallback, never blocks persistence (2026-03-09)
+- narrative_summary: placed after evidence_count in model/schema/TS interface; getattr() in DTO reconstruction for backward compat (2026-03-09)
 - Router: every navigate() triggers bustAllCaches() + full unmount/remount -- no stale data on navigation (2026-03-08)
 - Same-route clicks use replaceState (not pushState) -- prevents back-button history pollution (2026-03-08)
 - bustAllCaches clears inFlight dedup map in addition to 4 circuit breaker caches (2026-03-08)
@@ -164,7 +168,7 @@ Key decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-03-08
-Stopped at: Completed 26-02-PLAN.md (route refresh + ComparisonPanel expandable cards)
+Last session: 2026-03-09
+Stopped at: Completed 26-01-PLAN.md (binary filter + narrative summary)
 Resume file: None
 Next: /gsd:execute-phase 26-03
