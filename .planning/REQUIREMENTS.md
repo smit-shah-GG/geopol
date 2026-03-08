@@ -238,11 +238,11 @@ Scope areas:
 
 ### Frontend Finalization
 
-- [ ] **POLISH-01**: Loading states for all panels and screens -- skeleton placeholders during API fetches, not blank space or frozen UI
-- [ ] **POLISH-02**: Error boundaries per panel -- a failed API call in one panel does not crash the entire screen; shows inline error with retry button
-- [ ] **POLISH-03**: Empty states for all data-dependent panels -- meaningful messages when no forecasts, no events, no comparisons exist (not blank panels)
-- [ ] **POLISH-04**: Performance optimization: lazy-load heavy panels (ScenarioExplorer, CalibrationPanel), debounce search/filter inputs, minimize DOM operations on refresh cycles
-- [ ] **POLISH-05**: Accessibility basics: keyboard navigation for all interactive elements, ARIA labels on map controls, sufficient color contrast ratios, focus management on modal open/close
+- [x] **POLISH-01**: Loading states for all panels and screens -- skeleton placeholders during API fetches, not blank space or frozen UI
+- [x] **POLISH-02**: Error boundaries per panel -- a failed API call in one panel does not crash the entire screen; shows inline error with retry button
+- [x] **POLISH-03**: Empty states for all data-dependent panels -- meaningful messages when no forecasts, no events, no comparisons exist (not blank panels)
+- [x] **POLISH-04**: Performance optimization: lazy-load heavy panels (ScenarioExplorer, CalibrationPanel), debounce search/filter inputs, minimize DOM operations on refresh cycles
+- [x] **POLISH-05**: Accessibility basics: keyboard navigation for all interactive elements, ARIA labels on map controls, sufficient color contrast ratios, focus management on modal open/close
 
 ## Future Requirements (Backlog)
 
@@ -398,11 +398,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | GLYR-01 | Phase 24 | Pending |
 | GLYR-02 | Phase 24 | Pending |
 | GLYR-03 | Phase 24 | Pending |
-| POLISH-01 | Phase 25 | Pending |
-| POLISH-02 | Phase 25 | Pending |
-| POLISH-03 | Phase 25 | Pending |
-| POLISH-04 | Phase 25 | Pending |
-| POLISH-05 | Phase 25 | Pending |
+| POLISH-01 | Phase 25 | Complete |
+| POLISH-02 | Phase 25 | Complete |
+| POLISH-03 | Phase 25 | Complete |
+| POLISH-04 | Phase 25 | Complete |
+| POLISH-05 | Phase 25 | Complete |
 
 **v2.0 Coverage:**
 - v2.0 requirements: 50 total (8 INFRA + 7 API + 8 FE + 6 INGEST + 5 AUTO + 6 CAL + 5 TKG + 5 MON)
