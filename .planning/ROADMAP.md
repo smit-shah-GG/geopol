@@ -517,10 +517,43 @@ Plans:
 - [x] 25-03-PLAN.md -- Accessibility: focus trapping in modals, ARIA labels, keyboard navigation, globe resize fix, visual verification
 
 
+### Phase 26: Operational Fixes & UX Polish
+**Goal**: Fix operational bugs (Polymarket binary-only filtering, poller enablement), fill in the scenario tree root node with news + rundown, make all forecast cards clickable with progressive disclosure, and force-refresh data on route navigation.
+**Depends on**: Phase 25 (frontend finalization) -- all polish infrastructure exists
+**Requirements**: From 5 success criteria (no formal requirement IDs)
+**Success Criteria** (what must be TRUE):
+  1. Polymarket auto-forecaster only targets binary yes/no markets -- multi-option markets (e.g., "Who will be the next X?") are filtered out before prediction
+  2. ScenarioExplorer root node displays relevant recent news articles and a narrative scenario rundown -- not an empty placeholder
+  3. Polymarket poller is enabled and running on schedule; baseline risk poller fires hourly
+  4. My Forecasts panel entries and Polymarket comparison entries are clickable with the same progressive disclosure (expand inline → "View Full Analysis") as Active Forecasts
+  5. Navigating to /dashboard or /globe triggers a full data refresh equivalent to a page reload -- no stale panel state from previous visits
+**Plans**: 3 plans
+
+Plans:
+- [ ] 26-01-PLAN.md -- Backend: Polymarket binary filter, narrative_summary column + generation, schema/DTO updates, poller verification
+- [ ] 26-02-PLAN.md -- Frontend infra: route refresh with cache bust, ComparisonPanel expandable cards
+- [ ] 26-03-PLAN.md -- Scenario tree overhaul: root node content, multi-line text, alternating sides, pan/zoom
+
+### Phase 27: 3D Globe
+**Goal**: Add a globe.gl-based 3D globe view (Three.js sphere, atmosphere shader, starfield, PBR materials) as the default globe view, with the existing deck.gl flat map retained as a toggleable alternative. All 5 analytic layers (choropleth, markers, arcs, heatmap, scenarios) render on both views.
+**Depends on**: Phase 26 (operational fixes) -- pollers running, data flowing
+**Requirements**: TBD (run /gsd:plan-phase 27)
+**Success Criteria** (what must be TRUE):
+  1. /globe defaults to 3D spherical globe with atmosphere glow, orbital camera, and starfield backdrop
+  2. User can toggle between 3D globe and 2D flat map -- both views are available, preference persisted in localStorage
+  3. All 5 analytic layers (risk choropleth, forecast markers, arcs, heatmap hexagons, scenario zones) render correctly on the 3D globe
+  4. Country click on 3D globe opens the same GlobeDrillDown panel as the 2D map
+  5. Performance: 3D globe maintains 30+ FPS on desktop with all layers enabled; render quality scaling adapts to device capability
+**Plans**: 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 27 to break down)
+
+
 ## Progress
 
 **Execution Order:**
-Phase 19 -> Phase 20. Then parallel: Phase 21 + Phase 22. Then Phase 23 (after 22), Phase 24 (after 21). Finally Phase 25 (after 23 and 24).
+Phase 19 -> Phase 20. Then parallel: Phase 21 + Phase 22. Then Phase 23 (after 22), Phase 24 (after 21). Phase 25 (after 23 and 24). Then Phase 26 -> Phase 27.
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -550,4 +583,7 @@ Phase 19 -> Phase 20. Then parallel: Phase 21 + Phase 22. Then Phase 23 (after 2
 | 24. Global Seeding & Globe Layers | v3.0 | 6/6 | Complete | 2026-03-08 |
 | 25. Frontend Finalization | v3.0 | 3/3 | Complete | 2026-03-08 |
 
-**Total:** 25 phases complete (v1.0 + v1.1 + v2.0 + v2.1 + v3.0), 90 plans delivered. v3.0: 7/7 phases complete.
+| 26. Operational Fixes & UX Polish | v3.0 | 0/3 | In Progress | - |
+| 27. 3D Globe | v3.0 | 0/0 | Planned | - |
+
+**Total:** 25 phases complete (v1.0 + v1.1 + v2.0 + v2.1 + v3.0 partial), 90 plans delivered. v3.0: 7/9 phases complete.
