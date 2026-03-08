@@ -42,12 +42,19 @@ export class LayerPillBar {
   }
 
   private buildBar(): HTMLElement {
-    const bar = h('div', { className: 'layer-pill-bar' });
+    const bar = h('div', {
+      className: 'layer-pill-bar',
+      role: 'toolbar',
+      'aria-label': 'Map layers',
+    });
 
     for (const [id, label] of LAYER_PILLS) {
+      const isActive = this.states[id];
       const pill = h('button', {
-        className: `layer-pill${this.states[id] ? ' active' : ''}`,
+        className: `layer-pill${isActive ? ' active' : ''}`,
         dataset: { layer: id },
+        'aria-label': `Toggle ${label} layer`,
+        'aria-pressed': String(isActive),
       }, label);
 
       pill.addEventListener('click', () => this.toggle(id));
@@ -61,10 +68,11 @@ export class LayerPillBar {
     const newState = !this.states[layerId];
     this.states[layerId] = newState;
 
-    // Update pill visual state
+    // Update pill visual state and ARIA pressed state
     const pill = this.bar.querySelector(`[data-layer="${layerId}"]`);
     if (pill) {
       pill.classList.toggle('active', newState);
+      pill.setAttribute('aria-pressed', String(newState));
     }
 
     // Push to DeckGLMap

@@ -14,6 +14,7 @@
 
 import * as d3 from 'd3';
 import { h, clearChildren } from '@/utils/dom-utils';
+import { trapFocus } from '@/utils/focus-trap';
 import { forecastClient } from '@/services/forecast-client';
 import type {
   AdvisoryDTO,
@@ -227,6 +228,8 @@ export class CountryBriefPage {
   private tabContent: HTMLElement | null = null;
   private activeTab: TabId = 'overview';
   private entityViewMode: 'graph' | 'table' = 'graph';
+  private releaseTrap: (() => void) | null = null;
+  private triggerElement: HTMLElement | null = null;
 
   // Loaded data (from loadData -- fetched on open)
   private currentIso: string | null = null;
@@ -265,6 +268,9 @@ export class CountryBriefPage {
   // ==================================================================
 
   public open(iso: string): void {
+    // Capture trigger element for focus restoration on close
+    this.triggerElement = document.activeElement as HTMLElement | null;
+
     this.currentIso = iso;
     this.activeTab = 'overview';
     this.forecasts = [];
@@ -282,6 +288,10 @@ export class CountryBriefPage {
   }
 
   public close(): void {
+    // Release focus trap before removing DOM
+    this.releaseTrap?.();
+    this.releaseTrap = null;
+
     document.removeEventListener('keydown', this.onKeyDown);
     if (this.backdrop) {
       this.backdrop.remove();
@@ -290,6 +300,10 @@ export class CountryBriefPage {
     this.modal = null;
     this.tabContent = null;
     this.currentIso = null;
+
+    // Restore focus to the element that triggered the modal
+    this.triggerElement?.focus();
+    this.triggerElement = null;
   }
 
   public destroy(): void {
@@ -336,7 +350,12 @@ export class CountryBriefPage {
     });
 
     // Modal
-    this.modal = h('div', { className: 'country-brief-modal' });
+    this.modal = h('div', {
+      className: 'country-brief-modal',
+      role: 'dialog',
+      'aria-modal': 'true',
+      'aria-label': 'Country Brief',
+    });
 
     // Header
     const flag = isoToFlag(iso);
@@ -357,11 +376,14 @@ export class CountryBriefPage {
     );
 
     // Tab bar
-    const tabBar = h('div', { className: 'country-brief-tabs' });
+    const tabBar = h('div', { className: 'country-brief-tabs', role: 'tablist' });
     for (const tabId of TAB_ORDER) {
+      const isActive = tabId === this.activeTab;
       const btn = h('button', {
-        className: `tab-button ${tabId === this.activeTab ? 'tab-active' : ''}`,
+        className: `tab-button ${isActive ? 'tab-active' : ''}`,
         dataset: { tab: tabId },
+        role: 'tab',
+        'aria-selected': String(isActive),
       }, TAB_LABELS[tabId]);
       btn.addEventListener('click', () => this.switchTab(tabId));
       tabBar.appendChild(btn);
@@ -378,17 +400,22 @@ export class CountryBriefPage {
 
     // Initial render (loading state)
     this.renderActiveTab();
+
+    // Activate focus trap after DOM is fully populated
+    this.releaseTrap = trapFocus(this.modal);
   }
 
   private switchTab(tabId: TabId): void {
     this.activeTab = tabId;
 
-    // Update tab bar active state
+    // Update tab bar active state and ARIA
     if (this.modal) {
       const buttons = this.modal.querySelectorAll('.tab-button');
       for (const btn of buttons) {
         const el = btn as HTMLElement;
-        el.classList.toggle('tab-active', el.dataset['tab'] === tabId);
+        const isActive = el.dataset['tab'] === tabId;
+        el.classList.toggle('tab-active', isActive);
+        el.setAttribute('aria-selected', String(isActive));
       }
     }
 

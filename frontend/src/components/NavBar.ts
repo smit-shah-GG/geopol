@@ -34,6 +34,11 @@ export function createNavBar(router: Router): HTMLElement {
       const isActive = a.dataset['path'] === current
         || (current === '/' && a.dataset['path'] === '/dashboard');
       a.classList.toggle('nav-link--active', isActive);
+      if (isActive) {
+        a.setAttribute('aria-current', 'page');
+      } else {
+        a.removeAttribute('aria-current');
+      }
     }
   };
 
@@ -55,7 +60,7 @@ export function createNavBar(router: Router): HTMLElement {
     linksContainer.appendChild(a);
   }
 
-  const nav = h('nav', { className: 'nav-bar' },
+  const nav = h('nav', { className: 'nav-bar', 'aria-label': 'Main navigation' },
     h('div', { className: 'nav-left' },
       h('span', { className: 'nav-logo' }, 'GEOPOL'),
     ),

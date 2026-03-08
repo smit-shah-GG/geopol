@@ -404,6 +404,8 @@ export class DeckGLMap {
   private setupDOM(): void {
     this.wrapper = h('div', {
       className: 'deckgl-map-wrapper',
+      role: 'application',
+      'aria-label': 'Geopolitical forecast map',
       style: 'position: relative; width: 100%; height: 100%; overflow: hidden;',
     });
 
@@ -455,6 +457,11 @@ export class DeckGLMap {
       // Container may not have had final computed dimensions at construction
       // time (e.g., absolutely-positioned parent not yet laid out).
       this.map!.resize();
+      // Secondary resize on next frame -- catches cases where flex/grid layout
+      // hasn't settled by the time 'load' fires (e.g., globe screen first mount).
+      requestAnimationFrame(() => {
+        this.map?.resize();
+      });
     });
 
     // WebGL context loss/restore

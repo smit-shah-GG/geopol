@@ -25,7 +25,11 @@ export class GlobeHud {
     this.countriesEl = h('span', { className: 'hud-value' }, '0');
     this.updateEl = h('span', { className: 'hud-value' }, '--');
 
-    this.element = h('div', { className: 'globe-hud' },
+    this.element = h('div', {
+      className: 'globe-hud',
+      role: 'status',
+      'aria-live': 'polite',
+    },
       h('div', { className: 'hud-item' },
         h('span', { className: 'hud-label' }, 'FORECASTS'),
         this.countEl,

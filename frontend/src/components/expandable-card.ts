@@ -175,12 +175,28 @@ export function buildExpandableCard(
     if (metaDiv) metaDiv.prepend(badge);
   }
 
-  // Click header area to toggle expansion
+  // Make header keyboard-accessible
   const header = card.querySelector('.forecast-card-header') as HTMLElement;
+  header.setAttribute('role', 'button');
+  header.setAttribute('tabindex', '0');
+  header.setAttribute('aria-expanded', String(opts.expandedIds.has(f.forecast_id)));
+
+  // Click header area to toggle expansion
   header.addEventListener('click', (e: MouseEvent) => {
     // Don't toggle if clicking "View Full Analysis" button
     if ((e.target as HTMLElement).closest('.view-full-btn')) return;
     opts.onToggle(f.forecast_id, card);
+    header.setAttribute('aria-expanded', String(card.classList.contains('expanded')));
+  });
+
+  // Keyboard handler: Enter or Space triggers the same toggle as click
+  header.addEventListener('keydown', (e: KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault(); // Prevent Space from scrolling the page
+      if ((e.target as HTMLElement).closest('.view-full-btn')) return;
+      opts.onToggle(f.forecast_id, card);
+      header.setAttribute('aria-expanded', String(card.classList.contains('expanded')));
+    }
   });
 
   // If this card was previously expanded, re-expand it

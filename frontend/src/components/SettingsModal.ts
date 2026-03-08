@@ -13,6 +13,7 @@
  */
 
 import { h, replaceChildren } from '@/utils/dom-utils';
+import { trapFocus } from '@/utils/focus-trap';
 
 // ---------------------------------------------------------------------------
 // Source data (shared with NewsFeedPanel via static definition)
@@ -161,6 +162,8 @@ export class SettingsModal {
   private overlay: HTMLElement;
   private modal: HTMLElement | null = null;
   private escapeHandler: ((e: KeyboardEvent) => void) | null = null;
+  private releaseTrap: (() => void) | null = null;
+  private triggerElement: HTMLElement | null = null;
   private categoryFilter: SourceCategory | null = null;
   private searchFilter = '';
   private disabled: Set<string>;
@@ -183,6 +186,9 @@ export class SettingsModal {
   // -------------------------------------------------------------------------
 
   public open(): void {
+    // Capture trigger element for focus restoration on close
+    this.triggerElement = document.activeElement as HTMLElement | null;
+
     // Re-read from localStorage in case another tab changed it
     this.disabled = getDisabledSources();
     this.render();
@@ -193,9 +199,18 @@ export class SettingsModal {
       if (e.key === 'Escape') this.close();
     };
     document.addEventListener('keydown', this.escapeHandler);
+
+    // Activate focus trap after modal is in DOM
+    if (this.modal) {
+      this.releaseTrap = trapFocus(this.modal);
+    }
   }
 
   public close(): void {
+    // Release focus trap before removing DOM
+    this.releaseTrap?.();
+    this.releaseTrap = null;
+
     this.overlay.classList.remove('visible');
     if (this.overlay.parentNode) {
       this.overlay.parentNode.removeChild(this.overlay);
@@ -205,6 +220,10 @@ export class SettingsModal {
       document.removeEventListener('keydown', this.escapeHandler);
       this.escapeHandler = null;
     }
+
+    // Restore focus to the element that triggered the modal
+    this.triggerElement?.focus();
+    this.triggerElement = null;
   }
 
   // -------------------------------------------------------------------------
@@ -229,7 +248,12 @@ export class SettingsModal {
     const disabledCount = this.disabled.size;
 
     // Build modal DOM
-    this.modal = h('div', { className: 'settings-modal' });
+    this.modal = h('div', {
+      className: 'settings-modal',
+      role: 'dialog',
+      'aria-modal': 'true',
+      'aria-label': 'Settings',
+    });
 
     // Header
     const header = h('div', { className: 'settings-modal-header' },

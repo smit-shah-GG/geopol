@@ -11,6 +11,7 @@
 
 import * as d3 from 'd3';
 import { h, clearChildren } from '@/utils/dom-utils';
+import { trapFocus } from '@/utils/focus-trap';
 import type { ForecastResponse, ScenarioDTO, EvidenceDTO } from '@/types/api';
 
 /** Maximum tree depth to render before showing a "+N deeper" indicator. */
@@ -66,6 +67,8 @@ export class ScenarioExplorer {
   private treeContainer: HTMLElement | null = null;
   private sidebar: HTMLElement | null = null;
   private tooltip: HTMLElement | null = null;
+  private releaseTrap: (() => void) | null = null;
+  private triggerElement: HTMLElement | null = null;
 
   private readonly onForecastSelected: (e: Event) => void;
   private readonly onKeyDown: (e: KeyboardEvent) => void;
@@ -88,11 +91,17 @@ export class ScenarioExplorer {
   // ==================================================================
 
   public open(forecast: ForecastResponse): void {
+    // Capture the trigger element so focus returns on close
+    this.triggerElement = document.activeElement as HTMLElement | null;
     this.buildModal(forecast);
     document.addEventListener('keydown', this.onKeyDown);
   }
 
   public close(): void {
+    // Release focus trap before removing DOM
+    this.releaseTrap?.();
+    this.releaseTrap = null;
+
     document.removeEventListener('keydown', this.onKeyDown);
     if (this.backdrop) {
       this.backdrop.remove();
@@ -105,6 +114,10 @@ export class ScenarioExplorer {
     this.modal = null;
     this.treeContainer = null;
     this.sidebar = null;
+
+    // Restore focus to the element that triggered the modal
+    this.triggerElement?.focus();
+    this.triggerElement = null;
   }
 
   public destroy(): void {
@@ -125,7 +138,12 @@ export class ScenarioExplorer {
     this.backdrop = h('div', { className: 'scenario-explorer-backdrop' });
 
     // Modal container
-    this.modal = h('div', { className: 'scenario-explorer-modal' });
+    this.modal = h('div', {
+      className: 'scenario-explorer-modal',
+      role: 'dialog',
+      'aria-modal': 'true',
+      'aria-label': 'Scenario Explorer',
+    });
 
     // Header
     const probColor = forecast.probability >= 0.7
@@ -172,6 +190,9 @@ export class ScenarioExplorer {
 
     // Render the tree after the modal is in the DOM
     this.renderTree(forecast);
+
+    // Activate focus trap after DOM is fully populated
+    this.releaseTrap = trapFocus(this.modal);
   }
 
   // ==================================================================
