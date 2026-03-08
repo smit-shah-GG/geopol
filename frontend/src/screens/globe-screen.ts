@@ -16,8 +16,9 @@
  *   country-brief-requested -> CountryBriefPage.open
  *
  * Refresh scheduling:
- *   countries -> every 120s (risk scores + HUD + choropleth)
- *   forecasts -> every 60s  (markers + scatter layer)
+ *   countries  -> every 120s (risk scores + HUD + choropleth)
+ *   forecasts  -> every 60s  (markers + scatter layer)
+ *   layers     -> every 300s (heatmap hexbins + arcs + risk deltas)
  *
  * Fulfills: SCREEN-03, GLOBE-01, GLOBE-02, GLOBE-03.
  */
@@ -29,8 +30,8 @@ import { RefreshScheduler } from '@/app/refresh-scheduler';
 import { GlobeHud } from '@/components/GlobeHud';
 import { GlobeDrillDown } from '@/components/GlobeDrillDown';
 import type { GeoPolAppContext } from '@/app/app-context';
-import type { DeckGLMap } from '@/components/DeckGLMap';
-import type { CountryRiskSummary, ForecastResponse } from '@/types/api';
+import type { DeckGLMap, HexBinDatum, BilateralArcDatum, RiskDeltaDatum } from '@/components/DeckGLMap';
+import type { CountryRiskSummary, ForecastResponse, HexbinData, ArcData, RiskDeltaData } from '@/types/api';
 
 // Lazy imports -- only resolved when needed
 import type { ScenarioExplorer } from '@/components/ScenarioExplorer';
@@ -86,13 +87,13 @@ export async function mountGlobe(
     // Construct map
     deckMap = new DeckGLMap(mapContainer);
 
-    // Globe-specific layer defaults: choropleth + markers ON, others OFF
+    // All layers ON by default -- real data exists for all layers now
     deckMap.setLayerDefaults({
       ForecastRiskChoropleth: true,
       ActiveForecastMarkers: true,
-      KnowledgeGraphArcs: false,
-      GDELTEventHeatmap: false,
-      ScenarioZones: false,
+      KnowledgeGraphArcs: true,
+      GDELTEventHeatmap: true,
+      ScenarioZones: true,
     });
 
     // Construct overlay components
@@ -140,6 +141,20 @@ export async function mountGlobe(
           pushForecasts(forecasts);
         },
         intervalMs: 60_000,
+      },
+      {
+        name: 'globe-layers',
+        fn: async () => {
+          const [heatmap, arcs, deltas] = await Promise.all([
+            forecastClient.getHeatmapData(),
+            forecastClient.getArcData(),
+            forecastClient.getRiskDeltas(),
+          ]);
+          pushHeatmap(heatmap);
+          pushArcs(arcs);
+          pushDeltas(deltas);
+        },
+        intervalMs: 300_000, // 5 minutes (layer data is hourly-computed on server)
       },
     ]);
   } catch (err) {
@@ -234,12 +249,25 @@ function wireEvents(_ctx: GeoPolAppContext): void {
 
 async function loadInitialData(): Promise<void> {
   try {
+    // Load core data (countries + forecasts) and layer data in parallel.
+    // Layer data load failures are non-fatal -- layers simply remain empty
+    // until the next 5-minute refresh cycle succeeds.
     const [countries, forecasts] = await Promise.all([
       forecastClient.getCountries(),
       forecastClient.getTopForecasts(50),
     ]);
     pushCountries(countries);
     pushForecasts(forecasts);
+
+    // Layer data loaded separately -- circuit breaker handles failures gracefully
+    const [heatmap, arcs, deltas] = await Promise.all([
+      forecastClient.getHeatmapData(),
+      forecastClient.getArcData(),
+      forecastClient.getRiskDeltas(),
+    ]);
+    pushHeatmap(heatmap);
+    pushArcs(arcs);
+    pushDeltas(deltas);
   } catch (err) {
     console.error('[GlobeScreen] Initial data load failed:', err);
   }
@@ -258,4 +286,54 @@ function pushForecasts(forecasts: ForecastResponse[]): void {
   if (deckMap) {
     deckMap.updateForecasts(forecasts);
   }
+}
+
+/**
+ * Convert API HexbinData to DeckGLMap HexBinDatum and push.
+ * Field names align 1:1 -- no mapping needed.
+ */
+function pushHeatmap(data: HexbinData[]): void {
+  if (!deckMap) return;
+  const mapped: HexBinDatum[] = data.map((d) => ({
+    h3_index: d.h3_index,
+    weight: d.weight,
+    event_count: d.event_count,
+  }));
+  deckMap.updateHeatmapData(mapped);
+}
+
+/**
+ * Convert API ArcData to DeckGLMap BilateralArcDatum.
+ * Resolves country centroids via countryGeometry. Drops arcs where
+ * either centroid is unavailable (unknown ISO code).
+ */
+function pushArcs(data: ArcData[]): void {
+  if (!deckMap) return;
+  const mapped: BilateralArcDatum[] = [];
+  for (const d of data) {
+    const src = countryGeometry.getCentroid(d.source_iso.toUpperCase());
+    const tgt = countryGeometry.getCentroid(d.target_iso.toUpperCase());
+    if (!src || !tgt) continue;
+    mapped.push({
+      sourceIso: d.source_iso.toUpperCase(),
+      targetIso: d.target_iso.toUpperCase(),
+      source: src,
+      target: tgt,
+      eventCount: d.event_count,
+      avgGoldstein: d.avg_goldstein,
+    });
+  }
+  deckMap.updateArcData(mapped);
+}
+
+/**
+ * Convert API RiskDeltaData to DeckGLMap RiskDeltaDatum and push.
+ */
+function pushDeltas(data: RiskDeltaData[]): void {
+  if (!deckMap) return;
+  const mapped: RiskDeltaDatum[] = data.map((d) => ({
+    iso: d.country_iso.toUpperCase(),
+    delta: d.delta,
+  }));
+  deckMap.updateRiskDeltas(mapped);
 }

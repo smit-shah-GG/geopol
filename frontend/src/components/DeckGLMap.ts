@@ -2,30 +2,33 @@
  * DeckGLMap -- WebGL globe with 5 analytic layers for the Geopol dashboard.
  *
  * Layers:
- *   1. ForecastRiskChoropleth  (GeoJsonLayer)   -- country fill by risk_score
- *   2. ActiveForecastMarkers   (ScatterplotLayer)-- centroids of forecast targets
- *   3. KnowledgeGraphArcs      (ArcLayer)        -- actor-to-actor on selection
- *   4. GDELTEventHeatmap       (HeatmapLayer)    -- event density
- *   5. ScenarioZones           (GeoJsonLayer)     -- scenario-relevant countries
+ *   1. ForecastRiskChoropleth  (GeoJsonLayer)      -- country fill by risk_score
+ *   2. ActiveForecastMarkers   (ScatterplotLayer)   -- centroids of forecast targets
+ *   3. KnowledgeGraphArcs      (ArcLayer)           -- bilateral arcs (global or per-country)
+ *   4. GDELTEventHeatmap       (H3HexagonLayer)     -- H3 hex event density
+ *   5. ScenarioZones           (GeoJsonLayer)        -- risk delta regions or scenario highlights
  *
  * NOT a Panel subclass. Standalone map component that renders into a given
  * container element and exposes a public data-push API for screen wiring.
  *
  * Public API for external layer control:
- *   - flyToCountry(iso)       -- animate camera to country centroid
- *   - setLayerVisible(id, v)  -- toggle individual layer visibility
- *   - setLayerDefaults(map)   -- batch-set layer visibility (e.g. globe screen)
- *   - getLayerVisible(id)     -- query layer visibility state
- *   - getMap()                -- access underlying maplibre-gl Map instance
+ *   - flyToCountry(iso)           -- animate camera to country centroid
+ *   - setLayerVisible(id, v)      -- toggle individual layer visibility
+ *   - setLayerDefaults(map)       -- batch-set layer visibility (e.g. globe screen)
+ *   - getLayerVisible(id)         -- query layer visibility state
+ *   - getMap()                    -- access underlying maplibre-gl Map instance
+ *   - updateHeatmapData(data)     -- push H3 hexbin data for heatmap layer
+ *   - updateArcData(data)         -- push bilateral arc data for arcs layer
+ *   - updateRiskDeltas(deltas)    -- push risk delta data for scenario zones layer
  *
  * Built-in toggle panel removed -- external LayerPillBar (Plan 02) manages
  * layer visibility via setLayerVisible()/getLayerVisible() public API.
  */
 
 import { MapboxOverlay } from '@deck.gl/mapbox';
-import type { PickingInfo } from '@deck.gl/core';
+import type { PickingInfo, Layer } from '@deck.gl/core';
 import { GeoJsonLayer, ScatterplotLayer, ArcLayer } from '@deck.gl/layers';
-import { HeatmapLayer } from '@deck.gl/aggregation-layers';
+import { H3HexagonLayer } from '@deck.gl/geo-layers';
 import maplibregl from 'maplibre-gl';
 import type { Feature, Geometry, FeatureCollection } from 'geojson';
 import { countryGeometry, normalizeCode } from '@/services/country-geometry.ts';
@@ -113,9 +116,27 @@ interface ArcDatum {
   target: [number, number];
 }
 
-interface HeatDatum {
-  position: [number, number];
+/** H3 hexagonal bin datum for the event heatmap layer. */
+export interface HexBinDatum {
+  h3_index: string;
   weight: number;
+  event_count: number;
+}
+
+/** Bilateral arc datum with sentiment (Goldstein scale) and volume. */
+export interface BilateralArcDatum {
+  sourceIso: string;
+  targetIso: string;
+  source: [number, number];
+  target: [number, number];
+  eventCount: number;
+  avgGoldstein: number;
+}
+
+/** Risk delta datum for the scenarios/risk-change layer. */
+export interface RiskDeltaDatum {
+  iso: string;
+  delta: number;  // positive = worsening, negative = improving
 }
 
 // ---------------------------------------------------------------------------
@@ -139,16 +160,21 @@ export class DeckGLMap {
     ScenarioZones: true,
   };
 
-  // Data stores
+  // Data stores -- choropleth + markers
   private riskScores = new Map<string, number>();
   private riskTimestamp = 0;
   private markers: MarkerDatum[] = [];
   private arcs: ArcDatum[] = [];
-  private heatData: HeatDatum[] = [];
   private scenarioIsos = new Set<string>();
+
+  // Data stores -- globe layer data (Phase 24)
+  private hexBinData: HexBinDatum[] = [];
+  private bilateralArcs: BilateralArcDatum[] = [];
+  private riskDeltaIsos = new Map<string, number>(); // iso -> delta
 
   // Selection state
   private selectedCountry: string | null = null;
+  private selectedForecast: ForecastResponse | null = null;
 
   // Event listener references for cleanup
   private readonly onThemeChanged: (e: Event) => void;
@@ -226,6 +252,7 @@ export class DeckGLMap {
    */
   setSelectedForecast(forecast: ForecastResponse | null): void {
     this.scenarioIsos.clear();
+    this.selectedForecast = forecast;
 
     if (forecast) {
       // Collect all entity ISOs from the scenario tree
@@ -246,6 +273,37 @@ export class DeckGLMap {
       collectEntities(forecast.scenarios);
     }
 
+    this.rebuildLayers();
+  }
+
+  /**
+   * Push H3 hexbin data for the heatmap layer.
+   * Replaces any existing heatmap data and rebuilds layers.
+   */
+  updateHeatmapData(data: HexBinDatum[]): void {
+    this.hexBinData = data;
+    this.rebuildLayers();
+  }
+
+  /**
+   * Push bilateral arc data for the arcs layer (global view).
+   * When no country is selected, these arcs render as the KnowledgeGraphArcs layer.
+   */
+  updateArcData(data: BilateralArcDatum[]): void {
+    this.bilateralArcs = data;
+    this.rebuildLayers();
+  }
+
+  /**
+   * Push risk delta data for the ScenarioZones layer.
+   * When no forecast is selected, renders countries with significant risk changes
+   * (red = worsening, green = improving).
+   */
+  updateRiskDeltas(deltas: RiskDeltaDatum[]): void {
+    this.riskDeltaIsos.clear();
+    for (const d of deltas) {
+      this.riskDeltaIsos.set(d.iso.toUpperCase(), d.delta);
+    }
     this.rebuildLayers();
   }
 
@@ -433,8 +491,8 @@ export class DeckGLMap {
     }
   }
 
-  private buildLayers(): (GeoJsonLayer | ScatterplotLayer | ArcLayer | HeatmapLayer)[] {
-    const layers: (GeoJsonLayer | ScatterplotLayer | ArcLayer | HeatmapLayer)[] = [];
+  private buildLayers(): Layer[] {
+    const layers: Layer[] = [];
     const geoJson = countryGeometry.getFeatureCollection();
 
     // Layer 1: ForecastRiskChoropleth
@@ -494,67 +552,174 @@ export class DeckGLMap {
     }
 
     // Layer 3: KnowledgeGraphArcs
-    if (this.layerVisible.KnowledgeGraphArcs && this.arcs.length > 0 && this.selectedCountry) {
-      layers.push(
-        new ArcLayer<ArcDatum>({
-          id: 'KnowledgeGraphArcs',
-          data: this.arcs,
-          pickable: false,
-          getSourcePosition: (d) => d.source,
-          getTargetPosition: (d) => d.target,
-          getSourceColor: [0, 200, 255, 180],
-          getTargetColor: [255, 100, 100, 180],
-          getWidth: 2,
-          greatCircle: true,
-        }),
-      );
-    }
-
-    // Layer 4: GDELTEventHeatmap
-    if (this.layerVisible.GDELTEventHeatmap && this.heatData.length > 0) {
-      layers.push(
-        new HeatmapLayer<HeatDatum>({
-          id: 'GDELTEventHeatmap',
-          data: this.heatData,
-          getPosition: (d) => d.position,
-          getWeight: (d) => d.weight,
-          radiusPixels: 30,
-          intensity: 1,
-          threshold: 0.03,
-        }),
-      );
-    }
-
-    // Layer 5: ScenarioZones
-    if (this.layerVisible.ScenarioZones && this.scenarioIsos.size > 0 && geoJson) {
-      const scenarioFeatures: Feature<Geometry>[] = geoJson.features.filter((f) => {
-        const code = normalizeCode(f.properties);
-        return code !== null && this.scenarioIsos.has(code);
-      });
-
-      if (scenarioFeatures.length > 0) {
-        const fc: FeatureCollection<Geometry> = {
-          type: 'FeatureCollection',
-          features: scenarioFeatures,
-        };
-        const accent = accentColor();
-
+    // Two modes:
+    //   a) Country selected: show arcs from selected country to scenario entities
+    //   b) No country selected + bilateral data: show global bilateral arcs
+    if (this.layerVisible.KnowledgeGraphArcs) {
+      if (this.selectedCountry && this.arcs.length > 0) {
+        // Mode A: per-country scenario arcs (existing behavior)
         layers.push(
-          new GeoJsonLayer({
-            id: 'ScenarioZones',
-            data: fc,
+          new ArcLayer<ArcDatum>({
+            id: 'KnowledgeGraphArcs',
+            data: this.arcs,
             pickable: false,
-            stroked: true,
-            filled: true,
-            getFillColor: accent,
-            getLineColor: [accent[0], accent[1], accent[2], 160],
-            getLineWidth: 2,
-            lineWidthMinPixels: 1,
+            getSourcePosition: (d) => d.source,
+            getTargetPosition: (d) => d.target,
+            getSourceColor: [0, 200, 255, 180],
+            getTargetColor: [255, 100, 100, 180],
+            getWidth: 2,
+            greatCircle: true,
+          }),
+        );
+      } else if (this.bilateralArcs.length > 0) {
+        // Mode B: global bilateral arcs with sentiment coloring
+        layers.push(
+          new ArcLayer<BilateralArcDatum>({
+            id: 'KnowledgeGraphArcs',
+            data: this.bilateralArcs,
+            pickable: true,
+            getSourcePosition: (d) => d.source,
+            getTargetPosition: (d) => d.target,
+            getSourceColor: (d) => d.avgGoldstein < 0
+              ? [255, 80, 80, 180] as RGBA    // conflictual (negative Goldstein)
+              : [80, 180, 255, 180] as RGBA,   // cooperative (positive Goldstein)
+            getTargetColor: (d) => d.avgGoldstein < 0
+              ? [255, 80, 80, 180] as RGBA
+              : [80, 180, 255, 180] as RGBA,
+            getWidth: (d) => Math.max(1, Math.min(5, d.eventCount / 20)),
+            greatCircle: true,
             updateTriggers: {
-              getFillColor: [this.scenarioIsos.size],
+              getSourceColor: [this.bilateralArcs.length],
+              getTargetColor: [this.bilateralArcs.length],
+              getWidth: [this.bilateralArcs.length],
             },
           }),
         );
+      }
+    }
+
+    // Layer 4: GDELTEventHeatmap (H3 hexagonal bins)
+    if (this.layerVisible.GDELTEventHeatmap && this.hexBinData.length > 0) {
+      const maxWeight = this.hexBinData.reduce(
+        (max, d) => Math.max(max, d.weight), 1,
+      );
+      // Capture in local for the accessor closure (avoids `this` reference
+      // inside deck.gl accessor which may be called with different `this`)
+      const hexData = this.hexBinData;
+      const mw = maxWeight;
+
+      layers.push(
+        new H3HexagonLayer<HexBinDatum>({
+          id: 'GDELTEventHeatmap',
+          data: hexData,
+          pickable: true,
+          getHexagon: (d: HexBinDatum) => d.h3_index,
+          getFillColor: (d: HexBinDatum) => {
+            // Weight-based intensity: yellow [255,255,0] -> red [255,0,0]
+            const t = Math.min(1, d.weight / mw);
+            return [
+              255,
+              Math.round(255 * (1 - t)),
+              0,
+              Math.round(100 + 120 * t),
+            ] as RGBA;
+          },
+          getElevation: (d: HexBinDatum) => d.weight,
+          elevationScale: 1000,
+          extruded: false,
+          coverage: 0.9,
+          updateTriggers: {
+            getFillColor: [hexData.length, mw],
+          },
+        }),
+      );
+    }
+
+    // Layer 5: ScenarioZones / Risk Delta Regions
+    // Two modes:
+    //   a) Forecast selected: highlight scenario-relevant countries (accent color)
+    //   b) No forecast selected + risk deltas: show risk change zones (red/green)
+    if (this.layerVisible.ScenarioZones && geoJson) {
+      if (this.selectedForecast && this.scenarioIsos.size > 0) {
+        // Mode A: scenario entity highlights (existing behavior)
+        const scenarioFeatures: Feature<Geometry>[] = geoJson.features.filter((f) => {
+          const code = normalizeCode(f.properties);
+          return code !== null && this.scenarioIsos.has(code);
+        });
+
+        if (scenarioFeatures.length > 0) {
+          const fc: FeatureCollection<Geometry> = {
+            type: 'FeatureCollection',
+            features: scenarioFeatures,
+          };
+          const accent = accentColor();
+
+          layers.push(
+            new GeoJsonLayer({
+              id: 'ScenarioZones',
+              data: fc,
+              pickable: false,
+              stroked: true,
+              filled: true,
+              getFillColor: accent,
+              getLineColor: [accent[0], accent[1], accent[2], 160],
+              getLineWidth: 2,
+              lineWidthMinPixels: 1,
+              updateTriggers: {
+                getFillColor: [this.scenarioIsos.size],
+              },
+            }),
+          );
+        }
+      } else if (this.riskDeltaIsos.size > 0) {
+        // Mode B: risk delta visualization (Phase 24)
+        const deltaMap = this.riskDeltaIsos;
+        const deltaFeatures: Feature<Geometry>[] = geoJson.features.filter((f) => {
+          const code = normalizeCode(f.properties);
+          return code !== null && deltaMap.has(code);
+        });
+
+        if (deltaFeatures.length > 0) {
+          const fc: FeatureCollection<Geometry> = {
+            type: 'FeatureCollection',
+            features: deltaFeatures,
+          };
+
+          layers.push(
+            new GeoJsonLayer({
+              id: 'ScenarioZones',
+              data: fc,
+              pickable: true,
+              stroked: true,
+              filled: true,
+              getFillColor: (f: Feature<Geometry>) => {
+                const code = normalizeCode(f.properties);
+                const delta = code ? deltaMap.get(code) ?? 0 : 0;
+                // Alpha proportional to |delta| / 50, capped at [60, 160]
+                const alpha = Math.round(60 + Math.min(100, (Math.abs(delta) / 50) * 100));
+                if (delta > 0) {
+                  // Risk worsening: red fill
+                  return [220, 50, 50, alpha] as RGBA;
+                }
+                // Risk improving: green fill
+                return [50, 180, 80, alpha] as RGBA;
+              },
+              getLineColor: (f: Feature<Geometry>) => {
+                const code = normalizeCode(f.properties);
+                const delta = code ? deltaMap.get(code) ?? 0 : 0;
+                return delta > 0
+                  ? [220, 50, 50, 120] as RGBA
+                  : [50, 180, 80, 120] as RGBA;
+              },
+              getLineWidth: 1,
+              lineWidthMinPixels: 0.5,
+              updateTriggers: {
+                getFillColor: [deltaMap.size],
+                getLineColor: [deltaMap.size],
+              },
+            }),
+          );
+        }
       }
     }
 
@@ -623,6 +788,24 @@ export class DeckGLMap {
         ? marker.question.slice(0, 77) + '...'
         : marker.question;
       content = `<strong>${name}</strong><br/>${q}<br/>P: ${pct}%`;
+    } else if (info.layer.id === 'GDELTEventHeatmap') {
+      const hex = info.object as HexBinDatum;
+      content = `Events: ${hex.event_count}<br/>Weight: ${hex.weight.toFixed(1)}`;
+    } else if (info.layer.id === 'KnowledgeGraphArcs' && !this.selectedCountry) {
+      // Bilateral arc tooltip
+      const arc = info.object as BilateralArcDatum;
+      const srcName = countryGeometry.getNameByIso(arc.sourceIso) ?? arc.sourceIso;
+      const tgtName = countryGeometry.getNameByIso(arc.targetIso) ?? arc.targetIso;
+      const sentiment = arc.avgGoldstein < 0 ? 'Conflictual' : 'Cooperative';
+      content = `<strong>${srcName} &harr; ${tgtName}</strong><br/>${sentiment} (${arc.avgGoldstein.toFixed(1)})<br/>Events: ${arc.eventCount}`;
+    } else if (info.layer.id === 'ScenarioZones' && this.riskDeltaIsos.size > 0 && !this.selectedForecast) {
+      // Risk delta tooltip
+      const feature = info.object as Feature<Geometry>;
+      const code = normalizeCode(feature.properties);
+      const name = countryGeometry.getNameByIso(code ?? '') ?? code ?? 'Unknown';
+      const delta = code ? this.riskDeltaIsos.get(code) ?? 0 : 0;
+      const direction = delta > 0 ? 'Worsening' : 'Improving';
+      content = `<strong>${name}</strong><br/>${direction}: ${delta > 0 ? '+' : ''}${delta.toFixed(1)} pts`;
     }
 
     if (content && info.x !== undefined && info.y !== undefined) {
