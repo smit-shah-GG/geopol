@@ -311,6 +311,7 @@ function pushArcs(data: ArcData[]): void {
   if (!deckMap) return;
   const mapped: BilateralArcDatum[] = [];
   for (const d of data) {
+    if (!d.source_iso || !d.target_iso) continue;
     const src = countryGeometry.getCentroid(d.source_iso.toUpperCase());
     const tgt = countryGeometry.getCentroid(d.target_iso.toUpperCase());
     if (!src || !tgt) continue;

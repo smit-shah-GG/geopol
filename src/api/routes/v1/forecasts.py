@@ -132,7 +132,7 @@ _post_rate_limiter = get_rate_limiter(daily_limit=50)
     description="Returns the highest-probability active forecasts across all countries.",
 )
 async def get_top_forecasts(
-    limit: int = Query(default=5, ge=1, le=20, description="Number of top forecasts"),
+    limit: int = Query(default=5, ge=1, le=50, description="Number of top forecasts"),
     _client: str = Depends(verify_api_key),
     cache: ForecastCache = Depends(get_cache),
     db: AsyncSession = Depends(get_db),

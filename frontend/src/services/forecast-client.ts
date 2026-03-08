@@ -432,7 +432,10 @@ export class ForecastServiceClient {
     const key = '/globe/heatmap';
     return this.dedup(key, () =>
       this.eventsBreaker.execute(
-        () => this.fetchJson<HexbinData[]>(key),
+        async () => {
+          const envelope = await this.fetchJson<{ hexbins: HexbinData[] }>(key);
+          return envelope.hexbins ?? [];
+        },
         EMPTY_HEXBINS,
       ),
     ) as Promise<HexbinData[]>;
@@ -443,7 +446,10 @@ export class ForecastServiceClient {
     const key = '/globe/arcs';
     return this.dedup(key, () =>
       this.eventsBreaker.execute(
-        () => this.fetchJson<ArcData[]>(key),
+        async () => {
+          const envelope = await this.fetchJson<{ arcs: ArcData[] }>(key);
+          return envelope.arcs ?? [];
+        },
         EMPTY_ARCS,
       ),
     ) as Promise<ArcData[]>;
@@ -454,7 +460,10 @@ export class ForecastServiceClient {
     const key = '/globe/deltas';
     return this.dedup(key, () =>
       this.eventsBreaker.execute(
-        () => this.fetchJson<RiskDeltaData[]>(key),
+        async () => {
+          const envelope = await this.fetchJson<{ deltas: RiskDeltaData[] }>(key);
+          return envelope.deltas ?? [];
+        },
         EMPTY_DELTAS,
       ),
     ) as Promise<RiskDeltaData[]>;
