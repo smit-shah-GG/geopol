@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 def compute_risk_deltas(
     current_risks: dict[str, float],
     previous_risks: dict[str, float],
-    threshold: float = 10.0,
+    threshold: float = 3.0,
 ) -> list[dict]:
     """Compute significant risk score changes per country.
 
