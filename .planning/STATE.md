@@ -5,25 +5,25 @@
 See: .planning/PROJECT.md (updated 2026-03-04)
 
 **Core value:** Explainability -- every forecast must provide clear, traceable reasoning paths
-**Current focus:** v3.0 Operational Command & Verification -- Complete
+**Current focus:** v3.0 Operational Command & Verification -- Phase 26 (Operational Fixes & UX Polish)
 
 ## Current Position
 
 Milestone: v3.0 Operational Command & Verification
-Phase: 25 of 25 (Frontend Finalization) -- Complete
-Plan: 03 of 03
-Status: Complete
-Last activity: 2026-03-08 -- Completed Phase 25 (Frontend Finalization) -- v3.0 milestone complete
+Phase: 26 of 27 (Operational Fixes & UX Polish)
+Plan: 02 of 03 (Route Refresh + ComparisonPanel Expandable Cards)
+Status: In progress
+Last activity: 2026-03-08 -- Completed 26-02-PLAN.md
 
-Progress: [########################################################] 100% (90 plans lifetime)
-v3.0:    [############################] 100% (29/29 plans in v3.0 -- 7/7 phases)
+Progress: [########################################################] 100% (92 plans lifetime)
+v3.0:    [##############################] ~84% (31 plans in v3.0 -- 7/9 phases + 2 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 90
+- Total plans completed: 92
 - Average duration: 10 minutes
-- Total execution time: 13.7 hours
+- Total execution time: 13.8 hours
 
 **By Phase:**
 
@@ -54,6 +54,7 @@ v3.0:    [############################] 100% (29/29 plans in v3.0 -- 7/7 phases)
 | 23-historical-backtesting | 3 | 31min | 10min |
 | 24-global-seeding-globe-layers | 6 | 23min | 4min |
 | 25-frontend-finalization | 3/3 | 23min | 8min |
+| 26-operational-fixes-ux-polish | 2/3 | 8min | 4min |
 
 ## Accumulated Context
 
@@ -135,6 +136,12 @@ Key decisions affecting current work:
 - ScenarioExplorer: statically imported on dashboard (core interaction), lazy on forecasts + globe screens (2026-03-08)
 - GlobeDrillDown sparkline: 500 events, 30-day window, SVG polyline + filled polygon area (2026-03-08)
 - Lazy modal pattern: proxy event listener -> dynamic import -> cache instance -> remove proxy (2026-03-08)
+- Router: every navigate() triggers bustAllCaches() + full unmount/remount -- no stale data on navigation (2026-03-08)
+- Same-route clicks use replaceState (not pushState) -- prevents back-button history pollution (2026-03-08)
+- bustAllCaches clears inFlight dedup map in addition to 4 circuit breaker caches (2026-03-08)
+- ComparisonPanel: custom dual-bar collapsed view preserved, buildExpandedContent for expanded section (2026-03-08)
+- ComparisonPanel: expandedIds as Set<number> (comp.id PK), forecastCache as Map<string, ForecastResponse> (2026-03-08)
+- SubmissionForm: sessionStorage key 'geopol-submission-draft' persists textarea across remounts, cleared on confirm (2026-03-08)
 
 ### Deferred Issues
 
@@ -158,6 +165,6 @@ Key decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-03-08
-Stopped at: Phase 25 complete -- v3.0 milestone complete
+Stopped at: Completed 26-02-PLAN.md (route refresh + ComparisonPanel expandable cards)
 Resume file: None
-Next: /gsd:audit-milestone or /gsd:complete-milestone
+Next: /gsd:execute-phase 26-03
