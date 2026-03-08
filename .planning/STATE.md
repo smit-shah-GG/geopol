@@ -11,19 +11,19 @@ See: .planning/PROJECT.md (updated 2026-03-04)
 
 Milestone: v3.0 Operational Command & Verification
 Phase: 24 of 25 (Global Seeding & Globe Layers) -- In progress
-Plan: 04 of 06
+Plan: 05 of 06
 Status: In progress
-Last activity: 2026-03-08 -- Completed 24-04-PLAN.md (Seeding Computation Engine + APScheduler Wiring)
+Last activity: 2026-03-08 -- Completed 24-05-PLAN.md (API Endpoints: Dual-Score Countries + Globe Layers)
 
-Progress: [########################################################] 100% (87/80+ plans lifetime)
-v3.0:    [########################] 96% (24/25 plans in v3.0 -- 5/7 phases)
+Progress: [########################################################] 100% (88/80+ plans lifetime)
+v3.0:    [#########################] 96% (25/25 plans in v3.0 -- 5/7 phases)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 85
+- Total plans completed: 86
 - Average duration: 10 minutes
-- Total execution time: 13.0 hours
+- Total execution time: 13.1 hours
 
 **By Phase:**
 
@@ -52,7 +52,7 @@ v3.0:    [########################] 96% (24/25 plans in v3.0 -- 5/7 phases)
 | 21-source-expansion-feed-mgmt | 5 | 34min | 7min |
 | 22-polymarket-hardening | 3 | 23min | 8min |
 | 23-historical-backtesting | 3 | 31min | 10min |
-| 24-global-seeding-globe-layers | 4 | 13min | 3min |
+| 24-global-seeding-globe-layers | 5 | 17min | 3min |
 
 ## Accumulated Context
 
@@ -117,6 +117,9 @@ Key decisions affecting current work:
 - heavy_baseline_risk uses skip-if-locked (not queue) -- silently skips when heavy_job_lock is held, retries next hour (2026-03-08)
 - compute_all_layers: full table replace (DELETE all + INSERT new) in single transaction -- simpler than UPSERT (2026-03-08)
 - Heatmap uses 30-day window (vs 90-day for baseline risk) -- shows recent hotspots, not historical spread (2026-03-08)
+- Two-query Python-side merge: baseline table scan + forecast CTE for countries endpoint (2026-03-08)
+- Layer endpoints return envelope objects with computed_at for staleness display (2026-03-08)
+- GET /countries/{iso} no longer 404 for baseline-only countries (returns baseline risk with forecast_risk=None) (2026-03-08)
 
 ### Deferred Issues
 
@@ -140,6 +143,6 @@ Key decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-03-08
-Stopped at: Completed 24-04-PLAN.md (Seeding Computation Engine + APScheduler Wiring)
+Stopped at: Completed 24-05-PLAN.md (API Endpoints: Dual-Score Countries + Globe Layers)
 Resume file: None
-Next: 24-05-PLAN.md (API Endpoints)
+Next: 24-06-PLAN.md (Frontend Globe Layer Wiring)
