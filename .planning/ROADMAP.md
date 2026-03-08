@@ -386,7 +386,7 @@ Phases 21, 22, and 24 are independent tracks after Phase 20 and can run in paral
 - [x] **Phase 22: Polymarket Hardening** -- Fix created_at overwrite bug, cumulative Brier score tracking, head-to-head accuracy panel, resolution tracking, polling reliability
 - [x] **Phase 23: Historical Backtesting** -- Walk-forward evaluation harness, model comparison (TiRGN vs RE-GCN), calibration audit (reliability diagrams over time), look-ahead bias prevention
 - [x] **Phase 24: Global Seeding & Globe Layers** -- Baseline risk for all ~195 countries, heatmap/arcs/scenarios data wiring, advisory-level risk floors, active forecast override
-- [ ] **Phase 25: Frontend Finalization** -- Loading states, error boundaries, empty states, performance optimization, accessibility basics
+- [x] **Phase 25: Frontend Finalization** -- Loading states, error boundaries, empty states, performance optimization, accessibility basics
 
 ## Phase Details
 
@@ -530,9 +530,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 26-01-PLAN.md -- Backend: Polymarket binary filter, narrative_summary column + generation, schema/DTO updates, poller verification
-- [ ] 26-02-PLAN.md -- Frontend infra: route refresh with cache bust, ComparisonPanel expandable cards
-- [ ] 26-03-PLAN.md -- Scenario tree overhaul: root node content, multi-line text, alternating sides, pan/zoom
+- [x] 26-01-PLAN.md -- Backend: Polymarket binary filter, narrative_summary column + generation, schema/DTO updates, poller verification
+- [x] 26-02-PLAN.md -- Frontend infra: route refresh with cache bust, ComparisonPanel expandable cards
+- [x] 26-03-PLAN.md -- Scenario tree overhaul: root node content, multi-line text, alternating sides, pan/zoom
 
 ### Phase 27: 3D Globe
 **Goal**: Add a globe.gl-based 3D globe view (Three.js sphere, atmosphere shader, starfield, PBR materials) as the default globe view, with the existing deck.gl flat map retained as a toggleable alternative. All 5 analytic layers (choropleth, markers, arcs, heatmap, scenarios) render on both views.
@@ -583,7 +583,7 @@ Phase 19 -> Phase 20. Then parallel: Phase 21 + Phase 22. Then Phase 23 (after 2
 | 24. Global Seeding & Globe Layers | v3.0 | 6/6 | Complete | 2026-03-08 |
 | 25. Frontend Finalization | v3.0 | 3/3 | Complete | 2026-03-08 |
 
-| 26. Operational Fixes & UX Polish | v3.0 | 0/3 | In Progress | - |
+| 26. Operational Fixes & UX Polish | v3.0 | 3/3 | Complete | 2026-03-09 |
 | 27. 3D Globe | v3.0 | 0/0 | Planned | - |
 
-**Total:** 25 phases complete (v1.0 + v1.1 + v2.0 + v2.1 + v3.0 partial), 90 plans delivered. v3.0: 7/9 phases complete.
+**Total:** 26 phases complete (v1.0 + v1.1 + v2.0 + v2.1 + v3.0 partial), 93 plans delivered. v3.0: 8/9 phases complete.
