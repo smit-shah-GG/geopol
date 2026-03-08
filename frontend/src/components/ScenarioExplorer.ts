@@ -12,7 +12,8 @@
 import * as d3 from 'd3';
 import { h, clearChildren } from '@/utils/dom-utils';
 import { trapFocus } from '@/utils/focus-trap';
-import type { ForecastResponse, ScenarioDTO, EvidenceDTO } from '@/types/api';
+import type { ForecastResponse, ScenarioDTO, EvidenceDTO, ArticleDTO } from '@/types/api';
+import { forecastClient } from '@/services/forecast-client';
 
 /** Maximum tree depth to render before showing a "+N deeper" indicator. */
 const MAX_DEPTH = 4;
@@ -71,6 +72,8 @@ export class ScenarioExplorer {
   private tooltip: HTMLElement | null = null;
   private releaseTrap: (() => void) | null = null;
   private triggerElement: HTMLElement | null = null;
+  private currentForecast: ForecastResponse | null = null;
+  private cachedArticles: ArticleDTO[] | null = null;
 
   private readonly onForecastSelected: (e: Event) => void;
   private readonly onKeyDown: (e: KeyboardEvent) => void;
@@ -95,6 +98,8 @@ export class ScenarioExplorer {
   public open(forecast: ForecastResponse): void {
     // Capture the trigger element so focus returns on close
     this.triggerElement = document.activeElement as HTMLElement | null;
+    this.currentForecast = forecast;
+    this.cachedArticles = null;
     this.buildModal(forecast);
     document.addEventListener('keydown', this.onKeyDown);
   }
@@ -116,6 +121,8 @@ export class ScenarioExplorer {
     this.modal = null;
     this.treeContainer = null;
     this.sidebar = null;
+    this.currentForecast = null;
+    this.cachedArticles = null;
 
     // Restore focus to the element that triggered the modal
     this.triggerElement?.focus();
@@ -520,12 +527,8 @@ export class ScenarioExplorer {
     this.sidebar.appendChild(header);
 
     if (!scenario) {
-      // Root node -- no detailed evidence
-      this.sidebar.appendChild(
-        h('div', { className: 'scenario-sidebar-placeholder' },
-          'Root forecast node. Select a scenario branch to view evidence.',
-        ),
-      );
+      // Root node -- show narrative summary and related articles
+      this.populateRootSidebar();
       return;
     }
 
@@ -567,6 +570,120 @@ export class ScenarioExplorer {
       for (const ev of scenario.evidence_sources) {
         this.sidebar.appendChild(this.buildEvidenceCard(ev));
       }
+    }
+  }
+
+  // ==================================================================
+  // Root node sidebar: narrative + related articles
+  // ==================================================================
+
+  private populateRootSidebar(): void {
+    if (!this.sidebar) return;
+
+    // Narrative summary section
+    const narrative = this.currentForecast?.narrative_summary;
+    const narrativeContent = narrative
+      ? h('div', { className: 'scenario-root-narrative' }, narrative)
+      : h('div', { className: 'scenario-root-narrative', style: 'color: var(--text-muted); font-style: italic;' },
+          'Narrative summary not available for this forecast.',
+        );
+
+    const narrativeSection = h('div', { className: 'sidebar-section' },
+      h('div', { className: 'sidebar-section-label' }, 'Situation Overview'),
+      narrativeContent,
+    );
+    this.sidebar.appendChild(narrativeSection);
+
+    // Related articles section -- async fetch
+    const articlesContainer = h('div', { className: 'sidebar-section' },
+      h('div', { className: 'sidebar-section-label' }, 'Related Articles'),
+    );
+    this.sidebar.appendChild(articlesContainer);
+
+    if (this.cachedArticles) {
+      this.renderArticleList(articlesContainer, this.cachedArticles);
+    } else {
+      // Loading spinner
+      const spinner = h('div', { className: 'scenario-sidebar-placeholder', style: 'height: auto; padding: 12px 0;' },
+        'Loading related articles...',
+      );
+      articlesContainer.appendChild(spinner);
+
+      const question = this.currentForecast?.question ?? '';
+      forecastClient.getArticles({ text: question, semantic: true, limit: 5 })
+        .then(result => {
+          this.cachedArticles = result.items;
+          // Remove spinner, render articles (only if sidebar still exists)
+          if (spinner.parentElement === articlesContainer) {
+            spinner.remove();
+          }
+          this.renderArticleList(articlesContainer, result.items);
+        })
+        .catch(() => {
+          if (spinner.parentElement === articlesContainer) {
+            spinner.textContent = 'Could not load related articles.';
+          }
+        });
+    }
+  }
+
+  private renderArticleList(container: HTMLElement, articles: ArticleDTO[]): void {
+    if (articles.length === 0) {
+      container.appendChild(
+        h('div', { className: 'scenario-sidebar-placeholder', style: 'height: auto; padding: 12px 0;' },
+          'No related articles found.',
+        ),
+      );
+      return;
+    }
+
+    // Show first 2, hide the rest behind "Show more"
+    const INITIAL_VISIBLE = 2;
+    const articleElements: HTMLElement[] = [];
+
+    for (const article of articles) {
+      const snippet = article.snippet.length > 100
+        ? article.snippet.slice(0, 97) + '...'
+        : article.snippet;
+
+      const el = h('div', { className: 'scenario-root-article' },
+        h('a', {
+          className: 'scenario-root-article-title',
+          href: article.url,
+          target: '_blank',
+          rel: 'noopener noreferrer',
+        }, article.title || 'Untitled'),
+        h('span', {
+          className: 'source-badge',
+          style: 'margin-left: 6px; font-size: 9px;',
+        }, article.source_feed),
+        h('div', { className: 'scenario-root-article-snippet' }, snippet),
+      );
+      articleElements.push(el);
+      container.appendChild(el);
+    }
+
+    // Hide overflow articles initially, add "Show more" toggle
+    if (articles.length > INITIAL_VISIBLE) {
+      const hiddenEls = articleElements.slice(INITIAL_VISIBLE);
+      for (const el of hiddenEls) {
+        el.style.display = 'none';
+      }
+
+      let expanded = false;
+      const toggleBtn = h('button', { className: 'scenario-root-show-more' },
+        `Show ${hiddenEls.length} more`,
+      );
+      toggleBtn.addEventListener('click', () => {
+        expanded = !expanded;
+        for (const el of hiddenEls) {
+          el.style.display = expanded ? '' : 'none';
+        }
+        toggleBtn.textContent = expanded
+          ? 'Show less'
+          : `Show ${hiddenEls.length} more`;
+      });
+      container.appendChild(toggleBtn);
     }
   }
 
