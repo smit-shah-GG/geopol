@@ -215,6 +215,44 @@ def run_backtest(config_json: str) -> int:
         return 1
 
 
+def run_baseline_risk() -> int:
+    """Compute all globe layer data (baseline risk + heatmap + arcs + deltas).
+
+    Creates its own asyncio event loop via asyncio.run() because this
+    function runs inside a ProcessPoolExecutor worker (no existing loop).
+    Imports and calls compute_all_layers() which reads SQLite events +
+    PostgreSQL advisories, computes everything, and writes to PostgreSQL.
+
+    Returns:
+        0 on success, 1 on failure.
+    """
+    import asyncio as _asyncio
+    import logging as _logging
+
+    _logger = _logging.getLogger(__name__)
+
+    async def _compute() -> None:
+        from src.seeding.compute_all import compute_all_layers
+
+        counts = await compute_all_layers()
+        _logger.info(
+            "Baseline risk complete: %d countries, %d hexbins, %d arcs, %d deltas",
+            counts["countries"],
+            counts["hexbins"],
+            counts["arcs"],
+            counts["deltas"],
+        )
+
+    _logger.info("Starting baseline risk computation (in-process)")
+    try:
+        _asyncio.run(_compute())
+        _logger.info("Baseline risk computation completed successfully")
+        return 0
+    except Exception:
+        _logger.exception("Baseline risk computation failed")
+        return 1
+
+
 def run_tkg_retrain() -> int:
     """Execute scripts/retrain_tkg.py --force via subprocess.
 

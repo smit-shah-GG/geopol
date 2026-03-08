@@ -1,13 +1,15 @@
 """
-Async wrappers for all 9 background jobs.
+Async wrappers for all 10 background jobs.
 
 Light jobs (6): run directly in the AsyncIOExecutor event loop.
-Heavy jobs (3): acquire a mutual exclusion lock, then dispatch to a
+Heavy jobs (4): acquire a mutual exclusion lock, then dispatch to a
 ProcessPoolExecutor(max_workers=1) via loop.run_in_executor().
 
 The heavy job lock prevents concurrent heavy workloads (daily pipeline,
-polymarket cycle, TKG retrain) from overwhelming the single-worker
-process pool. Jobs queue in FIFO order on the asyncio.Lock.
+polymarket cycle, TKG retrain, baseline risk) from overwhelming the
+single-worker process pool. Most heavy jobs queue in FIFO order on
+the asyncio.Lock. Exception: baseline_risk uses **skip-if-locked**
+semantics -- if the lock is held, it silently returns and retries next hour.
 
 Every wrapper catches exceptions, logs them with full traceback, then
 re-raises so the APScheduler listener (JobFailureTracker) can track
@@ -411,4 +413,37 @@ async def heavy_tkg_retrain() -> None:
                 )
     except Exception:
         logger.exception("heavy_tkg_retrain failed")
+        raise
+
+
+async def heavy_baseline_risk() -> None:
+    """Compute baseline risk + all globe layer data hourly.
+
+    Uses **skip-if-locked** semantics (NOT queue). If the heavy job lock
+    is already held by another job (daily pipeline, polymarket, backtest,
+    TKG retrain), this cycle is silently skipped. The next hourly trigger
+    will try again.
+
+    This prevents baseline risk from queueing behind long-running jobs
+    and stacking up. Globe data being 1-2 hours stale is acceptable;
+    blocking the process pool for hours is not.
+    """
+    try:
+        from src.scheduler.heavy_runner import run_baseline_risk
+
+        if _heavy_job_lock.locked():
+            logger.info("baseline_risk: skipping -- heavy job lock held")
+            return  # Skip silently, next hour retries
+
+        async with _heavy_job_lock:
+            loop = asyncio.get_running_loop()
+            returncode = await loop.run_in_executor(
+                _get_process_executor(), run_baseline_risk
+            )
+            if returncode != 0:
+                raise RuntimeError(
+                    f"baseline_risk exited with code {returncode}"
+                )
+    except Exception:
+        logger.exception("heavy_baseline_risk failed")
         raise

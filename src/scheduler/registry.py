@@ -22,6 +22,7 @@ from src.scheduler.job_wrappers import (
     acled_poll_cycle,
     advisory_poll_cycle,
     gdelt_poll_cycle,
+    heavy_baseline_risk,
     heavy_daily_pipeline,
     heavy_polymarket_cycle,
     heavy_tkg_retrain,
@@ -39,10 +40,10 @@ def register_all_jobs(
     scheduler: AsyncIOScheduler,
     failure_tracker: JobFailureTracker,
 ) -> None:
-    """Register all 9 background jobs and the failure tracker listener.
+    """Register all 10 background jobs and the failure tracker listener.
 
     Light jobs (6) use the default AsyncIOExecutor.
-    Heavy jobs (3) use the default executor too -- the async wrappers
+    Heavy jobs (4) use the default executor too -- the async wrappers
     internally acquire the heavy_job_lock and dispatch to ProcessPoolExecutor.
 
     Args:
@@ -174,6 +175,17 @@ def register_all_jobs(
         misfire_grace_time=7200,
     )
     logger.info("Registered tkg_retrain (cron: Sun 02:00)")
+
+    scheduler.add_job(
+        heavy_baseline_risk,
+        trigger=IntervalTrigger(seconds=3600),
+        id="baseline_risk",
+        name="Baseline Risk Computation",
+        coalesce=True,
+        max_instances=1,
+        misfire_grace_time=1800,
+    )
+    logger.info("Registered baseline_risk (interval=3600s, skip-if-locked)")
 
     # -------------------------------------------------------------------
     # Register failure tracker as event listener
