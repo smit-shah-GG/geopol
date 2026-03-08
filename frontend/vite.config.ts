@@ -23,6 +23,7 @@ export default defineConfig({
           ],
           maplibre: ['maplibre-gl'],
           d3: ['d3'],
+          globe: ['globe.gl', 'three'],
         },
       },
     },
