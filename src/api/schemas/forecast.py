@@ -226,6 +226,10 @@ class ForecastResponse(BaseModel):
     evidence_count: int = Field(
         ..., ge=0, description="Total evidence sources across all scenarios"
     )
+    narrative_summary: Optional[str] = Field(
+        None,
+        description="LLM-generated narrative summary of the forecast situation and key factors",
+    )
     ensemble_info: EnsembleInfoDTO = Field(
         ..., description="LLM/TKG ensemble weight breakdown"
     )

@@ -14,6 +14,7 @@ PredictionStore pattern from calibration.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -99,6 +100,14 @@ class ForecastService:
         # Extract entity names from scenario tree
         entities = self._extract_entities(forecast_output)
 
+        # Generate narrative summary via Gemini (non-blocking, best-effort)
+        narrative_text = await self._generate_narrative(
+            question=forecast_output.question,
+            prediction_text=forecast_output.prediction,
+            probability=forecast_output.probability,
+            scenarios_json=scenarios_json,
+        )
+
         prediction = Prediction(
             id=forecast_id,
             question=forecast_output.question,
@@ -109,6 +118,7 @@ class ForecastService:
             category=ensemble_prediction.category or "conflict",
             reasoning_summary=forecast_output.reasoning_summary,
             evidence_count=sum(len(s.get("evidence_sources", [])) for s in scenarios_json),
+            narrative_summary=narrative_text,
             scenarios_json=scenarios_json,
             ensemble_info_json=ensemble_info_json,
             calibration_json=calibration_json,
@@ -122,11 +132,12 @@ class ForecastService:
         await self.session.flush()  # Assign defaults, raise constraint errors early
 
         logger.info(
-            "Persisted forecast %s (country=%s, p=%.3f, category=%s)",
+            "Persisted forecast %s (country=%s, p=%.3f, category=%s, narrative=%s)",
             forecast_id,
             country_iso,
             forecast_output.probability,
             ensemble_prediction.category,
+            "yes" if narrative_text else "no",
         )
 
         return prediction
@@ -372,6 +383,7 @@ class ForecastService:
             scenarios=scenarios,
             reasoning_summary=prediction.reasoning_summary,
             evidence_count=prediction.evidence_count,
+            narrative_summary=getattr(prediction, "narrative_summary", None),
             ensemble_info=ensemble_info,
             calibration=calibration,
             created_at=prediction.created_at,
@@ -381,6 +393,63 @@ class ForecastService:
     # ------------------------------------------------------------------
     # Private helpers
     # ------------------------------------------------------------------
+
+    @staticmethod
+    async def _generate_narrative(
+        question: str,
+        prediction_text: str,
+        probability: float,
+        scenarios_json: list[dict],
+    ) -> str | None:
+        """Generate a 2-3 sentence analytical narrative via Gemini.
+
+        Best-effort: returns None on any failure. Never blocks forecast
+        persistence. Counts as 1 Gemini call against the daily budget.
+        """
+        try:
+            from src.forecasting.gemini_client import GeminiClient
+
+            client = GeminiClient()
+
+            # Extract top 2-3 scenario descriptions for context
+            scenario_summaries = []
+            for s in scenarios_json[:3]:
+                desc = s.get("description", "")
+                prob = s.get("probability", 0)
+                if desc:
+                    scenario_summaries.append(f"- {desc} (p={prob:.0%})")
+
+            scenarios_block = "\n".join(scenario_summaries) if scenario_summaries else "No scenarios available."
+
+            prompt = (
+                "You are a geopolitical analyst. Given the following forecast data, "
+                "write a concise 2-3 sentence analytical narrative explaining the "
+                "current situation and the key factors driving this forecast. "
+                "Be specific and substantive -- avoid generic hedging.\n\n"
+                f"QUESTION: {question}\n"
+                f"PREDICTION: {prediction_text}\n"
+                f"PROBABILITY: {probability:.1%}\n"
+                f"KEY SCENARIOS:\n{scenarios_block}\n\n"
+                "Write ONLY the narrative (no preamble, no bullet points)."
+            )
+
+            response = await asyncio.to_thread(client.generate_content, prompt)
+            text = response.text.strip()
+
+            # Sanity check: reject empty or excessively long responses
+            if not text or len(text) > 2000:
+                logger.warning(
+                    "Narrative generation returned %s text (len=%d), discarding",
+                    "empty" if not text else "oversized",
+                    len(text),
+                )
+                return None
+
+            return text
+
+        except Exception as exc:
+            logger.warning("Narrative generation failed (non-fatal): %s", exc)
+            return None
 
     @staticmethod
     def _scenarios_to_json(forecast_output: ForecastOutput) -> list[dict]:

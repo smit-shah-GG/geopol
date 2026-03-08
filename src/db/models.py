@@ -78,6 +78,11 @@ class Prediction(Base):
     reasoning_summary: Mapped[str] = mapped_column(Text, nullable=False)
     evidence_count: Mapped[int] = mapped_column(Integer, default=0)
 
+    # LLM-generated 2-3 sentence analytical narrative of the forecast situation
+    narrative_summary: Mapped[Optional[str]] = mapped_column(
+        Text, nullable=True, default=None
+    )
+
     # Full nested DTO blobs for ForecastResponse reconstruction
     scenarios_json: Mapped[dict[str, Any]] = mapped_column(
         JSON, nullable=False, default=list

@@ -57,6 +57,7 @@ export interface ForecastResponse {
   scenarios: ScenarioDTO[];
   reasoning_summary: string;
   evidence_count: number;
+  narrative_summary: string | null;
   ensemble_info: EnsembleInfoDTO;
   calibration: CalibrationDTO;
   created_at: string;
