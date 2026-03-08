@@ -73,9 +73,24 @@ Return ONLY the JSON array. No markdown, no explanation.
 
 
 _COUNTRY_GENERATION_PROMPT = """\
-You are a geopolitical forecasting analyst. Generate exactly one binary \
-(yes/no) forecast question for EACH of the following countries. Base your \
-questions on current geopolitical context and recent events.
+You are a senior geopolitical analyst. For EACH country below, identify the \
+single most consequential geopolitical question that can be asked about that \
+country right now, and frame it as a binary forecast question.
+
+Think like a foreign policy briefer: what is the ONE question that best \
+captures where this country is headed? This could be:
+- An armed conflict, invasion, or escalation risk
+- A great power confrontation or military intervention
+- A regime transition, coup, or state collapse
+- A major diplomatic realignment or alliance shift
+- A structural power transition or sovereignty crisis
+- A sanctions regime, economic decoupling, or trade war
+
+The question should reflect the defining issue shaping that country's \
+geopolitical trajectory right now — not a generic or low-stakes development. \
+Do NOT generate filler questions about routine elections, GDP forecasts, or \
+minor policy changes unless they are genuinely the most significant thing \
+happening to that country.
 
 TARGET COUNTRIES (ISO codes):
 {country_codes}
@@ -84,14 +99,14 @@ TARGET COUNTRIES (ISO codes):
 
 Each question must:
 1. Be answerable with a probability between 0 and 1.
-2. Have a clear resolution criterion (specific observable outcome).
-3. Be about a plausible near-term development for that country.
-4. Have a time horizon between 7 and 90 days.
+2. Have a specific, observable resolution criterion.
+3. Capture the single most important geopolitical question for that country.
+4. Have a time horizon between 30 and 90 days.
 
 Return ONLY a JSON array with EXACTLY one object per country. Fields:
 - "question": the yes/no forecast question (string)
 - "country_iso": ISO 3166-1 alpha-2 country code (string, uppercase, must match input)
-- "horizon_days": forecast horizon in days (integer, 7-90)
+- "horizon_days": forecast horizon in days (integer, 30-90)
 - "category": one of "conflict", "diplomatic", "economic" (string)
 
 Return ONLY the JSON array. No markdown, no explanation.
