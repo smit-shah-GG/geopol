@@ -120,11 +120,9 @@ export class ScenarioExplorer {
     // Remove any existing modal before building a new one
     if (this.backdrop) this.backdrop.remove();
 
-    // Backdrop -- click to close
+    // Backdrop -- pointer-events: none lets map clicks pass through;
+    // close via × button or Escape key
     this.backdrop = h('div', { className: 'scenario-explorer-backdrop' });
-    this.backdrop.addEventListener('click', (e: MouseEvent) => {
-      if (e.target === this.backdrop) this.close();
-    });
 
     // Modal container
     this.modal = h('div', { className: 'scenario-explorer-modal' });

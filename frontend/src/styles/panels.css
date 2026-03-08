@@ -466,11 +466,12 @@
 .scenario-explorer-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.85);
+  background: rgba(0, 0, 0, 0.65);
   z-index: var(--z-modal);
   display: flex;
   align-items: center;
   justify-content: center;
+  pointer-events: none;
 }
 
 .scenario-explorer-modal {
@@ -483,6 +484,7 @@
   border-radius: 4px;
   z-index: calc(var(--z-modal) + 1);
   overflow: hidden;
+  pointer-events: auto;
 }
 
 .scenario-header {
