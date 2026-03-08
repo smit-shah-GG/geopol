@@ -5,25 +5,25 @@
 See: .planning/PROJECT.md (updated 2026-03-04)
 
 **Core value:** Explainability -- every forecast must provide clear, traceable reasoning paths
-**Current focus:** v3.0 Operational Command & Verification -- Phase 26 (Operational Fixes & UX Polish)
+**Current focus:** v3.0 Operational Command & Verification -- Phase 27 (3D Globe)
 
 ## Current Position
 
 Milestone: v3.0 Operational Command & Verification
-Phase: 26 of 27 (Operational Fixes & UX Polish)
-Plan: 03 of 03 (Scenario Tree Overhaul) -- PHASE COMPLETE
-Status: Phase 26 complete
-Last activity: 2026-03-09 -- Completed 26-03-PLAN.md
+Phase: 27 of 27 (3D Globe)
+Plan: 01 of 02 (Core GlobeMap 3D Renderer)
+Status: In progress
+Last activity: 2026-03-09 -- Completed 27-01-PLAN.md
 
-Progress: [########################################################] 100% (93 plans lifetime)
-v3.0:    [####################################] ~89% (32 plans in v3.0 -- 8/9 phases complete)
+Progress: [#########################################################] 100% (94 plans lifetime)
+v3.0:    [#####################################] ~94% (33 plans in v3.0 -- 8/9 phases, plan 1/2 of phase 27)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 93
+- Total plans completed: 94
 - Average duration: 10 minutes
-- Total execution time: 13.9 hours
+- Total execution time: 14.0 hours
 
 **By Phase:**
 
@@ -55,6 +55,7 @@ v3.0:    [####################################] ~89% (32 plans in v3.0 -- 8/9 ph
 | 24-global-seeding-globe-layers | 6 | 23min | 4min |
 | 25-frontend-finalization | 3/3 | 23min | 8min |
 | 26-operational-fixes-ux-polish | 3/3 | 18min | 6min |
+| 27-3d-globe | 1/2 | 5min | 5min |
 
 ## Accumulated Context
 
@@ -150,6 +151,10 @@ Key decisions affecting current work:
 - ScenarioExplorer: alternating sides layout -- left subtree text left, right subtree text right, determined by ancestor's x relative to root (2026-03-09)
 - ScenarioExplorer: d3.zoom wheel filter gates on nodeCount >= 5, preserving modal scroll on small trees (2026-03-09)
 - ScenarioExplorer: root node sidebar shows narrative_summary + semantic search articles (cached per modal session) (2026-03-09)
+- GlobeMap: h3-js dynamically imported and cached (not top-level) for H3-to-latlng conversion (2026-03-09)
+- GlobeMap: GeoJSON ring reversal cached per feature ISO code (Natural Earth CW -> Three.js CCW) (2026-03-09)
+- GlobeMap: Layers 1+5 share single polygonsData channel with altitude discrimination (0.002 vs 0.004) (2026-03-09)
+- GlobeMap: Three.js dynamic import inside applyAtmosphereGlow() only -- avoids 600KB parse-time load (2026-03-09)
 
 ### Deferred Issues
 
@@ -173,6 +178,6 @@ Key decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-03-09
-Stopped at: Completed 26-03-PLAN.md (scenario tree overhaul) -- Phase 26 complete
+Stopped at: Completed 27-01-PLAN.md (core GlobeMap 3D renderer)
 Resume file: None
-Next: Phase 27 (3D Globe)
+Next: 27-02-PLAN.md (MapContainer wrapper + globe-screen integration)
