@@ -3,7 +3,7 @@
 **Date:** 2026-03-09
 **Branch:** `train-evolve-once-per-epoch`
 **Constraint:** RTX 3060 12GB VRAM, 32GB RAM
-**Status:** Implemented, untested at scale. `master` retains per-batch evolution for cloud/high-VRAM training.
+**Status:** Implemented, first training run complete (best MRR 0.2881 at epoch 15, early stopped at 30). GRU bias fix verified. Early stopping should be switched from MRR to validation NLL (see "Evaluation Metrics" section). `master` retains per-batch evolution for cloud/high-VRAM training.
 
 ---
 
@@ -70,7 +70,7 @@ The entity embeddings produced by `evolve_embeddings` depend only on model param
 - Split `train_step` into two JIT-compiled functions:
   - `evolve_step(model, rng_key)` → runs the R-GCN+GRU scan once per epoch
   - `train_step(model, optimizer, entity_emb, pos_jax, history_mask)` → decoder-only loss + optimizer update per batch
-- Entity embeddings are wrapped in `jax.lax.stop_gradient()` to prevent autodiff from tracing back through the scan during batch backward passes.
+- Entity embeddings flow as concrete arrays between JIT boundaries (no `stop_gradient` — see "Why stop_gradient is NOT used" below).
 
 ### Cost structure after optimization
 
@@ -126,6 +126,106 @@ The per-batch evolution approach gives each batch gradients through the full mod
 The eval function (`_evaluate_tirgn`) already evolves once and batches over scoring — the eval path is unchanged.
 
 The per-batch approach is preserved in `model.compute_loss()` for callers with sufficient GPU budget (e.g., cloud A10G/V100 instances).
+
+---
+
+## Evaluation Metrics: Why MRR Is Wrong for This System
+
+### The metric misalignment
+
+MRR measures **ranking quality**: "how highly does the model rank the correct entity among all candidates?" This is the standard TKG academic benchmark metric because research frames TKG as link prediction.
+
+Geopol doesn't do link prediction. It does **probability estimation**:
+
+```
+TKGPredictor: sigmoid(model_score) → P_tkg
+EnsemblePredictor: α(cameo) * P_llm + (1-α) * P_tkg → P_final
+CalibrationOptimizer: minimize Brier(P_final, outcome)
+```
+
+The ensemble needs a **well-calibrated probability** from the TKG — when TiRGN says confidence=0.73, that event should happen ~73% of the time. Whether the correct entity is ranked #1 or #3 is secondary. What matters is whether `sigmoid(score)` closely tracks actual outcome probability.
+
+### Why loss-MRR divergence happens
+
+NLL loss can improve (better probability estimates) while MRR stagnates. This occurs when the model gets better at distinguishing "correct entity" from "random entity" (NLL improves) but not from "semantically similar entity" (MRR stalls). For probability estimation, the first improvement is exactly what matters.
+
+Observed in training run (evolve-once, --max-events 200000):
+- Loss: 4.82 → 4.52 (steady 6.4% reduction, still improving at epoch 30)
+- MRR: 0.26 → 0.29 best (noisy, oscillating ±0.03 per epoch)
+- H@10: 0.51 → 0.56 (stable upward trend)
+
+Early stopping on MRR killed a productive run at epoch 30 while loss was clearly still improving.
+
+### Recommended metric hierarchy
+
+| Priority | Metric | Role | Why |
+|----------|--------|------|-----|
+| 1 (train) | **Validation NLL** | Early stopping criterion | Direct proxy for calibration quality; aligned with downstream Brier optimization |
+| 2 (monitor) | **H@10** | Operational relevance | "Is the correct answer in the candidate set?" — determines whether TKGPredictor returns useful results |
+| 3 (monitor) | **H@1** | Quality signal | "Is the model's top prediction correct?" — measures discrimination power |
+| 4 (log only) | **MRR** | Benchmark comparability | Standard TKG metric for papers and external communication |
+| 5 (system) | **Brier score** | Ultimate system metric | Computed at ensemble level with resolved outcomes, not during TKG training |
+
+### Target values
+
+**Validation NLL (primary training metric):**
+
+| Level | NLL | Perplexity | Interpretation |
+|-------|-----|------------|----------------|
+| Random baseline | log(N) ≈ 8.3 | N (≈4000) | Guessing uniformly across all entities |
+| Current evolve-once | ~4.5 | ~90 | Narrowed to ~90 candidates on average |
+| Target (evolve-once) | < 3.5 | < 33 | Narrowed to ~33 candidates |
+| Target (per-batch, master) | < 3.0 | < 20 | Narrowed to ~20 candidates |
+| Theoretical floor | 0 | 1 | Perfect prediction every time |
+
+Perplexity = exp(NLL). Intuitive interpretation: "the model narrows prediction from N entities down to perplexity entities on average." A perplexity of 20 on a 4,000-entity graph = 99.5% uncertainty reduction.
+
+**Hits@K (operational monitoring):**
+
+| Metric | Random | Current (evolve-once) | Good | Strong | SOTA (ICEWS14) |
+|--------|--------|----------------------|------|--------|----------------|
+| H@1 | 0.025% | ~10% | > 20% | > 30% | 30-38% |
+| H@3 | 0.075% | ~31% | > 35% | > 45% | 45-55% |
+| H@10 | 0.25% | ~56% | > 60% | > 70% | 65-72% |
+
+Note: ICEWS14 benchmarks are on cleaner, smaller data. GDELT is noisier (GDELT auto-coded, ICEWS human-curated) and has more entities, so equivalent architectural quality produces lower absolute numbers on GDELT.
+
+**MRR (external communication only):**
+
+| Level | MRR | Context |
+|-------|-----|---------|
+| Baseline (RE-GCN) | 0.14 | Geopol v1.0 |
+| Previous per-batch TiRGN | 0.49 | Geopol v2.0, full gradient flow |
+| Current evolve-once | 0.29 | Decoder-only optimization, 12× faster training |
+| Published SOTA (ICEWS14) | 0.44-0.46 | HisMatch, TiRGN, DNCL |
+| Industry "good" range | 0.40-0.60 | Depends on dataset and entity count |
+
+**System-level Brier score (ultimate metric):**
+
+| Benchmark | Brier Score | Source |
+|-----------|-------------|--------|
+| Superforecasters | 0.081 | ForecastBench 2025 |
+| Best LLM (GPT-4.5) | 0.101 | ForecastBench 2025 |
+| Human crowd aggregated | 0.149 | IARPA ACE |
+| Uninformed baseline | 0.250 | Always predicting 50% |
+
+Brier is a system-level metric — it measures the full ensemble (LLM + TKG + calibration), not the TKG alone. The TKG's contribution to Brier is mediated by the per-CAMEO α weight: if α → 1.0 (LLM dominant), TKG improvements have negligible Brier impact.
+
+### What to tell clients
+
+For TKG-specific communication:
+- **H@10 framing:** "Our model correctly identifies the target actor in its top 10 predictions X% of the time, across thousands of possible entities"
+- **Perplexity framing:** "Our temporal graph model narrows the prediction space by 99.5% — from 4,000+ possible entities to ~20 on average"
+
+For system-level communication:
+- **Brier framing:** "Our forecasts achieve Brier scores competitive with human superforecasters" (once validated)
+- **Accuracy framing:** "Our system correctly identifies geopolitical event outcomes X% of the time" (derived from Polymarket comparison data)
+
+### Implementation change required
+
+1. Add validation NLL computation to `_evaluate_tirgn()` (currently only computes rank metrics)
+2. Switch early stopping from `best_mrr` to `best_val_loss` (lower = better, flip comparison)
+3. Continue logging MRR/H@K for monitoring, but don't gate training on them
 
 ---
 
