@@ -378,8 +378,13 @@ def train_tirgn(
             history_mask: jax.Array | None,
         ) -> jax.Array:
             def loss_fn(model: TiRGN) -> jax.Array:
-                return model.compute_loss(
-                    snapshots, pos_jax, history_mask=history_mask,
+                # Evolve + score in one JIT boundary — gradients flow
+                # through the full scan, R-GCN, GRU, and decoder.
+                entity_emb = model.evolve_embeddings(
+                    snapshots, training=True,
+                )
+                return model.compute_loss_from_embeddings(
+                    entity_emb, pos_jax, history_mask=history_mask,
                 )
 
             loss, grads = nnx.value_and_grad(loss_fn)(model)
