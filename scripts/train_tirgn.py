@@ -10,11 +10,12 @@ Training observability:
 - TensorBoard logging (always)
 - Weights & Biases logging (when WANDB_API_KEY is set)
 - VRAM monitoring per epoch
-- Early stopping on validation MRR
+- Early stopping on validation NLL
 
 Usage:
     uv run python scripts/train_tirgn.py
     uv run python scripts/train_tirgn.py --epochs 50 --patience 10
+    uv run python scripts/train_tirgn.py --evolve-strategy per-batch --max-events 200000
     uv run python scripts/train_tirgn.py --history-rate 0.3 --history-window 50
 """
 
@@ -153,6 +154,18 @@ def main() -> int:
         default=0.1,
         help="Label smoothing epsilon for NLL loss (default: 0.1)",
     )
+    parser.add_argument(
+        "--evolve-strategy",
+        type=str,
+        choices=["once", "per-batch"],
+        default="once",
+        help=(
+            "Evolve strategy: 'once' = evolve embeddings once per epoch "
+            "(fast, decoder-only gradients), 'per-batch' = full gradient "
+            "flow through R-GCN+GRU scan every batch (slow, joint "
+            "optimization). Default: once"
+        ),
+    )
 
     args = parser.parse_args()
 
@@ -177,6 +190,7 @@ def main() -> int:
     logger.info("  Warmup Epochs:   %d", args.warmup_epochs)
     logger.info("  Eval Samples:    %d", args.eval_samples)
     logger.info("  Label Smoothing: %.2f", args.label_smoothing)
+    logger.info("  Evolve Strategy: %s", args.evolve_strategy)
     logger.info("  Log Dir:         %s", args.logdir)
     logger.info(
         "  Max Events:      %s",
@@ -205,6 +219,7 @@ def main() -> int:
         warmup_epochs=args.warmup_epochs,
         eval_samples=args.eval_samples,
         label_smoothing=args.label_smoothing,
+        evolve_strategy=args.evolve_strategy,
     )
 
     try:

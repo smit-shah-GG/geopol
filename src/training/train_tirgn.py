@@ -82,6 +82,12 @@ class TiRGNTrainingConfig:
     # Batch-level logging interval (0 = epoch-level only)
     log_every_n_batches: int = 50
 
+    # Evolve strategy: "once" (evolve once per epoch, decoder-only gradients,
+    # ~12x faster, for constrained GPU) or "per-batch" (full gradient flow
+    # through scan every batch, jointly optimizes all parameters, requires
+    # more VRAM and compute).
+    evolve_strategy: str = "once"
+
 
 # ---------------------------------------------------------------------------
 # History vocabulary construction
@@ -350,45 +356,66 @@ def train_tirgn(
     # 6. Training loop
     # ------------------------------------------------------------------
     # ------------------------------------------------------------------
-    # 6a. JIT-compiled training step
+    # 6a. JIT-compiled training steps
     # ------------------------------------------------------------------
     # History masks are precomputed outside JIT (Python-level vocab lookup),
     # then passed as JAX arrays. snapshots captured in closure are static
     # (NamedTuples of JAX arrays with fixed structure) — traced once, cached.
 
-    # Evolve-once-per-epoch strategy: run the expensive R-GCN+GRU scan
-    # once at the start of each epoch to produce frozen entity embeddings,
-    # then batch over the cheap decoder loss. Gradients update the decoder,
-    # history encoder, and relation embeddings every batch; the scan
-    # parameters (R-GCN weights, entity GRU, entity embeddings) receive
-    # accumulated signal via the next epoch's re-evolution.
-    #
-    # ~12x faster than evolving per batch. The per-batch evolve approach
-    # is preserved in model.compute_loss() for callers with GPU budget.
+    use_per_batch = config.evolve_strategy == "per-batch"
 
-    @nnx.jit
-    def evolve_step(
-        model: TiRGN,
-        rng_key: jax.Array,
-    ) -> jax.Array:
-        return model.evolve_embeddings(snapshots, training=True, rng_key=rng_key)
+    if use_per_batch:
+        # Per-batch evolution: full gradient flow through R-GCN+GRU scan
+        # every batch. Jointly optimizes all parameters (entity embeddings,
+        # R-GCN weights, GRU, decoder). Requires more VRAM and compute.
+        logger.info("Evolve strategy: per-batch (full gradient flow)")
 
-    @nnx.jit
-    def train_step(
-        model: TiRGN,
-        optimizer: nnx.Optimizer,
-        entity_emb: jax.Array,
-        pos_jax: jax.Array,
-        history_mask: jax.Array | None,
-    ) -> jax.Array:
-        def loss_fn(model: TiRGN) -> jax.Array:
-            return model.compute_loss_from_embeddings(
-                entity_emb, pos_jax, history_mask=history_mask,
-            )
+        @nnx.jit
+        def train_step_full(
+            model: TiRGN,
+            optimizer: nnx.Optimizer,
+            pos_jax: jax.Array,
+            history_mask: jax.Array | None,
+        ) -> jax.Array:
+            def loss_fn(model: TiRGN) -> jax.Array:
+                return model.compute_loss(
+                    snapshots, pos_jax, history_mask=history_mask,
+                )
 
-        loss, grads = nnx.value_and_grad(loss_fn)(model)
-        optimizer.update(model, grads)
-        return loss
+            loss, grads = nnx.value_and_grad(loss_fn)(model)
+            optimizer.update(model, grads)
+            return loss
+    else:
+        # Evolve-once-per-epoch: run the expensive R-GCN+GRU scan once at
+        # the start of each epoch, then batch over the cheap decoder loss.
+        # Gradients update the decoder, history encoder, and relation
+        # embeddings every batch; scan parameters (R-GCN, GRU, entity_emb)
+        # only change via weight decay. ~12x faster than per-batch.
+        logger.info("Evolve strategy: once-per-epoch (decoder-only gradients)")
+
+        @nnx.jit
+        def evolve_step(
+            model: TiRGN,
+            rng_key: jax.Array,
+        ) -> jax.Array:
+            return model.evolve_embeddings(snapshots, training=True, rng_key=rng_key)
+
+        @nnx.jit
+        def train_step(
+            model: TiRGN,
+            optimizer: nnx.Optimizer,
+            entity_emb: jax.Array,
+            pos_jax: jax.Array,
+            history_mask: jax.Array | None,
+        ) -> jax.Array:
+            def loss_fn(model: TiRGN) -> jax.Array:
+                return model.compute_loss_from_embeddings(
+                    entity_emb, pos_jax, history_mask=history_mask,
+                )
+
+            loss, grads = nnx.value_and_grad(loss_fn)(model)
+            optimizer.update(model, grads)
+            return loss
 
     logger.info("=" * 70)
     logger.info("TRAINING STARTED")
@@ -410,14 +437,12 @@ def train_tirgn(
         epoch_loss = 0.0
         num_batches = 0
 
-        # Evolve entity embeddings ONCE per epoch (the expensive scan).
-        # evolve_step runs outside the train_step JIT boundary, so JAX
-        # cannot trace back through the scan during per-batch backward
-        # passes — no stop_gradient needed. The embedding values must
-        # remain live (not detached) so the decoder can compute meaningful
-        # gradients against them.
-        epoch_key = jax.random.PRNGKey(epoch)
-        entity_emb = evolve_step(model, epoch_key)
+        # Evolve entity embeddings (strategy-dependent)
+        if not use_per_batch:
+            # Evolve once: scan runs outside train_step JIT boundary, so JAX
+            # cannot trace back through the scan during backward passes.
+            epoch_key = jax.random.PRNGKey(epoch)
+            entity_emb = evolve_step(model, epoch_key)
 
         # Shuffle training data
         perm = np.random.permutation(len(train_triples))
@@ -438,7 +463,10 @@ def train_tirgn(
                 num_entities,
             )
 
-            loss = train_step(model, optimizer, entity_emb, pos_jax, history_mask)
+            if use_per_batch:
+                loss = train_step_full(model, optimizer, pos_jax, history_mask)
+            else:
+                loss = train_step(model, optimizer, entity_emb, pos_jax, history_mask)
 
             batch_loss = float(loss)
             epoch_loss += batch_loss
