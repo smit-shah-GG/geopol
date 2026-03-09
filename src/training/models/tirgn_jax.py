@@ -406,13 +406,6 @@ class TiRGN(nnx.Module):
         rng_key = kwargs.get("rng_key", None)
         entity_emb = self.evolve_embeddings(snapshots, training=True, rng_key=rng_key)
 
-        # Extract time indices (default to zeros if not provided)
-        time_indices = kwargs.get("time_indices", None)
-        if time_indices is None:
-            time_indices = jnp.zeros(pos_triples.shape[0], dtype=jnp.int32)
-
-        # Use pre-computed mask if provided (JIT-compatible path), otherwise
-        # fall back to building from vocabulary (eager-only, causes host roundtrip)
         history_mask = kwargs.get("history_mask", None)
         if history_mask is None:
             history_vocab: HistoryVocab | None = kwargs.get("history_vocab", None)
@@ -423,13 +416,43 @@ class TiRGN(nnx.Module):
                     history_vocab, subjects_np, relations_np, self.num_entities
                 )
 
+        return self.compute_loss_from_embeddings(
+            entity_emb, pos_triples, history_mask=history_mask,
+        )
+
+    def compute_loss_from_embeddings(
+        self,
+        entity_emb: Array,
+        pos_triples: Array,
+        history_mask: Array | None = None,
+        time_indices: Array | None = None,
+    ) -> Array:
+        """Compute NLL loss from pre-evolved entity embeddings.
+
+        Separates the expensive evolve_embeddings scan from the cheap
+        decoder scoring so callers can evolve once per epoch and batch
+        over this method. Gradients flow through the decoder, history
+        encoder, and entity_emb but NOT through the R-GCN/GRU scan
+        (entity_emb is treated as a detached input).
+
+        Args:
+            entity_emb: (num_entities, embedding_dim) evolved embeddings.
+            pos_triples: (batch, 3) positive triples.
+            history_mask: (batch, num_entities) boolean mask or None.
+            time_indices: (batch,) integer time step indices. Defaults to zeros.
+
+        Returns:
+            Scalar NLL loss.
+        """
+        if time_indices is None:
+            time_indices = jnp.zeros(pos_triples.shape[0], dtype=jnp.int32)
+
         # Compute fused distribution
         fused_probs = self._compute_fused_distribution(
             entity_emb, pos_triples, time_indices, history_mask, training=True
         )
 
         # Label-smoothed NLL: (1-ε)*NLL_hard + ε*NLL_uniform
-        # Prevents softmax saturation and acts as implicit KL regularization
         target_entities = pos_triples[:, 2]
         log_probs = jnp.log(jnp.maximum(fused_probs, 1e-10))
 
