@@ -88,16 +88,16 @@ def test_early_stopping_triggers() -> None:
     """Early stopping fires when epochs_without_improvement >= patience."""
     config = TiRGNTrainingConfig(patience=10, eval_interval=5)
 
-    # Simulate the early stopping logic from train_tirgn
-    best_mrr = 0.5
+    # Simulate the early stopping logic from train_tirgn (val_loss, lower is better)
+    best_val_loss = 3.5
     epochs_without_improvement = 0
     early_stopped = False
 
-    # Simulate 4 eval rounds with no improvement
+    # Simulate 4 eval rounds with no improvement (loss higher than best)
     for _ in range(4):
-        current_mrr = 0.3  # worse than best
-        if current_mrr > best_mrr:
-            best_mrr = current_mrr
+        current_val_loss = 4.0  # worse than best
+        if current_val_loss < best_val_loss:
+            best_val_loss = current_val_loss
             epochs_without_improvement = 0
         else:
             epochs_without_improvement += config.eval_interval
@@ -114,25 +114,26 @@ def test_early_stopping_triggers() -> None:
 
 
 def test_early_stopping_resets_on_improvement() -> None:
-    """Early stopping counter resets when MRR improves."""
+    """Early stopping counter resets when val_loss improves (decreases)."""
     config = TiRGNTrainingConfig(patience=15, eval_interval=5)
 
-    best_mrr = 0.0
+    best_val_loss = float("inf")
     epochs_without_improvement = 0
 
-    # Round 1: improvement
-    mrr_sequence = [0.2, 0.1, 0.3, 0.05, 0.05, 0.05]
-    for mrr in mrr_sequence:
-        if mrr > best_mrr:
-            best_mrr = mrr
+    # Sequence of val_loss values (lower is better)
+    loss_sequence = [5.0, 5.5, 4.2, 6.0, 6.0, 6.0]
+    for val_loss in loss_sequence:
+        if val_loss < best_val_loss:
+            best_val_loss = val_loss
             epochs_without_improvement = 0
         else:
             epochs_without_improvement += config.eval_interval
 
-    # After [0.2, 0.1, 0.3, 0.05, 0.05, 0.05]:
-    # 0.2 -> reset, 0.1 -> +5, 0.3 -> reset, 0.05 -> +5, 0.05 -> +10, 0.05 -> +15
+    # After [5.0, 5.5, 4.2, 6.0, 6.0, 6.0]:
+    # 5.0 -> reset (inf->5.0), 5.5 -> +5, 4.2 -> reset (5.0->4.2),
+    # 6.0 -> +5, 6.0 -> +10, 6.0 -> +15
     assert epochs_without_improvement == 15
-    assert best_mrr == 0.3
+    assert best_val_loss == 4.2
 
 
 # ---------------------------------------------------------------------------

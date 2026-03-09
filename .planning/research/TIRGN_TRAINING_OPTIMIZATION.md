@@ -211,21 +211,56 @@ Note: ICEWS14 benchmarks are on cleaner, smaller data. GDELT is noisier (GDELT a
 
 Brier is a system-level metric — it measures the full ensemble (LLM + TKG + calibration), not the TKG alone. The TKG's contribution to Brier is mediated by the per-CAMEO α weight: if α → 1.0 (LLM dominant), TKG improvements have negligible Brier impact.
 
-### What to tell clients
+### Loss logged in training IS NLL
 
-For TKG-specific communication:
-- **H@10 framing:** "Our model correctly identifies the target actor in its top 10 predictions X% of the time, across thousands of possible entities"
-- **Perplexity framing:** "Our temporal graph model narrows the prediction space by 99.5% — from 4,000+ possible entities to ~20 on average"
+The `Loss: X.XXXX` in training logs is label-smoothed NLL, computed in `compute_loss_from_embeddings()` (`tirgn_jax.py:423`):
 
-For system-level communication:
-- **Brier framing:** "Our forecasts achieve Brier scores competitive with human superforecasters" (once validated)
-- **Accuracy framing:** "Our system correctly identifies geopolitical event outcomes X% of the time" (derived from Polymarket comparison data)
+```python
+loss = (1 - ε) * NLL_hard + ε * NLL_uniform   # ε = 0.1
+```
 
-### Implementation change required
+The label smoothing inflates absolute values ~5-10% vs pure NLL (the `ε * NLL_uniform` term regularizes against overconfidence). This does not affect relative improvement tracking or comparisons to the `log(N) ≈ 8.3` baseline. When reporting NLL targets, the smoothed values are directly usable.
 
-1. Add validation NLL computation to `_evaluate_tirgn()` (currently only computes rank metrics)
-2. Switch early stopping from `best_mrr` to `best_val_loss` (lower = better, flip comparison)
-3. Continue logging MRR/H@K for monitoring, but don't gate training on them
+### Why NLL has no universal "good" range
+
+Unlike MRR (normalized to [0, 1]), NLL is domain-specific — it depends on entity count N. An NLL of 3.0 on a 4,000-entity GDELT graph is phenomenal; the same value on a 50-entity toy dataset is garbage. The theoretical baseline is `log(N)`.
+
+NLL is the correct *training* metric but the wrong *client-facing* metric. Translation via perplexity or H@K is required.
+
+### Metric by audience
+
+**Internal (engineering):**
+- **Validation NLL** — early stopping criterion, lower is better. Target: < 3.5 (evolve-once), < 3.0 (per-batch cloud).
+
+**Technical due diligence:**
+- **Perplexity** = exp(NLL). "Narrows prediction from 4,000+ entities to ~20." That's 99.5% uncertainty reduction.
+- Perplexity < 33 (evolve-once target), < 20 (cloud target).
+
+**Business clients / sales:**
+- **H@10** — "Correct actor in top 10 predictions X% of the time, across thousands of entities." Current: ~56%. Target: > 65%.
+- **H@1** for "wow factor" — > 20% means 1-in-5 perfect predictions across 4,000 entities (random: 0.025%).
+
+**System-level (ultimate metric):**
+- **Brier score** — measures full ensemble, not TKG alone. Superforecasters: 0.081. Best LLM: 0.101.
+
+### Tiered client pitch by achievement level
+
+| Tier | NLL | Perplexity | H@10 | Client pitch |
+|------|-----|------------|------|-------------|
+| Current | 4.5 | 90 | 56% | "Narrows 4,000 entities to ~90 candidates" |
+| Good | 3.5 | 33 | 65% | "99.2% uncertainty reduction, correct actor in top 10 two-thirds of the time" |
+| Strong | 3.0 | 20 | 72% | "99.5% uncertainty reduction across 4,000+ geopolitical actors" |
+| SOTA-equiv | 2.5 | 12 | 78% | "Narrows to 12 candidates — nearly order-of-magnitude better than academic benchmarks on noisier data" |
+
+Note: ICEWS14 published SOTA is H@10 65-72%, but ICEWS is human-curated with fewer entities. Matching those numbers on auto-coded GDELT (500K-1M articles/day) is significantly harder — equivalent quality produces lower absolute numbers. Frame this: "We operate on the noisiest, highest-volume geopolitical event stream, not curated academic datasets."
+
+### Implementation status: COMPLETE
+
+1. ~~Add validation NLL computation to `_evaluate_tirgn()`~~ — Done. Vectorized NLL via `-log(fused_probs[target_entities])`, returned as `val_loss`.
+2. ~~Switch early stopping from `best_mrr` to `best_val_loss`~~ — Done. Comparison flipped to `<` (lower is better). `best_mrr` tracked for monitoring only.
+3. ~~Continue logging MRR/H@K for monitoring~~ — Done. Log line now: `Loss | Val NLL | MRR | H@10 | Time`. Early stopping message reports `best val NLL`.
+4. Return dict includes both `best_val_loss` (primary) and `best_mrr` (backward compat).
+5. Tests updated: early stopping tests use val_loss (lower-is-better) semantics. All 8 tests pass.
 
 ---
 

@@ -9,7 +9,7 @@ Key differences from RE-GCN training (``train_regcn``):
 2. Builds a global history vocabulary ONCE before training begins.
 3. Logs VRAM usage per epoch for GPU envelope validation (TKG-04).
 4. Writes all metrics to TensorBoard + optional W&B via ``TrainingLogger``.
-5. Supports early stopping on validation MRR.
+5. Supports early stopping on validation NLL (not MRR — see TIRGN_TRAINING_OPTIMIZATION.md).
 6. Checkpoints include ``model_type: "tirgn"`` in JSON metadata.
 """
 
@@ -261,8 +261,8 @@ def train_tirgn(
         num_layers: Number of R-GCN layers.
 
     Returns:
-        Result dict with status, epochs_trained, best_mrr, total_time,
-        early_stopped, model_type.
+        Result dict with status, epochs_trained, best_val_loss, best_mrr,
+        total_time, early_stopped, model_type.
     """
     logger.info("=" * 70)
     logger.info("TiRGN Training Pipeline")
@@ -395,6 +395,7 @@ def train_tirgn(
     logger.info("=" * 70)
 
     model_dir.mkdir(parents=True, exist_ok=True)
+    best_val_loss = float("inf")
     best_mrr = 0.0
     best_epoch = 0
     epochs_without_improvement = 0
@@ -479,26 +480,33 @@ def train_tirgn(
             eval_metrics = _evaluate_tirgn(
                 model, snapshots, val_sample, num_entities, history_vocab
             )
+            val_loss = eval_metrics["val_loss"]
             mrr = eval_metrics["mrr"]
 
+            epoch_metrics["eval/val_loss"] = val_loss
             epoch_metrics["eval/mrr"] = mrr
             epoch_metrics["eval/hits_at_1"] = eval_metrics["hits_at_1"]
             epoch_metrics["eval/hits_at_3"] = eval_metrics["hits_at_3"]
             epoch_metrics["eval/hits_at_10"] = eval_metrics["hits_at_10"]
 
             logger.info(
-                "Epoch %3d/%d | Loss: %.4f | MRR: %.4f | H@10: %.4f | Time: %.1fs",
+                "Epoch %3d/%d | Loss: %.4f | Val NLL: %.4f | MRR: %.4f | H@10: %.4f | Time: %.1fs",
                 epoch,
                 config.epochs,
                 avg_loss,
+                val_loss,
                 mrr,
                 eval_metrics["hits_at_10"],
                 epoch_duration,
             )
 
-            # Save best model
+            # Track best MRR for monitoring (not gated on)
             if mrr > best_mrr:
                 best_mrr = mrr
+
+            # Save best model — gated on validation NLL (lower is better)
+            if val_loss < best_val_loss:
+                best_val_loss = val_loss
                 best_epoch = epoch
                 epochs_without_improvement = 0
                 save_tirgn_checkpoint(
@@ -515,9 +523,9 @@ def train_tirgn(
             # Early stopping check
             if epochs_without_improvement >= config.patience:
                 logger.info(
-                    "Early stopping at epoch %d, best MRR %.4f at epoch %d",
+                    "Early stopping at epoch %d, best val NLL %.4f at epoch %d",
                     epoch,
-                    best_mrr,
+                    best_val_loss,
                     best_epoch,
                 )
                 early_stopped = True
@@ -553,7 +561,8 @@ def train_tirgn(
     logger.info("TRAINING COMPLETE")
     logger.info("=" * 70)
     logger.info("Total time: %.1f minutes", total_time / 60)
-    logger.info("Best MRR: %.4f at epoch %d", best_mrr, best_epoch)
+    logger.info("Best val NLL: %.4f at epoch %d", best_val_loss, best_epoch)
+    logger.info("Best MRR: %.4f (monitoring only)", best_mrr)
     if early_stopped:
         logger.info("Training was halted by early stopping")
 
@@ -562,7 +571,7 @@ def train_tirgn(
         model,
         model_dir / "tirgn_trained.npz",
         epoch,
-        {"mrr": best_mrr},
+        {"val_loss": best_val_loss, "mrr": best_mrr},
         entity_to_id,
         relation_to_id,
     )
@@ -570,6 +579,7 @@ def train_tirgn(
     return {
         "status": "complete",
         "epochs_trained": epoch,
+        "best_val_loss": float(best_val_loss),
         "best_mrr": float(best_mrr),
         "total_time": total_time,
         "early_stopped": early_stopped,
@@ -590,11 +600,11 @@ def _evaluate_tirgn(
     history_vocab: HistoryVocab | None = None,
     batch_size: int = 256,
 ) -> dict[str, float]:
-    """Compute MRR/Hits@K for TiRGN using fused copy-generation scores.
+    """Compute validation NLL and MRR/Hits@K for TiRGN.
 
-    Unlike RE-GCN's ``compute_mrr`` which calls ``model.predict`` per-triple,
-    TiRGN uses ``evolve_embeddings`` once then scores via the fused
-    distribution.  This avoids re-evolving embeddings per triple.
+    Uses ``evolve_embeddings`` once then scores via the fused distribution.
+    NLL is the primary metric (early stopping criterion); rank metrics are
+    logged for monitoring only.
 
     Args:
         model: Trained TiRGN model.
@@ -605,12 +615,13 @@ def _evaluate_tirgn(
         batch_size: Evaluation batch size.
 
     Returns:
-        Dict with mrr, hits_at_1, hits_at_3, hits_at_10.
+        Dict with val_loss (NLL), mrr, hits_at_1, hits_at_3, hits_at_10.
     """
     # Evolve embeddings once for all evaluation triples
     entity_emb = model.evolve_embeddings(snapshots, training=False)
 
     ranks: list[int] = []
+    nll_values: list[float] = []
 
     for i in range(0, len(triples), batch_size):
         batch = triples[i : i + batch_size]
@@ -637,6 +648,12 @@ def _evaluate_tirgn(
 
         probs_np = np.asarray(fused_probs)
 
+        # NLL: -log(P(correct entity)) per triple
+        target_entities = batch[:, 2]
+        target_probs = probs_np[np.arange(len(batch)), target_entities]
+        nll_values.extend(-np.log(np.maximum(target_probs, 1e-10)))
+
+        # Rank metrics
         for j, triple in enumerate(batch):
             _, _, o = triple
             true_score = probs_np[j, o]
@@ -646,6 +663,7 @@ def _evaluate_tirgn(
     ranks_arr = np.array(ranks)
 
     return {
+        "val_loss": float(np.mean(nll_values)),
         "mrr": float(np.mean(1.0 / ranks_arr)),
         "hits_at_1": float(np.mean(ranks_arr <= 1)),
         "hits_at_3": float(np.mean(ranks_arr <= 3)),
