@@ -64,10 +64,27 @@ def load_gdelt_data(
     df = df[df["timestamp"] >= cutoff_date].copy()
     logger.info(f"After filtering to last {num_days} days: {len(df):,} events")
 
-    # Sample if needed
+    # Per-snapshot edge sampling: cap each day proportionally instead of
+    # sampling globally.  Global sampling biases against dense recent days
+    # (which carry the most signal) and over-represents sparse old days.
+    # Per-snapshot sampling preserves temporal distribution by thinning each
+    # day to a target density derived from the budget.
     if max_events > 0 and len(df) > max_events:
-        logger.info(f"Sampling {max_events:,} events")
-        df = df.sample(n=max_events, random_state=42).sort_values("timestamp")
+        keep_ratio = max_events / len(df)
+        logger.info(
+            "Per-snapshot sampling: %s → %s events (%.1f%% keep ratio)",
+            f"{len(df):,}", f"{max_events:,}", keep_ratio * 100,
+        )
+        sampled_frames = []
+        for _, day_df in df.groupby(df["timestamp"].dt.date):
+            n_keep = max(1, int(len(day_df) * keep_ratio))
+            if len(day_df) <= n_keep:
+                sampled_frames.append(day_df)
+            else:
+                sampled_frames.append(
+                    day_df.sample(n=n_keep, random_state=42)
+                )
+        df = pd.concat(sampled_frames).sort_values("timestamp")
 
     # Build entity mapping
     entities = set(df["entity1"].unique()) | set(df["entity2"].unique())

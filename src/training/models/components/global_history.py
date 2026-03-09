@@ -40,33 +40,49 @@ def build_history_vocabulary(
     num_entities: int,
     num_relations: int,
     window_size: int = 50,
+    decay_rate: float = 0.95,
 ) -> HistoryVocab:
-    """Build a sparse history vocabulary from snapshot triple arrays.
+    """Build a sparse history vocabulary with temporal decay.
 
     Scans the last ``window_size`` snapshots and records, for every
     (subject, relation) pair observed, the set of objects that appeared
-    with that pair. This is a preprocessing step -- called once before
-    training or per-timestamp during incremental updates, NOT during the
-    forward pass.
+    with that pair, weighted by recency. Objects whose accumulated
+    decayed weight falls below ``decay_rate ** window_size`` (i.e. the
+    weight of a single observation at the oldest possible snapshot) are
+    pruned.
+
+    The decay means recent (s, r) -> o patterns dominate the history
+    mask used by the copy-generation mechanism. An event from yesterday
+    contributes weight ~1.0, while one from 30 days ago contributes
+    ~0.95^30 ≈ 0.21.
 
     Args:
         snapshots: List of triple arrays, each (num_triples, 3) with
             columns [subject, relation, object]. Can be numpy or JAX arrays.
         num_entities: Total entity count (for validation only).
         num_relations: Total relation count including inverse relations.
-        window_size: Number of most recent snapshots to consider. Default 50
-            per CONTEXT.md.
+        window_size: Number of most recent snapshots to consider. Default 50.
+        decay_rate: Per-snapshot decay factor. 1.0 = no decay (original
+            behavior). Default 0.95.
 
     Returns:
         Dictionary mapping (subject, relation) -> set of object entity ids.
         This is memory-efficient: only non-empty entries are stored.
     """
-    vocab: HistoryVocab = defaultdict(set)
+    # Accumulate decayed weights: (s, r, o) -> float
+    weights: dict[tuple[int, int], dict[int, float]] = defaultdict(
+        lambda: defaultdict(float)
+    )
 
     # Only consider the last window_size snapshots
     recent = snapshots[-window_size:] if len(snapshots) > window_size else snapshots
+    num_recent = len(recent)
 
-    for snap in recent:
+    for snap_idx, snap in enumerate(recent):
+        # Distance from the most recent snapshot (last = 0, first = num_recent-1)
+        distance = num_recent - 1 - snap_idx
+        weight = decay_rate ** distance
+
         # Convert to numpy for efficient Python-level iteration
         if hasattr(snap, "numpy"):
             arr = np.asarray(snap)
@@ -84,10 +100,20 @@ def build_history_vocabulary(
             s = int(arr[row_idx, 0])
             r = int(arr[row_idx, 1])
             o = int(arr[row_idx, 2])
-            vocab[(s, r)].add(o)
+            weights[(s, r)][o] += weight
 
-    # Convert defaultdict to regular dict to prevent silent insertions
-    return dict(vocab)
+    # Prune: keep objects whose weight exceeds a single oldest-snapshot
+    # observation. This removes (s, r, o) triples that appeared only once
+    # in the distant past.
+    threshold = decay_rate ** min(window_size, num_recent)
+
+    vocab: HistoryVocab = {}
+    for (s, r), obj_weights in weights.items():
+        surviving = {o for o, w in obj_weights.items() if w >= threshold}
+        if surviving:
+            vocab[(s, r)] = surviving
+
+    return vocab
 
 
 def get_history_mask(
