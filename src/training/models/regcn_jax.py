@@ -176,7 +176,13 @@ class GRUCell(nnx.Module):
 
         self.W_z = nnx.Param(jax.random.normal(rngs.params(), (hidden_dim, hidden_dim)) * 0.01)
         self.U_z = nnx.Param(jax.random.normal(rngs.params(), (hidden_dim, hidden_dim)) * 0.01)
-        self.b_z = nnx.Param(jnp.zeros((hidden_dim,)))
+        # Initialize update gate bias to -3.0 so z ≈ sigmoid(-3) ≈ 0.047.
+        # This prevents exponential embedding collapse in lax.scan: with b_z=0
+        # the GRU halves the hidden state each step (z=0.5), producing near-zero
+        # embeddings after 30 snapshots.  Negative bias forces the GRU to
+        # *preserve* the hidden state by default (h_new ≈ 0.95*h + 0.05*h̃).
+        # Cf. Jozefowicz et al. (2015) "forget gate bias = 1" for LSTMs.
+        self.b_z = nnx.Param(jnp.full((hidden_dim,), -3.0))
 
         self.W_h = nnx.Param(jax.random.normal(rngs.params(), (hidden_dim, hidden_dim)) * 0.01)
         self.U_h = nnx.Param(jax.random.normal(rngs.params(), (hidden_dim, hidden_dim)) * 0.01)

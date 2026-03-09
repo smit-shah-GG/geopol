@@ -88,17 +88,42 @@ Initial implementation wrapped `evolve_step` output in `jax.lax.stop_gradient()`
 
 The fix: `evolve_step` is called **outside** the `train_step` JIT boundary. JAX's autodiff only traces within a single JIT compilation — it cannot backpropagate through a separate JIT'd function call that already returned a concrete array. So the scan is naturally excluded from backward passes without any explicit gradient manipulation. The entity embedding values remain live tensors that the decoder can differentiate against.
 
+### GRU update gate bias initialization (critical)
+
+Even after removing `stop_gradient`, training was still completely flat (loss and MRR byte-identical across epochs). Root cause: **exponential embedding collapse in the GRU scan**.
+
+With `b_z = 0` (zero-initialized update gate bias):
+- `z = sigmoid(0) = 0.5` at every snapshot step
+- `h_new = (1 - z) * h + z * h_tilde ≈ 0.5 * h + 0.5 * ~0 ≈ 0.5 * h`
+- After 30 snapshots: `19.52 × 0.5^30 ≈ 1e-8` — entity embeddings are dead
+- Decoder scores `output @ entity_emb.T ≈ 0` → uniform softmax → zero learning signal
+
+In per-batch evolution, backprop through the scan teaches the GRU to set its own gate biases for state preservation. Without those gradients (evolve-once), the GRU stays in its random "forget 50% per step" regime forever.
+
+**Fix:** Initialize `b_z = -3.0` (in `GRUCell.__init__`, `regcn_jax.py`):
+- `z = sigmoid(-3) ≈ 0.047`
+- `h_new ≈ 0.953 * h + 0.047 * h_tilde` — preserves 95% of hidden state per step
+- After 30 snapshots: `19.52 × 0.95^30 ≈ 4.36` — embeddings retain meaningful signal
+- Decoder produces non-uniform scores → gradients flow → training progresses
+
+This is the GRU analogue of the Jozefowicz et al. (2015) LSTM "forget gate bias = 1" initialization trick.
+
+| Metric | b_z=0 | b_z=-3.0 |
+|--------|-------|----------|
+| Per-step norm ratio | 0.50 | 0.95 |
+| Evolved emb norm (30 snaps) | 3.6e-8 | 4.36 |
+| Batch 1→3 loss delta | +0.043 | -0.074 |
+| Decoder param change per batch | 5.9e-6 | 0.276 |
+
 ---
 
 ## Quality impact
 
 The per-batch evolution approach gives each batch gradients through the full model (scan + decoder). The evolve-once approach only gives decoder gradients per batch.
 
-**Expected MRR impact: negligible.** Reasons:
+**Expected MRR impact: moderate.** The scan parameters (R-GCN weights, entity GRU, initial entity embeddings) do NOT receive gradient signal in evolve-once mode. They only change via weight decay. The entity embeddings are approximately the initial xavier random values, and the decoder must learn to score within this fixed embedding space. This is suboptimal compared to jointly-optimized embeddings.
 
-1. The learning rate is small (0.001 with cosine decay). 781 small updates don't drift parameters far enough to make stale embeddings meaningfully wrong.
-2. The eval function (`_evaluate_tirgn`) already evolves once and batches over scoring — the eval path is unchanged.
-3. The TiRGN and RE-GCN reference implementations both use per-epoch evolution as the standard approach. Per-batch evolution was an over-engineering in the original implementation.
+The eval function (`_evaluate_tirgn`) already evolves once and batches over scoring — the eval path is unchanged.
 
 The per-batch approach is preserved in `model.compute_loss()` for callers with sufficient GPU budget (e.g., cloud A10G/V100 instances).
 
