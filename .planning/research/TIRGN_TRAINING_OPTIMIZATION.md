@@ -82,11 +82,11 @@ Epoch cost = 1 × scan + 781 × loss
 
 ~12× speedup.
 
-### What `stop_gradient` does
+### Why `stop_gradient` is NOT used
 
-Without it, JAX would trace through the scan during the backward pass of every batch (since `entity_emb` flows into `compute_loss_from_embeddings`). `stop_gradient` tells XLA to treat the embeddings as a constant for differentiation. The R-GCN and entity GRU parameters receive **zero gradient** from batch losses — they update only because the next epoch's `evolve_step` uses updated decoder parameters.
+Initial implementation wrapped `evolve_step` output in `jax.lax.stop_gradient()`. This killed training — loss and MRR were completely flat across epochs. The problem: the decoder scores triples by indexing into `entity_emb` (e.g., `entity_emb[subjects]`). With `stop_gradient`, these looked-up values were treated as constants by autodiff, so the decoder weights received zero useful gradient signal — the loss landscape was flat.
 
-This is a form of **alternating optimization**: evolve → freeze → train decoder → repeat.
+The fix: `evolve_step` is called **outside** the `train_step` JIT boundary. JAX's autodiff only traces within a single JIT compilation — it cannot backpropagate through a separate JIT'd function call that already returned a concrete array. So the scan is naturally excluded from backward passes without any explicit gradient manipulation. The entity embedding values remain live tensors that the decoder can differentiate against.
 
 ---
 

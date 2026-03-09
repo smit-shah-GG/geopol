@@ -410,10 +410,13 @@ def train_tirgn(
         num_batches = 0
 
         # Evolve entity embeddings ONCE per epoch (the expensive scan).
-        # jax.lax.stop_gradient prevents autodiff from tracing back
-        # through the scan during per-batch loss backward passes.
+        # evolve_step runs outside the train_step JIT boundary, so JAX
+        # cannot trace back through the scan during per-batch backward
+        # passes — no stop_gradient needed. The embedding values must
+        # remain live (not detached) so the decoder can compute meaningful
+        # gradients against them.
         epoch_key = jax.random.PRNGKey(epoch)
-        entity_emb = jax.lax.stop_gradient(evolve_step(model, epoch_key))
+        entity_emb = evolve_step(model, epoch_key)
 
         # Shuffle training data
         perm = np.random.permutation(len(train_triples))
