@@ -544,11 +544,12 @@ Plans:
   3. All 5 analytic layers (risk choropleth, forecast markers, arcs, heatmap hexagons, scenario zones) render correctly on the 3D globe
   4. Country click on 3D globe opens the same GlobeDrillDown panel as the 2D map
   5. Performance: 3D globe maintains 30+ FPS on desktop with all layers enabled
-**Plans**: 2 plans
+**Plans**: 3 plans
 
 Plans:
 - [x] 27-01-PLAN.md -- GlobeMap.ts core renderer (globe.gl + Three.js, 13-method API, atmosphere glow, 5 layer channels, debounced flush)
 - [x] 27-02-PLAN.md -- MapContainer wrapper, globe-screen rewire, NavBar toggle, GlobeHud region presets, LayerPillBar refactor
+- [x] 27-03-PLAN.md -- Globe layer fixes: polygon winding removal, marker ISO extraction, heatmap flush race, LayerPillBar view sync
 
 
 ## Progress
@@ -585,6 +586,6 @@ Phase 19 -> Phase 20. Then parallel: Phase 21 + Phase 22. Then Phase 23 (after 2
 | 25. Frontend Finalization | v3.0 | 3/3 | Complete | 2026-03-08 |
 
 | 26. Operational Fixes & UX Polish | v3.0 | 3/3 | Complete | 2026-03-09 |
-| 27. 3D Globe | v3.0 | 2/2 | Complete | 2026-03-09 |
+| 27. 3D Globe | v3.0 | 3/3 | Complete | 2026-03-10 |
 
-**Total:** 27 phases complete (v1.0 + v1.1 + v2.0 + v2.1 + v3.0), 95 plans delivered. v3.0: 9/9 phases complete.
+**Total:** 27 phases complete (v1.0 + v1.1 + v2.0 + v2.1 + v3.0), 96 plans delivered. v3.0: 9/9 phases complete.
