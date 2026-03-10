@@ -49,6 +49,7 @@ _DAEMON_NAMES: dict[str, str] = {
     "acled": "ACLED Poller",
     "advisory": "Advisory Poller",
     "tkg": "TKG Retrainer",
+    "baseline_risk": "Baseline Risk",
 }
 
 # APScheduler job_id -> daemon_type mapping
@@ -62,6 +63,7 @@ _JOB_ID_TO_DAEMON: dict[str, str] = {
     "daily_pipeline": "pipeline",
     "polymarket": "polymarket",
     "tkg_retrain": "tkg",
+    "baseline_risk": "baseline_risk",
 }
 
 # daemon_type -> list of APScheduler job IDs (RSS has 3 sub-jobs)
@@ -73,6 +75,7 @@ _DAEMON_TO_JOB_IDS: dict[str, list[str]] = {
     "acled": ["acled_poller"],
     "advisory": ["advisory_poller"],
     "tkg": ["tkg_retrain"],
+    "baseline_risk": ["baseline_risk"],
 }
 
 # Settings fields that must never be editable via the admin API
