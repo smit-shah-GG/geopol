@@ -66,6 +66,7 @@ class Settings(BaseSettings):
 
     # -- TKG Model --
     tkg_backend: Literal["tirgn", "regcn"] = "tirgn"
+    tkg_inference_max_events: int = 0  # 0 = unlimited; set to e.g. 200000 for 12GB GPUs
 
     # -- Logging --
     log_level: str = "INFO"

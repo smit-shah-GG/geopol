@@ -380,9 +380,12 @@ class TKGPredictor:
     def _build_inference_snapshots(self, num_relations: int):
         """Build PaddedSnapshots from recent GDELT data for inference.
 
-        Loads from the same parquet used for training. If the file does
-        not exist, returns an empty PaddedSnapshots (graceful degradation —
-        the model will use raw entity embeddings without temporal context).
+        Uses the checkpoint's entity/relation vocabulary to filter events.
+        Only events whose (entity1, relation, entity2) are all in the
+        training vocabulary are included — this keeps the R-GCN scan
+        tensor shapes at (num_train_entities, ...) instead of expanding
+        to the full parquet's entity space, which would OOM on consumer
+        GPUs.
 
         Args:
             num_relations: Number of original (non-inverse) relations.
@@ -391,9 +394,10 @@ class TKGPredictor:
             PaddedSnapshots instance.
         """
         import jax.numpy as jnp
+        import pandas as pd
 
         from src.training.models.regcn_jax import PaddedSnapshots
-        from src.training.train_jax import create_padded_snapshots, load_gdelt_data
+        from src.training.train_jax import create_padded_snapshots
 
         parquet_path = Path("data/gdelt/processed/events.parquet")
         if not parquet_path.exists():
@@ -409,11 +413,83 @@ class TKGPredictor:
             )
 
         try:
-            snapshots_np, _e2id, _r2id, _train, _val = load_gdelt_data(
-                parquet_path,
-                max_events=0,
-                num_days=self.history_length,
+            # Use checkpoint vocabulary — entity/relation IDs must match
+            # training so the model's embedding table is indexed correctly.
+            e2id = self.adapter.entity_to_id
+            r2id = self.adapter.relation_to_id
+            if not e2id or not r2id:
+                logger.warning(
+                    "No entity/relation mappings from checkpoint — "
+                    "cannot build inference snapshots"
+                )
+                return PaddedSnapshots(
+                    edge_index=jnp.zeros((0, 2, 1), dtype=jnp.int32),
+                    edge_type=jnp.zeros((0, 1), dtype=jnp.int32),
+                    edge_mask=jnp.zeros((0, 1), dtype=jnp.float32),
+                )
+
+            df = pd.read_parquet(parquet_path)
+            max_date = df["timestamp"].max()
+            cutoff = max_date - pd.Timedelta(days=self.history_length)
+            df = df[df["timestamp"] >= cutoff]
+
+            # Filter to training vocabulary only
+            total_before = len(df)
+            mask = (
+                df["entity1"].isin(e2id)
+                & df["entity2"].isin(e2id)
+                & df["relation"].isin(r2id)
             )
+            df = df[mask]
+
+            # Cap events to avoid OOM on constrained GPUs.
+            # Per-snapshot proportional sampling preserves temporal distribution.
+            # 0 = unlimited (production with large VRAM); set via
+            # TKG_INFERENCE_MAX_EVENTS env var for consumer GPUs.
+            max_inference_events = get_settings().tkg_inference_max_events
+            if len(df) > max_inference_events:
+                keep_ratio = max_inference_events / len(df)
+                sampled = []
+                for _, day_df in df.groupby(df["timestamp"].dt.date):
+                    n_keep = max(1, int(len(day_df) * keep_ratio))
+                    if len(day_df) <= n_keep:
+                        sampled.append(day_df)
+                    else:
+                        sampled.append(day_df.sample(n=n_keep, random_state=42))
+                df = pd.concat(sampled).sort_values("timestamp")
+
+            logger.info(
+                "Inference data: %d days, %s events → %s after vocab filter + cap "
+                "(%d entities, %d relations from checkpoint)",
+                self.history_length,
+                f"{total_before:,}",
+                f"{len(df):,}",
+                len(e2id),
+                len(r2id),
+            )
+
+            # Build snapshots using training IDs
+            df = df.copy()
+            df["day"] = (df["timestamp"] - df["timestamp"].min()).dt.days
+            snapshots_np = []
+            for day in sorted(df["day"].unique()):
+                day_df = df[df["day"] == day]
+                triples = np.array([
+                    [e2id[e1], r2id[r], e2id[e2]]
+                    for e1, r, e2 in zip(
+                        day_df["entity1"], day_df["relation"], day_df["entity2"]
+                    )
+                ])
+                snapshots_np.append(triples)
+
+            if not snapshots_np:
+                logger.warning("No inference snapshots after vocab filtering")
+                return PaddedSnapshots(
+                    edge_index=jnp.zeros((0, 2, 1), dtype=jnp.int32),
+                    edge_type=jnp.zeros((0, 1), dtype=jnp.int32),
+                    edge_mask=jnp.zeros((0, 1), dtype=jnp.float32),
+                )
+
             padded = create_padded_snapshots(snapshots_np, num_relations)
             logger.info(
                 "Inference snapshots built: %d snapshots, max_edges=%d, "
