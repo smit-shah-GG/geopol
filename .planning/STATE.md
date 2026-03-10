@@ -10,20 +10,20 @@ See: .planning/PROJECT.md (updated 2026-03-04)
 ## Current Position
 
 Milestone: v3.0 Operational Command & Verification
-Phase: 27 of 27 (3D Globe) -- COMPLETE
-Plan: 02 of 02 (MapContainer + Integration) -- COMPLETE
-Status: Phase 27 complete. v3.0 complete.
-Last activity: 2026-03-09 -- Completed 27-02-PLAN.md
+Phase: 27 of 27 (3D Globe) -- COMPLETE (gap closure done)
+Plan: 03 of 03 (Globe Layer Fixes -- gap closure) -- COMPLETE
+Status: Phase 27 complete. v3.0 complete. UAT gap closure delivered.
+Last activity: 2026-03-10 -- Completed 27-03-PLAN.md (gap closure)
 
-Progress: [##########################################################] 100% (95 plans lifetime)
-v3.0:    [######################################] 100% (34 plans in v3.0 -- 9/9 phases complete)
+Progress: [##########################################################] 100% (96 plans lifetime)
+v3.0:    [######################################] 100% (35 plans in v3.0 -- 9/9 phases complete)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 95
-- Average duration: 10 minutes
-- Total execution time: 14.1 hours
+- Total plans completed: 96
+- Average duration: 9 minutes
+- Total execution time: 14.15 hours
 
 **By Phase:**
 
@@ -55,7 +55,7 @@ v3.0:    [######################################] 100% (34 plans in v3.0 -- 9/9 
 | 24-global-seeding-globe-layers | 6 | 23min | 4min |
 | 25-frontend-finalization | 3/3 | 23min | 8min |
 | 26-operational-fixes-ux-polish | 3/3 | 18min | 6min |
-| 27-3d-globe | 2/2 | 13min | 7min |
+| 27-3d-globe | 3/3 | 16min | 5min |
 
 ## Accumulated Context
 
@@ -152,7 +152,7 @@ Key decisions affecting current work:
 - ScenarioExplorer: d3.zoom wheel filter gates on nodeCount >= 5, preserving modal scroll on small trees (2026-03-09)
 - ScenarioExplorer: root node sidebar shows narrative_summary + semantic search articles (cached per modal session) (2026-03-09)
 - GlobeMap: h3-js dynamically imported and cached (not top-level) for H3-to-latlng conversion (2026-03-09)
-- GlobeMap: GeoJSON ring reversal cached per feature ISO code (Natural Earth CW -> Three.js CCW) (2026-03-09)
+- GlobeMap: GeoJSON ring reversal REMOVED -- globe.gl handles winding internally; manual reversal corrupted polygons (2026-03-10)
 - GlobeMap: Layers 1+5 share single polygonsData channel with altitude discrimination (0.002 vs 0.004) (2026-03-09)
 - GlobeMap: Three.js dynamic import inside applyAtmosphereGlow() only -- avoids 600KB parse-time load (2026-03-09)
 - MapContainer: accepts pre-constructed sub-containers + renderer instances -- no internal DOM creation (2026-03-09)
@@ -162,6 +162,9 @@ Key decisions affecting current work:
 - VIEW_POVS duplicated in MapContainer for 2D flyTo approximation (avoids breaking code-split) (2026-03-09)
 - globe-mode-changed CustomEvent confirms toggle from MapContainer to NavBar (2026-03-09)
 - GlobeMap: pauseAnimation/resumeAnimation for GPU savings when 3D view hidden (2026-03-09)
+- Marker ISO extraction: scenarios[].entities[] recursive walk with /^[A-Z]{2}$/ filter, not calibration.category (2026-03-10)
+- h3-js async completion routes through scheduleFlush() debounced path, not standalone flushPoints() (2026-03-10)
+- LayerPillBar: syncFromController() resyncs pill states on globe-mode-changed event (2026-03-10)
 
 ### Deferred Issues
 
@@ -184,7 +187,7 @@ Key decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-03-09
-Stopped at: Completed 27-02-PLAN.md (MapContainer wrapper + globe-screen integration)
+Last session: 2026-03-10
+Stopped at: Completed 27-03-PLAN.md (Globe Layer Fixes -- UAT gap closure)
 Resume file: None
-Next: Phase 27 complete. v3.0 milestone complete.
+Next: Phase 27 complete with gap closure. v3.0 milestone complete.
