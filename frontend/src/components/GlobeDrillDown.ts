@@ -142,7 +142,7 @@ export class GlobeDrillDown {
       ]);
       forecasts = fResult;
       risk = rResult;
-      events = eResult.items;
+      events = Array.isArray(eResult?.items) ? eResult.items : [];
     } catch (err) {
       // If this request was superseded, silently discard
       if (token !== this.requestToken) return;
