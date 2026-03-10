@@ -178,9 +178,6 @@ export class GlobeMap {
   // ResizeObserver
   private resizeObserver: ResizeObserver | null = null;
 
-  // GeoJSON ring reversal cache (Natural Earth CW -> Three.js CCW)
-  private reversedFeatureCache = new Map<string, Feature<Geometry>>();
-
   // Layer toggle state -- defaults all true
   private readonly layerVisible: Record<LayerId, boolean> = {
     ForecastRiskChoropleth: true,
@@ -462,8 +459,6 @@ export class GlobeMap {
     if (this.flushMaxTimer) { clearTimeout(this.flushMaxTimer); this.flushMaxTimer = null; }
     if (this.autoRotateTimer) { clearTimeout(this.autoRotateTimer); this.autoRotateTimer = null; }
 
-    // Clear caches
-    this.reversedFeatureCache.clear();
     this.controls = null;
 
     // ResizeObserver
@@ -846,7 +841,7 @@ export class GlobeMap {
 
         polys.push({
           _kind: 'choropleth',
-          feature: this.getReversedFeature(feature),
+          feature,
           iso: code,
           color,
         });
@@ -863,7 +858,7 @@ export class GlobeMap {
 
           polys.push({
             _kind: 'scenario',
-            feature: this.getReversedFeature(feature),
+            feature,
             iso: code,
             fillColor: ACCENT_FILL,
             strokeColor: ACCENT_STROKE,
@@ -882,7 +877,7 @@ export class GlobeMap {
             // Risk worsening: red fill
             polys.push({
               _kind: 'scenario',
-              feature: this.getReversedFeature(feature),
+              feature,
               iso: code,
               fillColor: `rgba(235,65,65,${alpha.toFixed(2)})`,
               strokeColor: 'rgba(220,50,50,0.47)',
@@ -891,7 +886,7 @@ export class GlobeMap {
             // Risk improving: green fill
             polys.push({
               _kind: 'scenario',
-              feature: this.getReversedFeature(feature),
+              feature,
               iso: code,
               fillColor: `rgba(65,195,95,${alpha.toFixed(2)})`,
               strokeColor: 'rgba(50,180,80,0.47)',
@@ -1104,54 +1099,4 @@ export class GlobeMap {
     }
   }
 
-  // =========================================================================
-  // GeoJSON ring winding order reversal
-  // =========================================================================
-
-  /**
-   * Natural Earth GeoJSON uses clockwise winding for outer rings (RFC 7946).
-   * Three.js/globe.gl expects counterclockwise. This method reverses the
-   * coordinate arrays with caching to avoid repeated work.
-   *
-   * Adapted from WM's getReversedRing() but operates on full Features
-   * rather than individual ring arrays, since we pass Feature objects
-   * to globe.gl's polygonGeoJsonGeometry accessor.
-   */
-  private getReversedFeature(feature: Feature<Geometry>): Feature<Geometry> {
-    const code = normalizeCode(feature.properties) ?? '';
-    const cached = this.reversedFeatureCache.get(code);
-    if (cached) return cached;
-
-    const geom = feature.geometry;
-    let reversedGeom: Geometry;
-
-    if (geom.type === 'Polygon') {
-      reversedGeom = {
-        type: 'Polygon',
-        coordinates: geom.coordinates.map((ring) => [...ring].reverse()),
-      };
-    } else if (geom.type === 'MultiPolygon') {
-      reversedGeom = {
-        type: 'MultiPolygon',
-        coordinates: geom.coordinates.map((polygon) =>
-          polygon.map((ring) => [...ring].reverse()),
-        ),
-      };
-    } else {
-      // Unsupported geometry type -- return as-is
-      reversedGeom = geom;
-    }
-
-    const reversed: Feature<Geometry> = {
-      type: 'Feature',
-      properties: feature.properties,
-      geometry: reversedGeom,
-    };
-
-    if (code) {
-      this.reversedFeatureCache.set(code, reversed);
-    }
-
-    return reversed;
-  }
 }
