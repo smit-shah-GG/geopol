@@ -235,21 +235,36 @@ export class GlobeMap {
   updateForecasts(forecasts: ForecastResponse[]): void {
     this.markers = [];
     for (const f of forecasts) {
-      const iso = f.calibration.category.length === 2
-        ? f.calibration.category.toUpperCase()
-        : '';
-      if (!iso) continue;
+      // Extract country ISOs from scenario entity lists (not calibration.category
+      // which contains CAMEO strings like "conflict", not ISO codes).
+      const isos = new Set<string>();
+      const collectIsos = (scenarios: ForecastResponse['scenarios']): void => {
+        for (const s of scenarios) {
+          for (const entity of s.entities) {
+            const upper = entity.toUpperCase();
+            if (/^[A-Z]{2}$/.test(upper)) {
+              isos.add(upper);
+            }
+          }
+          if (s.child_scenarios.length > 0) {
+            collectIsos(s.child_scenarios);
+          }
+        }
+      };
+      collectIsos(f.scenarios);
 
-      const centroid = countryGeometry.getCentroid(iso);
-      if (!centroid) continue;
+      for (const iso of isos) {
+        const centroid = countryGeometry.getCentroid(iso);
+        if (!centroid) continue;
 
-      this.markers.push({
-        iso,
-        lat: centroid[1],
-        lng: centroid[0],
-        probability: f.probability,
-        question: f.question,
-      });
+        this.markers.push({
+          iso,
+          lat: centroid[1],
+          lng: centroid[0],
+          probability: f.probability,
+          question: f.question,
+        });
+      }
     }
     this.scheduleFlush();
   }
