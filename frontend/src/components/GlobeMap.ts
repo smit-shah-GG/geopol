@@ -1036,7 +1036,7 @@ export class GlobeMap {
         import('h3-js').then((mod) => {
           this.h3Module = { cellToLatLng: mod.cellToLatLng };
           this.h3Loading = false;
-          this.flushPoints(); // Re-flush now that h3 is available
+          this.scheduleFlush(); // Re-flush via debounced path (not standalone)
         }).catch(() => {
           this.h3Loading = false;
           console.warn('[GlobeMap] Failed to load h3-js for heatmap points');

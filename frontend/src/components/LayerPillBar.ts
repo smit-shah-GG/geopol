@@ -35,6 +35,7 @@ export class LayerPillBar {
   private readonly controller: LayerController;
   private readonly bar: HTMLElement;
   private readonly states: Record<LayerId, boolean>;
+  private modeChangeHandler: (() => void) | null = null;
 
   constructor(controller: LayerController) {
     this.controller = controller;
@@ -46,6 +47,10 @@ export class LayerPillBar {
     }
 
     this.bar = this.buildBar();
+
+    // Resync pill states when the view mode changes (3D <-> 2D toggle)
+    this.modeChangeHandler = () => this.syncFromController();
+    window.addEventListener('globe-mode-changed', this.modeChangeHandler);
   }
 
   private buildBar(): HTMLElement {
@@ -90,7 +95,23 @@ export class LayerPillBar {
     return this.bar;
   }
 
+  /** Resync pill states from controller after view mode change. */
+  syncFromController(): void {
+    for (const [id] of LAYER_PILLS) {
+      const visible = this.controller.getLayerVisible(id);
+      this.states[id] = visible;
+      const pill = this.bar.querySelector(`[data-layer="${id}"]`);
+      if (pill) {
+        pill.classList.toggle('active', visible);
+        pill.setAttribute('aria-pressed', String(visible));
+      }
+    }
+  }
+
   destroy(): void {
-    // Pure DOM with inline listeners -- no external cleanup needed
+    if (this.modeChangeHandler) {
+      window.removeEventListener('globe-mode-changed', this.modeChangeHandler);
+      this.modeChangeHandler = null;
+    }
   }
 }
