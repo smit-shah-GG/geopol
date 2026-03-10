@@ -78,7 +78,7 @@ def fips_to_iso(code: str) -> str | None:
             pass
         if code not in _warned_codes:
             _warned_codes.add(code)
-            logger.warning("Unmapped 3-letter code: %s", code)
+            logger.debug("Unmapped 3-letter code: %s", code)
         return None
 
     return None
