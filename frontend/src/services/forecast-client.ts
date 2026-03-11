@@ -89,12 +89,8 @@ const FALLBACK_POLYMARKET_TOP: PolymarketTopResponse = {
   total_geo_markets: 0,
 };
 const EMPTY_EVENTS: PaginatedResponse<EventDTO> = { items: [], next_cursor: null, has_more: false };
-const EMPTY_ARTICLES: PaginatedResponse<ArticleDTO> = { items: [], next_cursor: null, has_more: false };
 const EMPTY_SOURCES: SourceStatusDTO[] = [];
 const EMPTY_ADVISORIES: AdvisoryDTO[] = [];
-const EMPTY_HEXBINS: HexbinData[] = [];
-const EMPTY_ARCS: ArcData[] = [];
-const EMPTY_DELTAS: RiskDeltaData[] = [];
 const EMPTY_COMPARISONS: ComparisonPanelResponse = { comparisons: [], total: 0 };
 
 // ---------------------------------------------------------------------------
@@ -385,21 +381,30 @@ export class ForecastServiceClient {
   /**
    * GET /articles?sort=recent&limit=N -- recent articles for NewsFeedPanel.
    * Convenience wrapper around getArticles() with sort=recent default.
+   *
+   * Does NOT use forecastBreaker.execute() — the shared breaker caches by
+   * breaker (not by URL), so getTopForecasts() would poison this response
+   * with a ForecastResponse[] instead of PaginatedResponse<ArticleDTO>.
    */
   async getRecentArticles(limit?: number): Promise<ArticleDTO[]> {
     const sp = new URLSearchParams({ sort: 'recent' });
     if (limit !== undefined) sp.set('limit', String(limit));
     const key = `/articles?${sp.toString()}`;
-    const result = await this.dedup(key, () =>
-      this.forecastBreaker.execute(
-        () => this.fetchJson<PaginatedResponse<ArticleDTO>>(key),
-        EMPTY_ARTICLES as unknown as PaginatedResponse<ArticleDTO>,
-      ),
-    ) as PaginatedResponse<ArticleDTO>;
-    return result.items;
+    try {
+      const result = await this.fetchJson<PaginatedResponse<ArticleDTO>>(key);
+      return result.items;
+    } catch (e: unknown) {
+      console.warn('[forecast-client] getRecentArticles failed:', e);
+      return [];
+    }
   }
 
-  /** GET /articles with optional filter parameters. */
+  /**
+   * GET /articles with optional filter parameters.
+   *
+   * Does NOT use forecastBreaker — same cache poisoning risk as
+   * getRecentArticles. See getForecastsByCountry for precedent.
+   */
   async getArticles(params?: {
     country?: string;
     text?: string;
@@ -414,12 +419,12 @@ export class ForecastServiceClient {
     }
     const qs = sp.toString();
     const key = `/articles${qs ? `?${qs}` : ''}`;
-    return this.dedup(key, () =>
-      this.forecastBreaker.execute(
-        () => this.fetchJson<PaginatedResponse<ArticleDTO>>(key),
-        EMPTY_ARTICLES as unknown as PaginatedResponse<ArticleDTO>,
-      ),
-    ) as Promise<PaginatedResponse<ArticleDTO>>;
+    try {
+      return await this.fetchJson<PaginatedResponse<ArticleDTO>>(key);
+    } catch (e: unknown) {
+      console.warn('[forecast-client] getArticles failed:', e);
+      return { items: [], next_cursor: null, has_more: false };
+    }
   }
 
   /** GET /sources (public, no auth). Auto-discovered ingestion source health. */
@@ -449,46 +454,54 @@ export class ForecastServiceClient {
   // Globe layer data (Phase 24)
   // -----------------------------------------------------------------------
 
-  /** GET /globe/heatmap -- pre-computed H3 hexbin event density. */
+  /**
+   * GET /globe/heatmap -- pre-computed H3 hexbin event density.
+   *
+   * Does NOT use eventsBreaker — the shared breaker has a single cache slot,
+   * so concurrent globe layer fetches (heatmap + arcs + deltas) poison each
+   * other's cached results via stale-while-revalidate.
+   */
   async getHeatmapData(): Promise<HexbinData[]> {
     const key = '/globe/heatmap';
-    return this.dedup(key, () =>
-      this.eventsBreaker.execute(
-        async () => {
-          const envelope = await this.fetchJson<{ hexbins: HexbinData[] }>(key);
-          return envelope.hexbins ?? [];
-        },
-        EMPTY_HEXBINS,
-      ),
-    ) as Promise<HexbinData[]>;
+    try {
+      const envelope = await this.fetchJson<{ hexbins: HexbinData[] }>(key);
+      return envelope.hexbins ?? [];
+    } catch (e: unknown) {
+      console.warn('[forecast-client] getHeatmapData failed:', e);
+      return [];
+    }
   }
 
-  /** GET /globe/arcs -- top bilateral relationships with sentiment. */
+  /**
+   * GET /globe/arcs -- top bilateral relationships with sentiment.
+   *
+   * Does NOT use eventsBreaker — same cache poisoning risk as getHeatmapData.
+   */
   async getArcData(): Promise<ArcData[]> {
     const key = '/globe/arcs';
-    return this.dedup(key, () =>
-      this.eventsBreaker.execute(
-        async () => {
-          const envelope = await this.fetchJson<{ arcs: ArcData[] }>(key);
-          return envelope.arcs ?? [];
-        },
-        EMPTY_ARCS,
-      ),
-    ) as Promise<ArcData[]>;
+    try {
+      const envelope = await this.fetchJson<{ arcs: ArcData[] }>(key);
+      return envelope.arcs ?? [];
+    } catch (e: unknown) {
+      console.warn('[forecast-client] getArcData failed:', e);
+      return [];
+    }
   }
 
-  /** GET /globe/deltas -- countries with significant risk score changes. */
+  /**
+   * GET /globe/deltas -- countries with significant risk score changes.
+   *
+   * Does NOT use eventsBreaker — same cache poisoning risk as getHeatmapData.
+   */
   async getRiskDeltas(): Promise<RiskDeltaData[]> {
     const key = '/globe/deltas';
-    return this.dedup(key, () =>
-      this.eventsBreaker.execute(
-        async () => {
-          const envelope = await this.fetchJson<{ deltas: RiskDeltaData[] }>(key);
-          return envelope.deltas ?? [];
-        },
-        EMPTY_DELTAS,
-      ),
-    ) as Promise<RiskDeltaData[]>;
+    try {
+      const envelope = await this.fetchJson<{ deltas: RiskDeltaData[] }>(key);
+      return envelope.deltas ?? [];
+    } catch (e: unknown) {
+      console.warn('[forecast-client] getRiskDeltas failed:', e);
+      return [];
+    }
   }
 
   // -----------------------------------------------------------------------

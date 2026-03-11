@@ -989,16 +989,25 @@ export class GlobeMap {
       (this.globe as any).arcsData(this.arcs);
     } else if (this.bilateralArcs.length > 0) {
       // Mode B: global bilateral arcs with sentiment
-      const arcData = this.bilateralArcs.map((d) => ({
-        startLat: d.source[1],
-        startLng: d.source[0],
-        endLat: d.target[1],
-        endLng: d.target[0],
-        avgGoldstein: d.avgGoldstein,
-        eventCount: d.eventCount,
-        sourceIso: d.sourceIso,
-        targetIso: d.targetIso,
-      }));
+      const arcData: Array<{
+        startLat: number; startLng: number; endLat: number; endLng: number;
+        avgGoldstein: number; eventCount: number; sourceIso: string; targetIso: string;
+      }> = [];
+      for (const d of this.bilateralArcs) {
+        const sLat = d.source[1], sLng = d.source[0];
+        const eLat = d.target[1], eLng = d.target[0];
+        // Guard against NaN — arc geometry with NaN coords causes Three.js bounding sphere NaN
+        if (!Number.isFinite(sLat) || !Number.isFinite(sLng) ||
+            !Number.isFinite(eLat) || !Number.isFinite(eLng)) continue;
+        arcData.push({
+          startLat: sLat, startLng: sLng,
+          endLat: eLat, endLng: eLng,
+          avgGoldstein: d.avgGoldstein,
+          eventCount: d.eventCount,
+          sourceIso: d.sourceIso,
+          targetIso: d.targetIso,
+        });
+      }
       (this.globe as any).arcsData(arcData);
     } else {
       (this.globe as any).arcsData([]);
@@ -1054,6 +1063,8 @@ export class GlobeMap {
     for (const hex of this.hexBinData) {
       try {
         const [lat, lng] = this.h3Module.cellToLatLng(hex.h3_index);
+        // Guard against NaN — merged BufferGeometry propagates NaN to bounding sphere
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
 
         // Weight-based color: yellow [255,255,0] -> red [255,0,0]
         const t = Math.min(1, hex.weight / maxWeight);

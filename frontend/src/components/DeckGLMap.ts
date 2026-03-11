@@ -493,8 +493,14 @@ export class DeckGLMap {
   private initDeckOverlay(): void {
     if (!this.map) return;
 
+    // Non-interleaved mode: deck.gl renders on a separate overlay canvas.
+    // Avoids the DrawLayersPass null-id race condition in interleaved mode
+    // (MapboxOverlay's _onAddInterleaved → Deck constructor animation loop
+    // races against MapLibre's synchronous addLayer → render cycle).
+    // Visual tradeoff (layers above map, not interleaved) is acceptable
+    // pending CesiumJS migration.
     this.overlay = new MapboxOverlay({
-      interleaved: true,
+      interleaved: false,
       layers: this.buildLayers(),
       getTooltip: (info: PickingInfo) => this.handleTooltip(info),
       onClick: (info: PickingInfo) => this.handleClick(info),
@@ -527,42 +533,50 @@ export class DeckGLMap {
     const geoJson = countryGeometry.getFeatureCollection();
 
     // Layer 1: ForecastRiskChoropleth
-    if (this.layerVisible.ForecastRiskChoropleth && geoJson) {
-      const riskMap = this.riskScores;
-      const ts = this.riskTimestamp;
-      const defFill = defaultFill();
-      const stroke = countryStroke();
+    if (this.layerVisible.ForecastRiskChoropleth) {
+      if (geoJson) {
+        const riskMap = this.riskScores;
+        const ts = this.riskTimestamp;
+        const defFill = defaultFill();
+        const stroke = countryStroke();
 
-      layers.push(
-        new GeoJsonLayer({
-          id: 'ForecastRiskChoropleth',
-          data: geoJson,
-          pickable: true,
-          stroked: true,
-          filled: true,
-          getFillColor: (f: Feature<Geometry>) => {
-            const code = normalizeCode(f.properties);
-            if (!code) return defFill;
-            const score = riskMap.get(code);
-            if (score === undefined) return defFill;
-            return riskColor(score / 100);
-          },
-          getLineColor: stroke,
-          getLineWidth: 1,
-          lineWidthMinPixels: 0.5,
-          updateTriggers: {
-            getFillColor: [riskMap.size, ts],
-          },
-        }),
-      );
+        layers.push(
+          new GeoJsonLayer({
+            id: 'ForecastRiskChoropleth',
+            data: geoJson,
+            pickable: true,
+            stroked: true,
+            filled: true,
+            getFillColor: (f: Feature<Geometry>) => {
+              const code = normalizeCode(f.properties);
+              if (!code) return defFill;
+              const score = riskMap.get(code);
+              if (score === undefined) return defFill;
+              return riskColor(score / 100);
+            },
+            getLineColor: stroke,
+            getLineWidth: 1,
+            lineWidthMinPixels: 0.5,
+            updateTriggers: {
+              getFillColor: [riskMap.size, ts],
+            },
+          }),
+        );
+      } else {
+        // GeoJSON not yet loaded -- invisible placeholder for stable layer ID
+        layers.push(
+          new GeoJsonLayer({ id: 'ForecastRiskChoropleth', data: [], visible: false }),
+        );
+      }
     }
 
     // Layer 2: ActiveForecastMarkers
-    if (this.layerVisible.ActiveForecastMarkers && this.markers.length > 0) {
+    if (this.layerVisible.ActiveForecastMarkers) {
       layers.push(
         new ScatterplotLayer<MarkerDatum>({
           id: 'ActiveForecastMarkers',
           data: this.markers,
+          visible: this.markers.length > 0,
           pickable: true,
           getPosition: (d) => d.position,
           getRadius: (d) => 8 + d.probability * 20,
@@ -586,6 +600,8 @@ export class DeckGLMap {
     // Two modes:
     //   a) Country selected: show arcs from selected country to scenario entities
     //   b) No country selected + bilateral data: show global bilateral arcs
+    // Always push layer when toggled on — deck.gl needs stable IDs across
+    // setProps calls to avoid null references in MapboxOverlay's render cycle.
     if (this.layerVisible.KnowledgeGraphArcs) {
       if (this.selectedCountry && this.arcs.length > 0) {
         // Mode A: per-country scenario arcs (existing behavior)
@@ -626,23 +642,25 @@ export class DeckGLMap {
             },
           }),
         );
+      } else {
+        // No data in either mode — invisible placeholder for stable layer ID
+        layers.push(
+          new ArcLayer({ id: 'KnowledgeGraphArcs', data: [], visible: false }),
+        );
       }
     }
 
     // Layer 4: GDELTEventHeatmap (H3 hexagonal bins)
-    if (this.layerVisible.GDELTEventHeatmap && this.hexBinData.length > 0) {
-      const maxWeight = this.hexBinData.reduce(
-        (max, d) => Math.max(max, d.weight), 1,
-      );
-      // Capture in local for the accessor closure (avoids `this` reference
-      // inside deck.gl accessor which may be called with different `this`)
+    if (this.layerVisible.GDELTEventHeatmap) {
       const hexData = this.hexBinData;
+      const maxWeight = hexData.reduce((max, d) => Math.max(max, d.weight), 1);
       const mw = maxWeight;
 
       layers.push(
         new H3HexagonLayer<HexBinDatum>({
           id: 'GDELTEventHeatmap',
           data: hexData,
+          visible: hexData.length > 0,
           pickable: true,
           getHexagon: (d: HexBinDatum) => d.h3_index,
           getFillColor: (d: HexBinDatum) => {
@@ -670,8 +688,11 @@ export class DeckGLMap {
     // Two modes:
     //   a) Forecast selected: highlight scenario-relevant countries (accent color)
     //   b) No forecast selected + risk deltas: show risk change zones (red/green)
-    if (this.layerVisible.ScenarioZones && geoJson) {
-      if (this.selectedForecast && this.scenarioIsos.size > 0) {
+    // Always push layer when toggled on for stable deck.gl layer IDs.
+    if (this.layerVisible.ScenarioZones) {
+      let scenarioPushed = false;
+
+      if (geoJson && this.selectedForecast && this.scenarioIsos.size > 0) {
         // Mode A: scenario entity highlights (existing behavior)
         const scenarioFeatures: Feature<Geometry>[] = geoJson.features.filter((f) => {
           const code = normalizeCode(f.properties);
@@ -701,8 +722,9 @@ export class DeckGLMap {
               },
             }),
           );
+          scenarioPushed = true;
         }
-      } else if (this.riskDeltaIsos.size > 0) {
+      } else if (geoJson && this.riskDeltaIsos.size > 0) {
         // Mode B: risk delta visualization (Phase 24)
         const deltaMap = this.riskDeltaIsos;
         const deltaFeatures: Feature<Geometry>[] = geoJson.features.filter((f) => {
@@ -750,7 +772,15 @@ export class DeckGLMap {
               },
             }),
           );
+          scenarioPushed = true;
         }
+      }
+
+      // No data in either mode — invisible placeholder for stable layer ID
+      if (!scenarioPushed) {
+        layers.push(
+          new GeoJsonLayer({ id: 'ScenarioZones', data: [], visible: false }),
+        );
       }
     }
 

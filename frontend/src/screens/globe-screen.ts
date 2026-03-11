@@ -359,9 +359,10 @@ function pushArcs(data: ArcData[]): void {
  */
 function pushDeltas(data: RiskDeltaData[]): void {
   if (!mapContainer) return;
-  const mapped: RiskDeltaDatum[] = data.map((d) => ({
-    iso: d.country_iso.toUpperCase(),
-    delta: d.delta,
-  }));
+  const mapped: RiskDeltaDatum[] = [];
+  for (const d of data) {
+    if (!d.country_iso) continue;
+    mapped.push({ iso: d.country_iso.toUpperCase(), delta: d.delta });
+  }
   mapContainer.updateRiskDeltas(mapped);
 }
