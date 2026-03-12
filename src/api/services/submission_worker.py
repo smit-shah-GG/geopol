@@ -33,9 +33,51 @@ logger = logging.getLogger(__name__)
 
 _worker_semaphore = asyncio.Semaphore(3)
 _active_tasks: set[asyncio.Task] = set()  # type: ignore[type-arg]
+_predictor_cache: tuple | None = None  # (orchestrator, tkg_pred) -- heavy init once
 
 MAX_RETRIES = 3
 RETRY_DELAYS = [30, 120, 600]  # seconds: 30s, 2min, 10min
+
+
+def _build_predictor():
+    """Build a properly-wired EnsemblePredictor, caching heavy components.
+
+    Caches ReasoningOrchestrator and TKGPredictor across calls because
+    they load sentence-transformers, ChromaDB, and TiRGN checkpoint (~4s).
+    Returns a fresh EnsemblePredictor each time (mutable _forecast_output
+    state prevents reuse).
+    """
+    global _predictor_cache
+
+    from src.forecasting.ensemble_predictor import EnsemblePredictor
+
+    if _predictor_cache is not None:
+        orch, tkg_pred = _predictor_cache
+        return EnsemblePredictor(llm_orchestrator=orch, tkg_predictor=tkg_pred)
+
+    tkg_pred = None
+    try:
+        from src.forecasting.tkg_predictor import TKGPredictor
+
+        tkg_pred = TKGPredictor()  # auto_load=True loads tirgn_best.npz
+        if not tkg_pred.trained:
+            logger.warning("TKG predictor has no trained model")
+            tkg_pred = None
+    except Exception as exc:
+        logger.warning("TKG predictor init failed: %s", exc)
+
+    orch = None
+    try:
+        from src.forecasting.graph_validator import GraphValidator
+        from src.forecasting.reasoning_orchestrator import ReasoningOrchestrator
+
+        graph_validator = GraphValidator(tkg_predictor=tkg_pred) if tkg_pred else None
+        orch = ReasoningOrchestrator(graph_validator=graph_validator)
+    except Exception as exc:
+        logger.warning("ReasoningOrchestrator init failed: %s", exc)
+
+    _predictor_cache = (orch, tkg_pred)
+    return EnsemblePredictor(llm_orchestrator=orch, tkg_predictor=tkg_pred)
 
 
 class BudgetExhaustedError(Exception):
@@ -184,10 +226,7 @@ async def _execute_forecast(
             request_id,
         )
 
-        # Lazy import to avoid circular imports at module load
-        from src.forecasting.ensemble_predictor import EnsemblePredictor
-
-        predictor = EnsemblePredictor()
+        predictor = _build_predictor()
 
         # EnsemblePredictor.predict() is synchronous -- wrap in thread
         ensemble_pred, forecast_output = await asyncio.to_thread(
