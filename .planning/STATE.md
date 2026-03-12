@@ -5,25 +5,25 @@
 See: .planning/PROJECT.md (updated 2026-03-04)
 
 **Core value:** Explainability -- every forecast must provide clear, traceable reasoning paths
-**Current focus:** v3.0 Operational Command & Verification -- Phase 27 (3D Globe)
+**Current focus:** Phase 28: CesiumJS Globe Renderer
 
 ## Current Position
 
-Milestone: v3.0 Operational Command & Verification
-Phase: 27 of 27 (3D Globe) -- COMPLETE (gap closure done)
-Plan: 03 of 03 (Globe Layer Fixes -- gap closure) -- COMPLETE
-Status: Phase 27 complete. v3.0 complete. UAT gap closure delivered.
-Last activity: 2026-03-10 -- Completed 27-03-PLAN.md (gap closure)
+Milestone: v3.0+ CesiumJS Globe Renderer
+Phase: 28 of 28 (CesiumJS Globe Renderer)
+Plan: 1 of 3
+Status: In progress -- Plan 01 complete (build infra + NavBar)
+Last activity: 2026-03-12 -- Completed 28-01-PLAN.md (CesiumJS build infra + NavBar)
 
-Progress: [##########################################################] 100% (96 plans lifetime)
-v3.0:    [######################################] 100% (35 plans in v3.0 -- 9/9 phases complete)
+Progress: [##########################################################-] 98% (97 plans lifetime)
+Phase 28: [###---------] 33% (1/3 plans complete)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 96
+- Total plans completed: 97
 - Average duration: 9 minutes
-- Total execution time: 14.15 hours
+- Total execution time: 14.2 hours
 
 **By Phase:**
 
@@ -56,6 +56,7 @@ v3.0:    [######################################] 100% (35 plans in v3.0 -- 9/9 
 | 25-frontend-finalization | 3/3 | 23min | 8min |
 | 26-operational-fixes-ux-polish | 3/3 | 18min | 6min |
 | 27-3d-globe | 3/3 | 16min | 5min |
+| 28-cesiumjs-globe-renderer | 1/3 | 3min | 3min |
 
 ## Accumulated Context
 
@@ -155,6 +156,9 @@ Key decisions affecting current work:
 - GlobeMap: GeoJSON ring reversal REMOVED -- globe.gl handles winding internally; manual reversal corrupted polygons (2026-03-10)
 - GlobeMap: Layers 1+5 share single polygonsData channel with altitude discrimination (0.002 vs 0.004) (2026-03-09)
 - GlobeMap: Three.js dynamic import inside applyAtmosphereGlow() only -- avoids 600KB parse-time load (2026-03-09)
+- Phase 28 added: CesiumJS Globe Renderer -- replace globe.gl + deck.gl/MapboxOverlay dual-renderer with single CesiumJS viewer (2026-03-12)
+- vite-plugin-static-copy over abandoned vite-plugin-cesium for CesiumJS Vite integration (2026-03-12)
+- globe-view-toggle CustomEvent now carries { mode: '3d' | 'columbus' | '2d' } payload (2026-03-12)
 - MapContainer: accepts pre-constructed sub-containers + renderer instances -- no internal DOM creation (2026-03-09)
 - LayerPillBar: duck-typed LayerController interface replaces DeckGLMap concrete dependency (2026-03-09)
 - MapContainer: CSS display swap for view toggle (both WebGL contexts alive, no destroy/recreate) (2026-03-09)
@@ -187,7 +191,7 @@ Key decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-03-10
-Stopped at: Completed 27-03-PLAN.md (Globe Layer Fixes -- UAT gap closure)
+Last session: 2026-03-12
+Stopped at: Completed 28-01-PLAN.md (CesiumJS build infra + NavBar)
 Resume file: None
-Next: Phase 27 complete with gap closure. v3.0 milestone complete.
+Next: Plan 02 (CesiumMap.ts implementation) then Plan 03 (delete old renderers + rewire globe-screen.ts)
