@@ -17,6 +17,8 @@
  * per-country arc filtering, and requestRenderMode for GPU efficiency.
  */
 
+import 'cesium/Build/Cesium/Widgets/widgets.css';
+
 import {
   Ion,
   Viewer,
@@ -35,6 +37,7 @@ import {
   Color,
   ColorMaterialProperty,
   ConstantProperty,
+  ArcType,
   Material,
   Entity,
   PolygonHierarchy,
@@ -343,6 +346,7 @@ export class CesiumMap {
       timeline: false,
       infoBox: false,
       selectionIndicator: false,
+      fullscreenButton: false,
       creditContainer: creditDiv,
       sceneMode: initialMode,
       requestRenderMode: true,
@@ -384,10 +388,20 @@ export class CesiumMap {
   private _initEventHandler(): void {
     this.eventHandler = new ScreenSpaceEventHandler(this.viewer.canvas);
 
-    // LEFT_CLICK: dispatch country-selected
+    // LEFT_CLICK: dispatch country-selected or deselect on empty space
     this.eventHandler.setInputAction((event: { position: Cartesian2 }) => {
       const picked = this.viewer.scene.pick(event.position);
-      if (!defined(picked)) return;
+
+      if (!defined(picked)) {
+        // Clicked empty space -- clear selection
+        if (this.selectedCountryIso) {
+          this.setSelectedCountry(null);
+          window.dispatchEvent(
+            new CustomEvent('country-deselected', { bubbles: true }),
+          );
+        }
+        return;
+      }
 
       let iso: string | null = null;
 
@@ -841,7 +855,7 @@ export class CesiumMap {
         stroke: Color.fromCssColorString('rgba(80,85,95,0.6)'),
         strokeWidth: 1,
         fill: Color.fromCssColorString('rgba(40,44,52,0.47)'),
-        clampToGround: true,
+        clampToGround: false,
       });
 
       if (this.destroyed) return;
@@ -862,6 +876,14 @@ export class CesiumMap {
         if (entity.properties) {
           entity.properties.addProperty('_cesiumIso', iso);
           entity.properties.addProperty('_cesiumLayerId', 'ForecastRiskChoropleth');
+        }
+
+        // Minimize rhumb-line subdivision to prevent worker crash on complex polygons.
+        // Large granularity = fewer subdivision points along polygon edges.
+        if (entity.polygon) {
+          entity.polygon.arcType = new ConstantProperty(ArcType.GEODESIC);
+          entity.polygon.granularity = new ConstantProperty(Math.PI);
+          entity.polygon.outline = new ConstantProperty(false) as any;
         }
 
         // Apply risk color

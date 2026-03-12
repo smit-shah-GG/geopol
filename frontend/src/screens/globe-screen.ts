@@ -58,6 +58,7 @@ let scheduler: RefreshScheduler | null = null;
 
 // Event handler references for cleanup
 let countrySelectedHandler: EventListener | null = null;
+let countryDeselectedHandler: EventListener | null = null;
 let forecastSelectedHandler: EventListener | null = null;
 let countryBriefHandler: EventListener | null = null;
 
@@ -186,6 +187,10 @@ export function unmountGlobe(ctx: GeoPolAppContext): void {
     window.removeEventListener('country-selected', countrySelectedHandler);
     countrySelectedHandler = null;
   }
+  if (countryDeselectedHandler) {
+    window.removeEventListener('country-deselected', countryDeselectedHandler);
+    countryDeselectedHandler = null;
+  }
   if (forecastSelectedHandler) {
     window.removeEventListener('forecast-selected', forecastSelectedHandler);
     forecastSelectedHandler = null;
@@ -232,6 +237,13 @@ function wireEvents(_ctx: GeoPolAppContext): void {
     }
   }) as EventListener;
   window.addEventListener('country-selected', countrySelectedHandler);
+
+  // Empty-space click: close drill-down + clear selection
+  countryDeselectedHandler = (() => {
+    if (drillDown) drillDown.close();
+    if (cesiumMap) cesiumMap.setSelectedForecast(null);
+  }) as EventListener;
+  window.addEventListener('country-deselected', countryDeselectedHandler);
 
   // "View Full Analysis" from expanded card -> ScenarioExplorer
   // ScenarioExplorer already listens for forecast-selected in its constructor,
