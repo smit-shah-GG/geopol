@@ -11,19 +11,19 @@ See: .planning/PROJECT.md (updated 2026-03-04)
 
 Milestone: v3.0+ CesiumJS Globe Renderer
 Phase: 28 of 28 (CesiumJS Globe Renderer)
-Plan: 2 of 3
-Status: In progress -- Plan 02 complete (CesiumMap.ts implementation)
-Last activity: 2026-03-12 -- Completed 28-02-PLAN.md (CesiumMap.ts globe renderer)
+Plan: 3 of 3
+Status: Phase 28 COMPLETE -- CesiumJS is sole globe renderer
+Last activity: 2026-03-12 -- Completed 28-03-PLAN.md (wiring + cleanup + old renderer deletion)
 
-Progress: [##########################################################-] 99% (98 plans lifetime)
-Phase 28: [#######-----] 67% (2/3 plans complete)
+Progress: [############################################################] 100% (99 plans lifetime)
+Phase 28: [############] 100% (3/3 plans complete)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 98
+- Total plans completed: 99
 - Average duration: 9 minutes
-- Total execution time: 14.3 hours
+- Total execution time: 14.4 hours
 
 **By Phase:**
 
@@ -56,7 +56,7 @@ Phase 28: [#######-----] 67% (2/3 plans complete)
 | 25-frontend-finalization | 3/3 | 23min | 8min |
 | 26-operational-fixes-ux-polish | 3/3 | 18min | 6min |
 | 27-3d-globe | 3/3 | 16min | 5min |
-| 28-cesiumjs-globe-renderer | 2/3 | 11min | 6min |
+| 28-cesiumjs-globe-renderer | 3/3 | 16min | 5min |
 
 ## Accumulated Context
 
@@ -174,6 +174,8 @@ Key decisions affecting current work:
 - CesiumMap: morphStart disables requestRenderMode, morphComplete re-enables it -- ensures morph animation plays (2026-03-12)
 - CesiumMap: Entity properties tagged with _cesiumIso and _cesiumLayerId via PropertyBag.addProperty for pick identification (2026-03-12)
 - CesiumMap: dual-mode scenario zones -- accent highlights when forecast selected, red/green risk deltas otherwise (2026-03-12)
+- CesiumMap is the sole renderer -- DeckGLMap, GlobeMap, MapContainer deleted (2,378 lines removed) (2026-03-12)
+- Single CesiumMap constructor replaces dual sub-container + dual renderer + MapContainer wiring (2026-03-12)
 
 ### Deferred Issues
 
@@ -197,6 +199,6 @@ Key decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-03-12
-Stopped at: Completed 28-02-PLAN.md (CesiumMap.ts globe renderer)
+Stopped at: Completed 28-03-PLAN.md (wiring + cleanup + old renderer deletion)
 Resume file: None
-Next: Plan 03 (delete old renderers + rewire globe-screen.ts + LayerPillBar imports)
+Next: Phase 28 complete. No further plans queued.
