@@ -9,22 +9,14 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@deck.gl/aggregation-layers": "^9.2.6",
-    "@deck.gl/core": "^9.2.6",
-    "@deck.gl/geo-layers": "^9.2.11",
-    "@deck.gl/layers": "^9.2.6",
-    "@deck.gl/mapbox": "^9.2.6",
+    "cesium": "^1.139.1",
     "d3": "^7.9.0",
-    "deck.gl": "^9.2.6",
-    "globe.gl": "^2.45.0",
-    "h3-js": "^4.4.0",
-    "maplibre-gl": "^5.16.0",
-    "three": "^0.183.2"
+    "h3-js": "^4.4.0"
   },
   "devDependencies": {
     "@types/d3": "^7.4.3",
-    "@types/three": "^0.183.1",
     "typescript": "^5.7.2",
-    "vite": "^6.0.7"
+    "vite": "^6.0.7",
+    "vite-plugin-static-copy": "^3.2.0"
   }
 }
