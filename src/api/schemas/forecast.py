@@ -185,6 +185,9 @@ class PolymarketComparisonData(BaseModel):
     polymarket_brier: float | None = Field(
         None, description="Polymarket Brier score (resolved only)"
     )
+    polymarket_outcome: float | None = Field(
+        None, description="Binary outcome (1.0=Yes, 0.0=No) for resolved markets"
+    )
 
 
 class ForecastResponse(BaseModel):

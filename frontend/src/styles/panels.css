@@ -2529,6 +2529,23 @@
   color: var(--text-secondary);
 }
 
+/* Directional agreement indicators for resolved comparisons */
+.comparison-agreement-indicator {
+  font-size: 11px;
+  margin-top: 4px;
+  font-weight: 600;
+}
+.comparison-agreement-indicator.agrees,
+.comparison-agrees,
+.agrees {
+  color: #4caf50;
+}
+.comparison-agreement-indicator.disagrees,
+.comparison-disagrees,
+.disagrees {
+  color: var(--semantic-critical);
+}
+
 .sparkline-container {
   margin-top: 4px;
   min-height: 40px;

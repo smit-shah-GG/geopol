@@ -255,6 +255,7 @@ export interface PolymarketComparisonData {
   polymarket_slug: string;
   geopol_brier: number | null;
   polymarket_brier: number | null;
+  polymarket_outcome: number | null;
 }
 
 /** Single entry in the ComparisonPanel. */

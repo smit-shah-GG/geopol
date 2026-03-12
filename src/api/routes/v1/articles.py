@@ -266,11 +266,18 @@ def _recent_search(
     for i, chunk_id in enumerate(ids):
         doc = documents[i] if i < len(documents) else ""
         meta = metadatas[i] if i < len(metadatas) else {}
-        published_str = meta.get("published_at") or ""
-        parsed_dt = _parse_date_lenient(published_str)
 
+        # Use indexed_at for recency (always populated by ArticleIndexer).
+        # published_at is unreliable -- trafilatura often fails to extract it,
+        # leaving an empty string that silently drops the article from results.
+        indexed_str = meta.get("indexed_at") or ""
+        parsed_dt = _parse_date_lenient(indexed_str)
         if parsed_dt is None:
-            continue
+            # Fall back to published_at if indexed_at missing (legacy data)
+            published_str = meta.get("published_at") or ""
+            parsed_dt = _parse_date_lenient(published_str)
+            if parsed_dt is None:
+                continue
 
         raw_articles.append((
             parsed_dt,

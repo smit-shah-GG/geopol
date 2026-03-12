@@ -332,6 +332,7 @@ class ForecastService:
                 polymarket_slug=comp.polymarket_slug,
                 geopol_brier=comp.geopol_brier,
                 polymarket_brier=comp.polymarket_brier,
+                polymarket_outcome=comp.polymarket_outcome,
             )
 
             enriched.append(

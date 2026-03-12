@@ -497,12 +497,23 @@ export function updateCardInPlace(
 /** Build the inline comparison section shown in expanded card left column. */
 function buildInlineComparison(comp: PolymarketComparisonData): HTMLElement {
   const pmPrice = comp.polymarket_price;
-  const div = comp.divergence;
 
-  const divClass = div !== null && Math.abs(div) > 0.15 ? 'high-divergence' : 'low-divergence';
-  const divText = div !== null
-    ? `${div > 0 ? '+' : ''}${(div * 100).toFixed(1)}pp`
-    : '--';
+  // Resolved: directional agreement. Active: raw divergence.
+  let valueLabel: string;
+  let valueClass: string;
+  if (comp.status === 'resolved' && comp.polymarket_outcome !== null && comp.geopol_probability !== null) {
+    const gpYes = comp.geopol_probability >= 0.5;
+    const outcomeYes = comp.polymarket_outcome >= 0.5;
+    const agrees = gpYes === outcomeYes;
+    valueLabel = agrees ? 'Market agrees' : 'Market disagrees';
+    valueClass = agrees ? 'comparison-agrees' : 'comparison-disagrees';
+  } else {
+    const div = comp.divergence;
+    valueClass = div !== null && Math.abs(div) > 0.15 ? 'high-divergence' : 'low-divergence';
+    valueLabel = div !== null
+      ? `${div > 0 ? '+' : ''}${(div * 100).toFixed(1)}pp`
+      : '--';
+  }
 
   const section = h('div', { className: 'expanded-comparison-section' },
     h('div', { className: 'expanded-section-label' }, 'vs Polymarket'),
@@ -510,7 +521,7 @@ function buildInlineComparison(comp: PolymarketComparisonData): HTMLElement {
       h('span', { className: 'comparison-market' },
         `Market: ${pmPrice !== null ? (pmPrice * 100).toFixed(1) + '%' : '--'}`,
       ),
-      h('span', { className: `comparison-divergence ${divClass}` }, divText),
+      h('span', { className: `comparison-divergence ${valueClass}` }, valueLabel),
     ),
     // Sparkline container -- lazy-loaded
     h('div', {

@@ -26,13 +26,25 @@ function isTransientError(err: unknown): boolean {
   return /timeout|503|502|504|econnrefused|network|fetch/.test(msg);
 }
 
-/** Divergence CSS class based on absolute magnitude. */
+/** Divergence CSS class based on absolute magnitude (active entries only). */
 function divClass(divergence: number | null): string {
   if (divergence === null) return 'div-low';
   const abs = Math.abs(divergence);
   if (abs > 0.2) return 'div-high';
   if (abs > 0.1) return 'div-medium';
   return 'div-low';
+}
+
+/**
+ * Directional agreement for resolved comparisons.
+ * "Agrees" = geopol predicted the same side of 50% as the outcome.
+ */
+function marketAgreement(comp: ComparisonPanelItem): { text: string; agrees: boolean } | null {
+  if (comp.status !== 'resolved' || comp.polymarket_outcome === null || comp.geopol_probability === null) return null;
+  const gpYes = comp.geopol_probability >= 0.5;
+  const outcomeYes = comp.polymarket_outcome >= 0.5;
+  const agrees = gpYes === outcomeYes;
+  return { text: agrees ? 'Market agrees' : 'Market disagrees', agrees };
 }
 
 export class ComparisonPanel extends Panel {
@@ -126,10 +138,13 @@ export class ComparisonPanel extends Panel {
       ? Math.round(comp.polymarket_price * 100)
       : null;
 
-    // Divergence text
-    const divText = comp.divergence !== null
-      ? `${comp.divergence > 0 ? '+' : ''}${(comp.divergence * 100).toFixed(1)}pp`
-      : '';
+    // Divergence text (active) or directional agreement (resolved)
+    const agreement = marketAgreement(comp);
+    const divText = agreement
+      ? agreement.text
+      : comp.divergence !== null
+        ? `${comp.divergence > 0 ? '+' : ''}${(comp.divergence * 100).toFixed(1)}pp`
+        : '';
 
     // Build dual bars -- signature visual of this panel
     const bars = h('div', { className: 'comparison-bars' },
@@ -155,15 +170,6 @@ export class ComparisonPanel extends Panel {
       ),
     );
 
-    // Winner indicator for resolved entries
-    let winnerEl: HTMLElement | null = null;
-    if (isResolved && comp.geopol_brier !== null && comp.polymarket_brier !== null) {
-      const geopWins = comp.geopol_brier < comp.polymarket_brier;
-      winnerEl = h('div', { className: `comparison-winner ${geopWins ? 'winner-geopol' : 'winner-market'}` },
-        geopWins ? 'Geopol closer' : 'Market closer',
-      );
-    }
-
     // Collapsed header -- clickable
     const header = h('div', {
       className: 'comparison-header',
@@ -175,14 +181,15 @@ export class ComparisonPanel extends Panel {
       bars,
     );
 
-    if (winnerEl) header.appendChild(winnerEl);
-
-    // Divergence indicator in header
+    // Divergence indicator (active) or agreement indicator (resolved) in header
     if (divText) {
-      const divIndicator = h('div', { className: `comparison-divergence-indicator ${dc}` },
-        `Divergence: ${divText}`,
+      const indicatorClass = agreement
+        ? `comparison-agreement-indicator ${agreement.agrees ? 'agrees' : 'disagrees'}`
+        : `comparison-divergence-indicator ${dc}`;
+      const indicatorLabel = agreement ? divText : `Divergence: ${divText}`;
+      header.appendChild(
+        h('div', { className: indicatorClass }, indicatorLabel),
       );
-      header.appendChild(divIndicator);
     }
 
     const entry = h('div', {
@@ -295,6 +302,8 @@ export class ComparisonPanel extends Panel {
     forecast: ForecastResponse,
     comp: ComparisonPanelItem,
   ): void {
+    const agreement = marketAgreement(comp);
+
     // Shared expanded content: ensemble weights, calibration, mini tree, evidence
     section.appendChild(buildExpandedContent(forecast));
 
@@ -308,11 +317,17 @@ export class ComparisonPanel extends Panel {
             ? `${(comp.polymarket_price * 100).toFixed(1)}%`
             : '--',
         ),
-        h('span', { className: 'comparison-pm-key' }, 'Divergence'),
-        h('span', { className: `comparison-pm-val ${divClass(comp.divergence)}` },
-          comp.divergence !== null
-            ? `${comp.divergence > 0 ? '+' : ''}${(comp.divergence * 100).toFixed(1)}pp`
-            : '--',
+        h('span', { className: 'comparison-pm-key' }, agreement ? 'Direction' : 'Divergence'),
+        h('span', {
+          className: agreement
+            ? `comparison-pm-val ${agreement.agrees ? 'agrees' : 'disagrees'}`
+            : `comparison-pm-val ${divClass(comp.divergence)}`,
+        },
+          agreement
+            ? agreement.text
+            : comp.divergence !== null
+              ? `${comp.divergence > 0 ? '+' : ''}${(comp.divergence * 100).toFixed(1)}pp`
+              : '--',
         ),
         h('span', { className: 'comparison-pm-key' }, 'Provenance'),
         h('span', { className: 'comparison-pm-val' },
@@ -323,27 +338,14 @@ export class ComparisonPanel extends Panel {
       ),
     );
 
-    // Brier scores for resolved entries
-    if (comp.status === 'resolved') {
-      const brierRow = h('div', { className: 'comparison-pm-brier' },
-        comp.geopol_brier !== null
-          ? h('span', {}, `GP Brier: ${comp.geopol_brier.toFixed(4)}`)
-          : null,
-        comp.polymarket_brier !== null
-          ? h('span', {}, `PM Brier: ${comp.polymarket_brier.toFixed(4)}`)
-          : null,
+    // Brier score for resolved entries (only show Geopol's -- PM Brier is
+    // always ~0 since the market's final price IS the outcome)
+    if (comp.status === 'resolved' && comp.geopol_brier !== null) {
+      pmSection.appendChild(
+        h('div', { className: 'comparison-pm-brier' },
+          h('span', {}, `Geopol Brier: ${comp.geopol_brier.toFixed(4)}`),
+        ),
       );
-      pmSection.appendChild(brierRow);
-
-      // Winner badge
-      if (comp.geopol_brier !== null && comp.polymarket_brier !== null) {
-        const geopWins = comp.geopol_brier < comp.polymarket_brier;
-        pmSection.appendChild(
-          h('div', { className: `comparison-winner-expanded ${geopWins ? 'winner-geopol' : 'winner-market'}` },
-            geopWins ? 'Geopol was more accurate' : 'Market was more accurate',
-          ),
-        );
-      }
     }
 
     section.appendChild(pmSection);
