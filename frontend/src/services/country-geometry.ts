@@ -190,7 +190,7 @@ export class CountryGeometryService {
   }
 
   /**
-   * Get the full FeatureCollection for deck.gl GeoJsonLayer consumption.
+   * Get the full FeatureCollection for GeoJSON layer consumption.
    * Returns null if not yet loaded.
    */
   getFeatureCollection(): FeatureCollection<Geometry> | null {

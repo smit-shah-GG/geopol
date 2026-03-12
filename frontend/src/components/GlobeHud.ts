@@ -7,7 +7,7 @@
  *   - Last data update timestamp (relative)
  *
  * Below the stats, 8 region preset buttons dispatch `globe-region-change`
- * CustomEvents. MapContainer handles the camera fly-to for both 3D and 2D views.
+ * CustomEvents. CesiumMap handles the camera fly-to for all scene modes.
  *
  * Pure DOM component. No timers, no external state.
  * The globe screen pushes new data via update().

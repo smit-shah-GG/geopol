@@ -8,13 +8,13 @@
  *   4. Heatmap    (GDELTEventHeatmap)       -- default OFF
  *   5. Scenarios  (ScenarioZones)           -- default OFF
  *
- * Accepts any renderer implementing LayerController (DeckGLMap, GlobeMap,
- * or MapContainer). Reads initial state via getLayerVisible() and mutates
- * via setLayerVisible(). Purely UI -- no data fetching, no timers.
+ * Accepts any renderer implementing LayerController (e.g. CesiumMap).
+ * Reads initial state via getLayerVisible() and mutates via
+ * setLayerVisible(). Purely UI -- no data fetching, no timers.
  */
 
 import { h } from '@/utils/dom-utils';
-import type { LayerId } from '@/components/DeckGLMap';
+import type { LayerId } from '@/components/CesiumMap';
 
 /** Any renderer that supports layer visibility control. */
 export interface LayerController {

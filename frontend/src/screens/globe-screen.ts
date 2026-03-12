@@ -1,5 +1,5 @@
 /**
- * Globe screen -- full-viewport dual-renderer globe with contextual overlays.
+ * Globe screen -- full-viewport CesiumJS globe with contextual overlays.
  *
  * The globe fills the entire screen container. All UI elements are positioned
  * absolutely over the map:
@@ -7,19 +7,18 @@
  *   - LayerPillBar: bottom-center toggle bar for 5 analytic layers
  *   - GlobeDrillDown: right-edge slide-in panel on country click
  *
- * MapContainer holds BOTH GlobeMap (3D) and DeckGLMap (2D) alive simultaneously.
- * 3D is the default for first-time visitors. Toggle swaps CSS display -- no
- * destroy/recreate. Data is pushed to both renderers so toggle is instant.
+ * CesiumMap provides a single renderer supporting 3D, Columbus View, and 2D scene
+ * modes via CesiumJS scene morphing. No dual-renderer dispatch overhead.
  *
- * deck.gl / maplibre-gl / globe.gl bundles are NOT loaded on the dashboard route.
+ * CesiumJS bundle is NOT loaded on the dashboard route.
  * The dynamic import() ensures code-splitting at the route level.
  *
  * Event wiring:
  *   country-selected  -> flyToCountry + drillDown.open
  *   forecast-selected -> ScenarioExplorer.open (via modal)
  *   country-brief-requested -> CountryBriefPage.open
- *   globe-view-toggle -> MapContainer.toggleMode (via CustomEvent)
- *   globe-region-change -> MapContainer.flyToRegion (via CustomEvent)
+ *   globe-view-toggle -> CesiumMap.setSceneMode (via CustomEvent)
+ *   globe-region-change -> CesiumMap.flyToRegion (via CustomEvent)
  *
  * Refresh scheduling:
  *   countries  -> every 120s (risk scores + HUD + choropleth)
@@ -36,8 +35,8 @@ import { RefreshScheduler } from '@/app/refresh-scheduler';
 import { GlobeHud } from '@/components/GlobeHud';
 import { GlobeDrillDown } from '@/components/GlobeDrillDown';
 import type { GeoPolAppContext } from '@/app/app-context';
-import type { MapContainer } from '@/components/MapContainer';
-import type { HexBinDatum, BilateralArcDatum, RiskDeltaDatum } from '@/components/DeckGLMap';
+import type { CesiumMap } from '@/components/CesiumMap';
+import type { HexBinDatum, BilateralArcDatum, RiskDeltaDatum } from '@/components/CesiumMap';
 import type { CountryRiskSummary, ForecastResponse, HexbinData, ArcData, RiskDeltaData } from '@/types/api';
 
 // Lazy imports -- only resolved when needed
@@ -49,7 +48,7 @@ import type { LayerPillBar } from '@/components/LayerPillBar';
 // Module-scoped state (one instance per screen mount)
 // ---------------------------------------------------------------------------
 
-let mapContainer: MapContainer | null = null;
+let cesiumMap: CesiumMap | null = null;
 let hud: GlobeHud | null = null;
 let pillBar: LayerPillBar | null = null;
 let drillDown: GlobeDrillDown | null = null;
@@ -73,7 +72,7 @@ export async function mountGlobe(
   // Full-viewport wrapper -- position: relative for absolutely-positioned overlays
   const wrapper = h('div', { className: 'globe-screen' });
 
-  // Map element fills the entire wrapper (hosts both renderers via MapContainer)
+  // Map element fills the entire wrapper (hosts CesiumMap viewer)
   const mapEl = h('div', {
     style: 'position:absolute;inset:0;',
   });
@@ -81,41 +80,25 @@ export async function mountGlobe(
   container.appendChild(wrapper);
 
   try {
-    // Dynamic import: deck.gl + maplibre + globe.gl chunks only load when globe screen mounts.
-    // MapContainer, DeckGLMap, and GlobeMap are all dynamically imported together.
+    // Dynamic import: CesiumJS chunk only loads when globe screen mounts.
     await countryGeometry.load();
     const [
-      { MapContainer: MapContainerClass },
-      { DeckGLMap },
-      { GlobeMap },
+      { CesiumMap: CesiumMapClass },
       { LayerPillBar: LayerPillBarClass },
       { ScenarioExplorer: ScenarioExplorerClass },
       { CountryBriefPage: CountryBriefPageClass },
     ] = await Promise.all([
-      import('@/components/MapContainer'),
-      import('@/components/DeckGLMap'),
-      import('@/components/GlobeMap'),
+      import('@/components/CesiumMap'),
       import('@/components/LayerPillBar'),
       import('@/components/ScenarioExplorer'),
       import('@/components/CountryBriefPage'),
-      import('maplibre-gl/dist/maplibre-gl.css'),
     ]);
 
-    // Create sub-containers for each renderer inside mapEl.
-    // MapContainer toggles display on these to swap views.
-    const deckEl = h('div', { style: 'position:absolute;inset:0;' });
-    const globeEl = h('div', { style: 'position:absolute;inset:0;' });
-    mapEl.appendChild(deckEl);
-    mapEl.appendChild(globeEl);
-
-    // Construct both renderers, then wire them into MapContainer.
-    // MapContainer receives the sub-containers so it can toggle CSS display.
-    const deckMap = new DeckGLMap(deckEl);
-    const globeMap = new GlobeMap(globeEl);
-    mapContainer = new MapContainerClass(deckEl, globeEl, deckMap, globeMap);
+    // Construct CesiumMap -- single renderer handles 3D/Columbus/2D scene modes
+    cesiumMap = new CesiumMapClass(mapEl);
 
     // All layers ON by default -- real data exists for all layers now
-    mapContainer.setLayerDefaults({
+    cesiumMap.setLayerDefaults({
       ForecastRiskChoropleth: true,
       ActiveForecastMarkers: true,
       KnowledgeGraphArcs: true,
@@ -125,7 +108,7 @@ export async function mountGlobe(
 
     // Construct overlay components
     hud = new GlobeHud();
-    pillBar = new LayerPillBarClass(mapContainer);
+    pillBar = new LayerPillBarClass(cesiumMap);
     drillDown = new GlobeDrillDown();
 
     // Append overlays to wrapper (order matters for z-index stacking)
@@ -228,8 +211,8 @@ export function unmountGlobe(ctx: GeoPolAppContext): void {
   if (scenarioExplorer) { scenarioExplorer.destroy(); scenarioExplorer = null; }
   if (countryBriefPage) { countryBriefPage.destroy(); countryBriefPage = null; }
 
-  // Destroy MapContainer (destroys both renderers internally)
-  if (mapContainer) { mapContainer.destroy(); mapContainer = null; }
+  // Destroy CesiumMap
+  if (cesiumMap) { cesiumMap.destroy(); cesiumMap = null; }
 }
 
 // ---------------------------------------------------------------------------
@@ -240,9 +223,9 @@ function wireEvents(_ctx: GeoPolAppContext): void {
   // Country click: fly camera + open drill-down
   countrySelectedHandler = ((e: CustomEvent<{ iso: string }>) => {
     const { iso } = e.detail;
-    if (mapContainer) {
-      mapContainer.flyToCountry(iso);
-      mapContainer.setSelectedCountry(iso);
+    if (cesiumMap) {
+      cesiumMap.flyToCountry(iso);
+      cesiumMap.setSelectedCountry(iso);
     }
     if (drillDown) {
       void drillDown.open(iso);
@@ -255,8 +238,8 @@ function wireEvents(_ctx: GeoPolAppContext): void {
   // so we don't need to add another handler. But we register one for the
   // globe-specific behavior of updating selected forecast on the map.
   forecastSelectedHandler = ((e: CustomEvent<{ forecast: ForecastResponse }>) => {
-    if (mapContainer) {
-      mapContainer.setSelectedForecast(e.detail.forecast);
+    if (cesiumMap) {
+      cesiumMap.setSelectedForecast(e.detail.forecast);
     }
   }) as EventListener;
   window.addEventListener('forecast-selected', forecastSelectedHandler);
@@ -301,8 +284,8 @@ async function loadInitialData(): Promise<void> {
 }
 
 function pushCountries(countries: CountryRiskSummary[]): void {
-  if (mapContainer) {
-    mapContainer.updateRiskScores(countries);
+  if (cesiumMap) {
+    cesiumMap.updateRiskScores(countries);
   }
   if (hud) {
     hud.update(countries);
@@ -310,32 +293,32 @@ function pushCountries(countries: CountryRiskSummary[]): void {
 }
 
 function pushForecasts(forecasts: ForecastResponse[]): void {
-  if (mapContainer) {
-    mapContainer.updateForecasts(forecasts);
+  if (cesiumMap) {
+    cesiumMap.updateForecasts(forecasts);
   }
 }
 
 /**
- * Convert API HexbinData to HexBinDatum and push to MapContainer.
+ * Convert API HexbinData to HexBinDatum and push to CesiumMap.
  * Field names align 1:1 -- no mapping needed.
  */
 function pushHeatmap(data: HexbinData[]): void {
-  if (!mapContainer) return;
+  if (!cesiumMap) return;
   const mapped: HexBinDatum[] = data.map((d) => ({
     h3_index: d.h3_index,
     weight: d.weight,
     event_count: d.event_count,
   }));
-  mapContainer.updateHeatmapData(mapped);
+  cesiumMap.updateHeatmapData(mapped);
 }
 
 /**
- * Convert API ArcData to BilateralArcDatum and push to MapContainer.
+ * Convert API ArcData to BilateralArcDatum and push to CesiumMap.
  * Resolves country centroids via countryGeometry. Drops arcs where
  * either centroid is unavailable (unknown ISO code).
  */
 function pushArcs(data: ArcData[]): void {
-  if (!mapContainer) return;
+  if (!cesiumMap) return;
   const mapped: BilateralArcDatum[] = [];
   for (const d of data) {
     if (!d.source_iso || !d.target_iso) continue;
@@ -351,18 +334,18 @@ function pushArcs(data: ArcData[]): void {
       avgGoldstein: d.avg_goldstein,
     });
   }
-  mapContainer.updateArcData(mapped);
+  cesiumMap.updateArcData(mapped);
 }
 
 /**
- * Convert API RiskDeltaData to RiskDeltaDatum and push to MapContainer.
+ * Convert API RiskDeltaData to RiskDeltaDatum and push to CesiumMap.
  */
 function pushDeltas(data: RiskDeltaData[]): void {
-  if (!mapContainer) return;
+  if (!cesiumMap) return;
   const mapped: RiskDeltaDatum[] = [];
   for (const d of data) {
     if (!d.country_iso) continue;
     mapped.push({ iso: d.country_iso.toUpperCase(), delta: d.delta });
   }
-  mapContainer.updateRiskDeltas(mapped);
+  cesiumMap.updateRiskDeltas(mapped);
 }

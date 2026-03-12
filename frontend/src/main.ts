@@ -21,7 +21,7 @@ import { mountGlobe, unmountGlobe } from '@/screens/globe-screen';
 import { mountForecasts, unmountForecasts } from '@/screens/forecasts-screen';
 import { mountAdmin, unmountAdmin } from '@/screens/admin-screen';
 
-// Styles (no maplibre CSS here -- loaded dynamically in globe-screen)
+// Styles (CesiumJS widgets loaded in CesiumMap, not here)
 import '@/styles/main.css';
 import '@/styles/panels.css';
 
