@@ -69,7 +69,7 @@ const STORAGE_KEY = 'geopol-globe-mode';
 const EARTH_RADIUS = 6_371_000;
 
 const VIEW_POVS: Record<string, { lat: number; lng: number; height: number }> = {
-  global:  { lat: 20,  lng:   0,  height: 1.8 * EARTH_RADIUS },
+  global:  { lat: 20,  lng:   0,  height: 2.5 * EARTH_RADIUS },
   america: { lat: 20,  lng: -90,  height: 1.5 * EARTH_RADIUS },
   mena:    { lat: 25,  lng:  40,  height: 1.2 * EARTH_RADIUS },
   eu:      { lat: 50,  lng:  10,  height: 1.2 * EARTH_RADIUS },
@@ -332,6 +332,8 @@ export class CesiumMap {
       baseLayer: new ImageryLayer(
         new UrlTemplateImageryProvider({
           url: 'https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
+          tileWidth: 512,
+          tileHeight: 512,
           maximumLevel: 18,
           credit: 'CARTO, OpenStreetMap contributors',
         }),
@@ -349,14 +351,17 @@ export class CesiumMap {
       fullscreenButton: false,
       creditContainer: creditDiv,
       sceneMode: initialMode,
+      skyBox: false as any,
+      skyAtmosphere: false as any,
       requestRenderMode: true,
       maximumRenderTimeChange: Infinity,
     });
 
-    // Ensure atmosphere is visible in 3D mode
-    if (this.viewer.scene.skyAtmosphere) {
-      this.viewer.scene.skyAtmosphere.show = true;
-    }
+    // Black void behind globe -- no stars, no celestial bodies
+    this.viewer.scene.globe.baseColor = Color.BLACK;
+    this.viewer.scene.globe.showGroundAtmosphere = false;
+    if (this.viewer.scene.sun) this.viewer.scene.sun.show = false;
+    if (this.viewer.scene.moon) this.viewer.scene.moon.show = false;
   }
 
   private _initTooltip(container: HTMLElement): void {
@@ -882,7 +887,7 @@ export class CesiumMap {
         // Large granularity = fewer subdivision points along polygon edges.
         if (entity.polygon) {
           entity.polygon.arcType = new ConstantProperty(ArcType.GEODESIC);
-          entity.polygon.granularity = new ConstantProperty(Math.PI);
+          entity.polygon.granularity = new ConstantProperty(Math.PI / 6);
           entity.polygon.outline = new ConstantProperty(false) as any;
         }
 

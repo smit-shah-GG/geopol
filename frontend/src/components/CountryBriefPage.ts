@@ -174,6 +174,32 @@ function advisoryLevelClass(level: number): string {
   }
 }
 
+/** Resolve a human-readable event description from EventDTO fields.
+ *  Priority: article title > CAMEO category name + actors > raw code > 'Event'. */
+function eventDescription(evt: EventDTO): string {
+  if (evt.title) return evt.title;
+
+  let desc = 'Event';
+  if (evt.event_code) {
+    const root = evt.event_code.slice(0, 2);
+    const cat = CAMEO_CATEGORIES.find((c) => c.code === root);
+    if (cat) {
+      desc = cat.name.charAt(0) + cat.name.slice(1).toLowerCase();
+    } else {
+      desc = `Event ${evt.event_code}`;
+    }
+  }
+
+  // Append actors when available (e.g. "Consult — USA → RUS")
+  if (evt.actor1_code && evt.actor2_code) {
+    desc += ` \u2014 ${evt.actor1_code} \u2192 ${evt.actor2_code}`;
+  } else if (evt.actor1_code) {
+    desc += ` \u2014 ${evt.actor1_code}`;
+  }
+
+  return desc;
+}
+
 /** CAMEO quad_class to severity category for events. */
 function quadCategory(quadClass: number | null): string {
   if (quadClass === null) return 'neutral';
@@ -748,7 +774,7 @@ export class CountryBriefPage {
 
     for (let i = 0; i < this.events.length; i++) {
       const evt = this.events[i]!;
-      const title = evt.title ?? evt.event_code ?? 'Event';
+      const title = eventDescription(evt);
       const sevCategory = evt.quad_class !== null
         ? quadCategory(evt.quad_class)
         : (evt.event_code ? cameoCategory(evt.event_code) : 'neutral');
