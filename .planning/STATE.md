@@ -11,19 +11,19 @@ See: .planning/PROJECT.md (updated 2026-03-04)
 
 Milestone: v3.0+ CesiumJS Globe Renderer
 Phase: 28 of 28 (CesiumJS Globe Renderer)
-Plan: 1 of 3
-Status: In progress -- Plan 01 complete (build infra + NavBar)
-Last activity: 2026-03-12 -- Completed 28-01-PLAN.md (CesiumJS build infra + NavBar)
+Plan: 2 of 3
+Status: In progress -- Plan 02 complete (CesiumMap.ts implementation)
+Last activity: 2026-03-12 -- Completed 28-02-PLAN.md (CesiumMap.ts globe renderer)
 
-Progress: [##########################################################-] 98% (97 plans lifetime)
-Phase 28: [###---------] 33% (1/3 plans complete)
+Progress: [##########################################################-] 99% (98 plans lifetime)
+Phase 28: [#######-----] 67% (2/3 plans complete)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 97
+- Total plans completed: 98
 - Average duration: 9 minutes
-- Total execution time: 14.2 hours
+- Total execution time: 14.3 hours
 
 **By Phase:**
 
@@ -56,7 +56,7 @@ Phase 28: [###---------] 33% (1/3 plans complete)
 | 25-frontend-finalization | 3/3 | 23min | 8min |
 | 26-operational-fixes-ux-polish | 3/3 | 18min | 6min |
 | 27-3d-globe | 3/3 | 16min | 5min |
-| 28-cesiumjs-globe-renderer | 1/3 | 3min | 3min |
+| 28-cesiumjs-globe-renderer | 2/3 | 11min | 6min |
 
 ## Accumulated Context
 
@@ -169,6 +169,11 @@ Key decisions affecting current work:
 - Marker ISO extraction: scenarios[].entities[] recursive walk with /^[A-Z]{2}$/ filter, not calibration.category (2026-03-10)
 - h3-js async completion routes through scheduleFlush() debounced path, not standalone flushPoints() (2026-03-10)
 - LayerPillBar: syncFromController() resyncs pill states on globe-mode-changed event (2026-03-10)
+- CesiumMap: CustomDataSource for scenario zones -- independent .show toggle from choropleth GeoJsonDataSource (2026-03-12)
+- CesiumMap: entityIsoMap (Map<string, Entity>) for O(1) choropleth re-coloring on subsequent updateRiskScores calls (2026-03-12)
+- CesiumMap: morphStart disables requestRenderMode, morphComplete re-enables it -- ensures morph animation plays (2026-03-12)
+- CesiumMap: Entity properties tagged with _cesiumIso and _cesiumLayerId via PropertyBag.addProperty for pick identification (2026-03-12)
+- CesiumMap: dual-mode scenario zones -- accent highlights when forecast selected, red/green risk deltas otherwise (2026-03-12)
 
 ### Deferred Issues
 
@@ -192,6 +197,6 @@ Key decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-03-12
-Stopped at: Completed 28-01-PLAN.md (CesiumJS build infra + NavBar)
+Stopped at: Completed 28-02-PLAN.md (CesiumMap.ts globe renderer)
 Resume file: None
-Next: Plan 02 (CesiumMap.ts implementation) then Plan 03 (delete old renderers + rewire globe-screen.ts)
+Next: Plan 03 (delete old renderers + rewire globe-screen.ts + LayerPillBar imports)
